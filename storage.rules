@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// taajir — Cloud Storage security rules
+//
+// Listing photos are the product, so they are world-readable. Payment receipts
+// and agency legal documents are not: a CCP receipt carries an account number.
+// ─────────────────────────────────────────────────────────────────────────────
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+             && (request.auth.token.get('role', '') == 'admin'
+                 || request.auth.token.get('role', '') == 'moderator');
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    function underMb(mb) {
+      return request.resource.size < mb * 1024 * 1024;
+    }
+
+    // ── LISTING PHOTOS ───────────────────────────────────────────────────────
+    // Written straight from the browser after the server has checked the user's
+    // quota and issued the path. Uploads are pinned under the uploader's own
+    // uid, so one user cannot write into another's namespace. The client
+    // downscales to 1920px WebP before uploading, so 6 MB is a generous ceiling
+    // rather than an expected size.
+
+    match /listings/{userId}/{listingId}/{fileName} {
+      allow read: if true;
+      allow write: if signedIn() && request.auth.uid == userId
+                   && isImage() && underMb(6);
+    }
+
+    // ── AGENCY BRANDING ──────────────────────────────────────────────────────
+
+    match /agencies/{agencyId}/public/{fileName} {
+      allow read: if true;
+      allow write: if signedIn() && isImage() && underMb(4);
+    }
+
+    // ── PRIVATE DOCUMENTS ────────────────────────────────────────────────────
+    // Transfer receipts and agrément scans. The uploader may read back what
+    // they submitted; otherwise admins only.
+
+    match /receipts/{userId}/{fileName} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow write: if signedIn() && request.auth.uid == userId
+                   && (isImage()
+                       || request.resource.contentType == 'application/pdf')
+                   && underMb(6);
+    }
+
+    match /agencies/{agencyId}/legal/{fileName} {
+      allow read: if isAdmin();
+      allow write: if signedIn() && underMb(6);
+    }
+
+    // ── DEFAULT DENY ─────────────────────────────────────────────────────────
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

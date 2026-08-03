@@ -1,0 +1,243 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// taajir — Firestore security rules
+//
+// This Firebase project (newmokit) is SHARED with the catalogev product, whose
+// rules were only ever set in the console and never version-controlled.
+// Deploying this file replaces everything, so the catalog rules are restated
+// at the bottom. Removing that block silently breaks a live app.
+//
+// Design note: clients never write `listings`. Every create, edit and
+// moderation goes through a Server Action on the Admin SDK, which is what makes
+// quota enforcement and the paid promotion flags tamper-proof. A whitelist of
+// writable fields would have to be exactly right forever; denying the whole
+// collection only has to be right once.
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── HELPERS ──────────────────────────────────────────────────────────────
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Read from the custom claim, not from a users/ document: a get() inside a
+    // rule costs a billable read on every evaluation and is capped at ten
+    // lookups per request, while the claim rides along in the token for free.
+    function role() {
+      return signedIn() ? request.auth.token.get('role', 'user') : 'visitor';
+    }
+
+    function isAdmin() {
+      return role() == 'admin' || role() == 'moderator';
+    }
+
+    function isOwner(userId) {
+      return signedIn() && uid() == userId;
+    }
+
+    function notBanned() {
+      return signedIn() && request.auth.token.get('banned', false) == false;
+    }
+
+    function onlyChanged(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(allowed);
+    }
+
+    // ── LISTINGS ─────────────────────────────────────────────────────────────
+    // Public read of published ads only. Owners see their own drafts and
+    // rejections so the dashboard can show live status. All writes denied —
+    // see the design note above.
+
+    match /listings/{listingId} {
+      allow read: if resource.data.status == 'published'
+                  || isOwner(resource.data.ownerUid)
+                  || isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // ── USERS ────────────────────────────────────────────────────────────────
+    // A user edits their own profile. Role, quota, counters and ban state are
+    // server territory — a user who could raise their own listingQuota would
+    // make the paid plans pointless.
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow create: if isOwner(userId)
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.isBanned == false
+                    && request.resource.data.activeListingCount == 0;
+
+      allow update: if isAdmin()
+                    || (isOwner(userId) && notBanned() && onlyChanged([
+                          'displayName', 'photoURL', 'phone', 'wilayaCode',
+                          'locale', 'notifyOnMessage', 'notifyOnSavedSearch',
+                          'lastSeenAt'
+                       ]));
+
+      allow delete: if isAdmin();
+
+      match /favorites/{listingId} {
+        allow read, write: if isOwner(userId) && notBanned();
+      }
+    }
+
+    // ── AGENCIES ─────────────────────────────────────────────────────────────
+    // Public read of active agencies. The owner edits presentation only:
+    // isVerified drives the "موثّق" badge and is granted by an admin against a
+    // recorded agrément number, never self-assigned.
+
+    match /agencies/{agencyId} {
+      allow read: if resource.data.status == 'active'
+                  || isOwner(resource.data.ownerUid)
+                  || isAdmin();
+
+      allow create: if false;
+
+      allow update: if isAdmin()
+                    || (isOwner(resource.data.ownerUid) && notBanned()
+                        && onlyChanged([
+                             'name', 'nameFr', 'description', 'logoUrl',
+                             'coverUrl', 'phones', 'whatsapp', 'email',
+                             'website', 'address', 'wilayaCode', 'communeSlug',
+                             'geo', 'feeSchedule'
+                           ]));
+
+      allow delete: if isAdmin();
+    }
+
+    // ── PLANS ────────────────────────────────────────────────────────────────
+
+    match /plans/{planId} {
+      allow read: if resource.data.isActive == true || isAdmin();
+      allow write: if false;
+    }
+
+    // ── SUBSCRIPTIONS ────────────────────────────────────────────────────────
+
+    match /subscriptions/{subId} {
+      allow read: if isAdmin() || isOwner(resource.data.subjectId);
+      allow write: if false;
+    }
+
+    // ── PAYMENTS ─────────────────────────────────────────────────────────────
+    // The payer submits a transfer receipt and reads their own records. Moving
+    // a payment to 'paid' is the act that grants a paid subscription, so it is
+    // admin-only — and later, the same transition will be performed by the
+    // payment-gateway webhook through the Admin SDK, not by a client.
+
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || isOwner(resource.data.subjectId);
+
+      allow create: if notBanned()
+                    && request.resource.data.subjectId == uid()
+                    && request.resource.data.status == 'awaitingReview'
+                    && request.resource.data.provider in
+                       ['manual_ccp', 'manual_baridimob', 'manual_bank']
+                    && request.resource.data.createdAt == request.time;
+
+      allow update, delete: if false;
+    }
+
+    // ── SAVED SEARCHES ───────────────────────────────────────────────────────
+
+    match /savedSearches/{id} {
+      allow read, update, delete: if isOwner(resource.data.ownerUid) || isAdmin();
+      allow create: if notBanned() && request.resource.data.ownerUid == uid();
+    }
+
+    // ── MESSAGING ────────────────────────────────────────────────────────────
+    // Threads are opened by a Server Action, which checks the listing is
+    // published and that its owner accepts messages. Participants then talk
+    // directly through the client SDK so the thread is realtime.
+
+    match /conversations/{convId} {
+      function isParticipant() {
+        return signedIn() && uid() in resource.data.participantUids;
+      }
+
+      allow read: if isParticipant() || isAdmin();
+      allow create: if false;
+      allow update: if isAdmin()
+                    || (isParticipant() && notBanned()
+                        && onlyChanged(['lastMessage', 'unread', 'updatedAt']));
+      allow delete: if false;
+
+      match /messages/{msgId} {
+        function inConversation() {
+          return signedIn() && uid() in
+            get(/databases/$(database)/documents/conversations/$(convId))
+              .data.participantUids;
+        }
+
+        allow read: if inConversation() || isAdmin();
+
+        allow create: if inConversation() && notBanned()
+                      && request.resource.data.senderUid == uid()
+                      && request.resource.data.sentAt == request.time
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 2000;
+
+        allow update: if inConversation() && onlyChanged(['readAt']);
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ── REPORTS ──────────────────────────────────────────────────────────────
+    // Anyone can flag a listing, including signed-out visitors — fake ads are
+    // the standard failure mode of a classifieds site and friction here costs
+    // more than it saves.
+
+    match /reports/{id} {
+      allow create: if request.resource.data.status == 'open'
+                    && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ── NOTIFICATIONS ────────────────────────────────────────────────────────
+
+    match /notifications/{userId}/items/{id} {
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId) && onlyChanged(['isRead']);
+      allow create, delete: if false;
+    }
+
+    // ── AUDIT AND AGGREGATES ─────────────────────────────────────────────────
+
+    match /adminAudit/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /counters/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── CATALOGEV (shared project — DO NOT REMOVE) ───────────────────────────
+    // The product catalogue lives in the same Firebase project. Its rules were
+    // never committed anywhere, so they are restated here: without this block a
+    // taajir deploy takes that app down.
+
+    match /catalog/{document} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    // ── DEFAULT DENY ─────────────────────────────────────────────────────────
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
