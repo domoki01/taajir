@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* ── DESIGN TOKENS ───────────────────────────────────────────────────────────
+   Palette carried over from the sibling catalogev app so both products read as
+   one brand. Tailwind v4 is CSS-first: every token below becomes a utility
+   (bg-accent, text-muted, rounded-card, shadow-soft …) with no JS config file. */
+
+@theme {
+  --color-bg: #f7f5fb;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f2eefa;
+  --color-border: #e7e2f1;
+
+  --color-text: #1b1230;
+  --color-muted: #6b6480;
+  --color-dim: #b5aec7;
+
+  --color-accent: #6c47e4;
+  --color-accent-soft: #ede6fe;
+
+  --color-success: #2fb98a;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  --radius-input: 14px;
+  --radius-card: 20px;
+  --radius-sheet: 28px;
+
+  --shadow-soft: 0 6px 16px rgb(108 71 228 / 0.06);
+  --shadow-lifted: 0 10px 30px rgb(108 71 228 / 0.12);
+
+  --font-sans: var(--font-cairo), system-ui, sans-serif;
+}
+
+/* Arabic numerals render inconsistently across Android WebViews when the
+   surrounding text is RTL; force the Latin digit forms we actually design for. */
+@layer base {
+  html {
+    font-feature-settings: "lnum" 1;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prices, phone numbers and areas stay left-to-right inside RTL prose. */
+  .ltr-nums {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
