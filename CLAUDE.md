@@ -63,3 +63,16 @@ npm run typecheck && npm run lint && npm run format:check && npm run build
 ```
 
 `next build` no longer runs ESLint in Next 16, so lint is a separate step.
+
+## Hosting
+
+Firebase App Hosting, configured in `apphosting.yaml`, deploying from `main`.
+
+**Do not downgrade Next.js to satisfy App Hosting's support table.** App Hosting
+lists 15.0–15.2 as "active" and treats 16.x as "preview", which looks like an
+argument for pinning lower — it is not. Every release in the 15.2 line carries
+26 open high-severity advisories (SSRF, cache poisoning, XSS, DoS) that are
+fixed in 16.3, and the first patched 15.x release (15.5.22) is just as far
+outside the "active" list as 16 is. Downgrading pays the cost and gets nothing.
+Because the version is in preview, `apphosting.yaml` states the build and run
+commands explicitly so framework auto-detection cannot change them underneath us.

@@ -1,0 +1,49 @@
+# ── FIREBASE APP HOSTING ─────────────────────────────────────────────────────
+# Backend configuration for the taajir web app. App Hosting builds from the live
+# branch on every push and serves the result on Cloud Run.
+#
+# Version note: App Hosting's pre-configured support currently designates
+# Next.js 15.0–15.2 as "active"; this project runs Next 16.3, which App Hosting
+# treats as "preview". That is a deliberate choice — the 15.2 line carries 26
+# open high-severity advisories (SSRF, cache poisoning, XSS, DoS), all of which
+# are fixed in the 16.3 stable release. Because of the preview status the build
+# and run commands are stated explicitly below rather than left to framework
+# auto-detection, so a change in App Hosting's detection logic cannot silently
+# alter how this app is built.
+
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  # Scale to zero when idle. A classifieds site in its first months has long
+  # quiet stretches, and an always-warm instance bills for all of them. The
+  # trade-off is a cold start on the first request after idle; ISR-cached pages
+  # absorb most of that.
+  minInstances: 0
+  # A ceiling, not a target. Left low on purpose: this is the only thing between
+  # a traffic spike (or a crawler loop) and an unbounded Cloud Run bill.
+  maxInstances: 2
+  concurrency: 80
+
+scripts:
+  buildCommand: npm run build
+  runCommand: npm run start
+
+env:
+  # Absolute origin. Feeds metadataBase, canonical URLs, OpenGraph tags and the
+  # sitemap, so it must be correct at BUILD time as well as at runtime — a wrong
+  # value here silently poisons every shareable link and every indexed page.
+  # Set to the real backend URL once the first rollout reports one.
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: http://localhost:3000
+    availability:
+      - BUILD
+      - RUNTIME
+
+# Not needed yet: the Admin SDK is unused, so no service account is required to
+# deploy. When accounts and ad posting land, FIREBASE_SERVICE_ACCOUNT_JSON goes
+# into Cloud Secret Manager and is referenced here as:
+#
+#   - variable: FIREBASE_SERVICE_ACCOUNT_JSON
+#     secret: firebaseServiceAccount
+#     availability:
+#       - RUNTIME
