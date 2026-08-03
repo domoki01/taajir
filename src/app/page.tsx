@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Building, Home, LandPlot, Search, Store } from "lucide-react";
+import { Building, Home, LandPlot, MapPin, Search, Store } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { getFeaturedWilayas } from "@/lib/geo";
 
 // Placeholder taxonomy — replaced by lib/enums.ts once the listing schema lands.
 const propertyTypes = [
@@ -12,6 +13,8 @@ const propertyTypes = [
 ];
 
 export default function HomePage() {
+  const wilayas = getFeaturedWilayas();
+
   return (
     <>
       <Header />
@@ -66,6 +69,31 @@ export default function HomePage() {
                     <Icon className="size-6" strokeWidth={2.2} />
                   </span>
                   <span className="text-sm font-bold">{label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* ── WILAYAS ──────────────────────────────────────────────────────── */}
+        <section className="mx-auto max-w-6xl px-4 pb-16">
+          <h2 className="text-xl font-extrabold md:text-2xl">
+            الولايات الأكثر بحثاً
+          </h2>
+          <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {wilayas.map((wilaya) => (
+              <li key={wilaya.slug}>
+                <Link
+                  href={`/vente/appartement/${wilaya.slug}`}
+                  className="rounded-input border-border bg-surface hover:border-accent flex items-center gap-2 border px-4 py-3 transition-colors"
+                >
+                  <MapPin className="text-accent size-4 shrink-0" />
+                  <span className="truncate text-sm font-bold">
+                    {wilaya.nameAr}
+                  </span>
+                  <span className="text-dim ltr-nums ms-auto text-xs font-semibold">
+                    {String(wilaya.code).padStart(2, "0")}
+                  </span>
                 </Link>
               </li>
             ))}
