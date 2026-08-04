@@ -18,15 +18,27 @@ export const metadata: Metadata = {
 // a cached page would read as the submission having failed.
 export const dynamic = "force-dynamic";
 
-/** Owner reads go through the Admin SDK — drafts and rejections included. */
-async function myListings(uid: string): Promise<Listing[]> {
-  const snap = await adminDb()
-    .collection("listings")
-    .where("ownerUid", "==", uid)
-    .orderBy("updatedAt", "desc")
-    .limit(50)
-    .get();
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Listing);
+/**
+ * Owner reads go through the Admin SDK — drafts and rejections included.
+ *
+ * Wrapped because a Firestore read can fail for reasons that have nothing to do
+ * with this user: a missing composite index, a cold database, a transient
+ * network fault. Letting that throw turns "here are your ads" into a blank 500
+ * right after someone has posted, which reads as having lost their work.
+ */
+async function myListings(uid: string): Promise<Listing[] | null> {
+  try {
+    const snap = await adminDb()
+      .collection("listings")
+      .where("ownerUid", "==", uid)
+      .orderBy("updatedAt", "desc")
+      .limit(50)
+      .get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Listing);
+  } catch (error) {
+    console.error("[my-listings] read failed:", error);
+    return null;
+  }
 }
 
 const statusStyle: Record<string, string> = {
@@ -60,7 +72,12 @@ export default async function MyListingsPage({
       )}
 
       <div className="mt-6">
-        {listings.length === 0 ? (
+        {listings === null ? (
+          <EmptyState
+            title="ما قدرناش نجيبو إعلاناتك"
+            body="وقع مشكل مؤقت عند جلب القائمة. إعلاناتك ما راحوش — عاود تحميل الصفحة بعد شوية."
+          />
+        ) : listings.length === 0 ? (
           <EmptyState
             title="ما عندك حتى إعلان"
             body="انشر أول إعلان وشوفه هنا مع حالته."
