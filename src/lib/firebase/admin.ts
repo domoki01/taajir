@@ -24,17 +24,24 @@ import { firebaseConfig } from "./config";
 
 const kAppName = "taajir-admin";
 
+/**
+ * In production this returns nothing on purpose.
+ *
+ * App Hosting runs the app on Cloud Run with a service account already
+ * attached, so firebase-admin picks up Application Default Credentials by
+ * itself. Shipping a service-account key as a secret would add a credential to
+ * rotate, a Secret Manager dependency and a way to leak — for no capability the
+ * runtime does not already have.
+ *
+ * The env var exists for the places ADC is absent: a local machine and the
+ * seed script.
+ */
 function credentials() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!raw) {
-    throw new Error(
-      "FIREBASE_SERVICE_ACCOUNT_JSON is not set. Generate a service account key " +
-        "in the Firebase console (Project settings → Service accounts) and put " +
-        "the JSON on one line in .env.local, or base64-encode it.",
-    );
-  }
-  // Accept both raw JSON and base64, since one-line JSON is awkward to paste
-  // into some dashboards.
+  if (!raw) return undefined;
+
+  // Accept raw JSON or base64 — one-line JSON is awkward to paste into a
+  // dashboard, and shells eat the quotes when a .env file is sourced.
   const json = raw.trim().startsWith("{")
     ? raw
     : Buffer.from(raw, "base64").toString("utf8");
@@ -43,7 +50,7 @@ function credentials() {
     return cert(JSON.parse(json));
   } catch {
     throw new Error(
-      "FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON (or valid base64 of it).",
+      "FIREBASE_SERVICE_ACCOUNT_JSON is set but is not valid JSON (or base64 of it).",
     );
   }
 }
@@ -52,9 +59,12 @@ function adminApp(): App {
   const existing = getApps().find((a) => a.name === kAppName);
   if (existing) return existing;
 
+  const credential = credentials();
   return initializeApp(
     {
-      credential: credentials(),
+      // Omitting `credential` entirely lets the SDK fall back to Application
+      // Default Credentials; passing `undefined` explicitly does not.
+      ...(credential ? { credential } : {}),
       projectId: firebaseConfig.projectId,
       storageBucket: firebaseConfig.storageBucket,
     },

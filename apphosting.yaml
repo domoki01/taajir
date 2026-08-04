@@ -38,11 +38,9 @@ env:
       - BUILD
       - RUNTIME
 
-# Not needed yet: the Admin SDK is unused, so no service account is required to
-# deploy. When accounts and ad posting land, FIREBASE_SERVICE_ACCOUNT_JSON goes
-# into Cloud Secret Manager and is referenced here as:
-#
-#   - variable: FIREBASE_SERVICE_ACCOUNT_JSON
-#     secret: firebaseServiceAccount
-#     availability:
-#       - RUNTIME
+# No service-account secret is declared, and that is deliberate. App Hosting
+# runs this app on Cloud Run with a service account already attached, so
+# firebase-admin authenticates through Application Default Credentials. Shipping
+# a key as a secret would add a credential to rotate and a way to leak, for no
+# capability the runtime does not already have. FIREBASE_SERVICE_ACCOUNT_JSON is
+# only for a local machine, where ADC is absent.
