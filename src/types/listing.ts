@@ -80,6 +80,8 @@ export type Listing = {
 
   // ── lifecycle — server-controlled ──────────────────────────────────────────
   status: ListingStatus;
+  /** Shown to the owner on their dashboard when a moderator rejects an ad. */
+  rejectionReason: string | null;
   isFeatured: boolean;
   pinnedUntil: number | null;
   createdAt: number;
