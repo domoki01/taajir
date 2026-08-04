@@ -43,7 +43,17 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     console.error("[auth] session exchange failed:", error);
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    // TEMPORARY: this project's log access is restricted, so the failure code
+    // is echoed to the caller to diagnose a production-only auth failure.
+    // Remove once the cause is fixed.
+    const detail =
+      error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error);
+    return NextResponse.json(
+      { error: "unauthorized", detail: detail.slice(0, 300) },
+      { status: 401 },
+    );
   }
 }
 
