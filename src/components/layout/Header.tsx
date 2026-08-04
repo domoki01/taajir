@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Plus } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { kSiteName } from "@/lib/constants";
 
 export function Header() {
@@ -15,7 +15,9 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="text-muted me-auto hidden items-center gap-6 text-sm font-semibold md:flex">
+        {/* "نشر إعلان" and "الوكالات" are intentionally absent until accounts
+            and agency profiles exist. A link that 404s is worse than no link. */}
+        <nav className="text-muted ms-auto flex items-center gap-5 text-sm font-semibold sm:gap-6">
           <Link href="/vente" className="hover:text-accent transition-colors">
             للبيع
           </Link>
@@ -25,18 +27,13 @@ export function Header() {
           >
             للكراء
           </Link>
-          <Link href="/agences" className="hover:text-accent transition-colors">
-            الوكالات
+          <Link
+            href="/recherche"
+            className="hover:text-accent transition-colors"
+          >
+            بحث
           </Link>
         </nav>
-
-        <Link
-          href="/publier"
-          className="bg-accent rounded-input ms-auto inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 md:ms-0"
-        >
-          <Plus className="size-4" strokeWidth={3} />
-          نشر إعلان
-        </Link>
       </div>
     </header>
   );

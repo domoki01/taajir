@@ -58,8 +58,14 @@ service cloud.firestore {
     // see the design note above.
 
     match /listings/{listingId} {
-      allow read: if resource.data.status == 'published'
-                  || isOwner(resource.data.ownerUid)
+      // Field access uses .get() with a default rather than a bare property
+      // read. On a `list`, the rule is evaluated per candidate document and a
+      // single document missing the field raises "property is undefined" and
+      // denies the entire query — so a half-written ad would take every browse
+      // page down. A `get` never hits this, which is why it only shows up once
+      // the collection is queried rather than read by id.
+      allow read: if resource.data.get('status', '') == 'published'
+                  || isOwner(resource.data.get('ownerUid', ''))
                   || isAdmin();
       allow create, update, delete: if false;
     }

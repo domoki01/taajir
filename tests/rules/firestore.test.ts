@@ -16,14 +16,18 @@ import {
 } from "@firebase/rules-unit-testing";
 import { readFileSync } from "node:fs";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  query,
   setDoc,
   serverTimestamp,
   updateDoc,
   deleteDoc,
+  where,
 } from "firebase/firestore";
-import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 let env: RulesTestEnvironment;
 
@@ -92,6 +96,37 @@ describe("listings", () => {
   it("hides an unpublished listing from the public", async () => {
     await assertFails(getDoc(doc(anon(), "listings/draft-1")));
     await assertFails(getDoc(doc(authed(kOther), "listings/draft-1")));
+  });
+
+  // `get` and `list` are separate operations with different failure modes. The
+  // browse pages query the collection, and an early version of these rules read
+  // resource.data.status without a default — every `get` test passed while every
+  // query on the site returned permission-denied.
+  it("lets anyone query published listings", async () => {
+    const q = query(
+      collection(anon(), "listings"),
+      where("status", "==", "published"),
+    );
+    const snap = await assertSucceeds(getDocs(q));
+    expect(snap.size).toBe(1);
+  });
+
+  it("survives a document that is missing the fields the rule inspects", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      // A half-written ad, or one from an older schema.
+      await setDoc(doc(ctx.firestore(), "listings/broken-1"), {
+        title: "ناقص",
+      });
+    });
+    const q = query(
+      collection(anon(), "listings"),
+      where("status", "==", "published"),
+    );
+    await assertSucceeds(getDocs(q));
+  });
+
+  it("refuses an unconstrained query over the whole collection", async () => {
+    await assertFails(getDocs(collection(anon(), "listings")));
   });
 
   it("lets the owner and an admin read their own draft", async () => {

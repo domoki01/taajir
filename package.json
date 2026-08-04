@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:rules": "firebase emulators:exec --only firestore --project demo-taajir \"vitest run tests/rules\"",
-    "emulators": "firebase emulators:start --project demo-taajir"
+    "emulators": "firebase emulators:start --project demo-taajir",
+    "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
     "clsx": "2.1.1",

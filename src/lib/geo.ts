@@ -44,6 +44,18 @@ export function getCommune(
 }
 
 /**
+ * "bab-ezzouar، الجزائر" — the Arabic commune name where we have it, falling
+ * back to a de-slugged form. Printing the raw Latin slug inside Arabic prose
+ * looks broken and reads worse, so the lookup is worth the pass over the list.
+ */
+export function placeLabel(wilayaSlug: string, communeSlug: string): string {
+  const wilaya = getWilaya(wilayaSlug);
+  const commune = wilaya ? getCommune(wilaya.code, communeSlug) : undefined;
+  const communeName = commune?.nameAr ?? communeSlug.replace(/-/g, " ");
+  return wilaya ? `${communeName}، ${wilaya.nameAr}` : communeName;
+}
+
+/**
  * Wilayas people actually search for, ordered by population weight rather than
  * by code, so the home page shortcuts are useful instead of alphabetical.
  */
