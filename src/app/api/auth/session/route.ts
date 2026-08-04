@@ -42,18 +42,10 @@ export async function POST(request: Request) {
     });
     return response;
   } catch (error) {
+    // Never echo the underlying error to the caller: it can carry project ids,
+    // token contents and SDK internals. The server log is the place for it.
     console.error("[auth] session exchange failed:", error);
-    // TEMPORARY: this project's log access is restricted, so the failure code
-    // is echoed to the caller to diagnose a production-only auth failure.
-    // Remove once the cause is fixed.
-    const detail =
-      error instanceof Error
-        ? `${error.name}: ${error.message}`
-        : String(error);
-    return NextResponse.json(
-      { error: "unauthorized", detail: detail.slice(0, 300) },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 }
 
