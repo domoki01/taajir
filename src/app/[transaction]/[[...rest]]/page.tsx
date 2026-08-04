@@ -18,7 +18,13 @@ import { kSiteName } from "@/lib/constants";
 // The indexable browse pages — the ones a search for "كراء شقة باب الزوار" is
 // meant to land on. Free-form filtering lives at /recherche, which is noindex,
 // so the crawler only ever sees these clean, canonical combinations.
-export const revalidate = 1800;
+//
+// Five minutes, matching the listing page. A longer window would be cheaper in
+// reads, but it also means someone posts an ad and cannot find it on the very
+// page they expect it — and at this volume the read cost is negligible. Once
+// posting exists, the publish action will revalidate the affected paths
+// directly and this becomes a backstop rather than the mechanism.
+export const revalidate = 300;
 
 type Params = { transaction: string; rest?: string[] };
 
