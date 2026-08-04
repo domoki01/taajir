@@ -32,9 +32,8 @@ env:
   # Absolute origin. Feeds metadataBase, canonical URLs, OpenGraph tags and the
   # sitemap, so it must be correct at BUILD time as well as at runtime — a wrong
   # value here silently poisons every shareable link and every indexed page.
-  # Set to the real backend URL once the first rollout reports one.
   - variable: NEXT_PUBLIC_SITE_URL
-    value: http://localhost:3000
+    value: https://taajir--newmokit.europe-west4.hosted.app
     availability:
       - BUILD
       - RUNTIME
