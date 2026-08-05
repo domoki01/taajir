@@ -17,6 +17,20 @@ export const kTransactionTypes = {
 
 export type TransactionType = keyof typeof kTransactionTypes;
 
+/**
+ * The same four deals, worded for someone searching rather than posting.
+ *
+ * A buyer and a seller are on opposite sides of one set of ads, so "شراء" is
+ * not a filter value — filtering by it would ask for ads that do not exist.
+ * It is named in the label because that is the word a buyer looks for.
+ */
+export const kTransactionFilterLabels: Record<TransactionType, string> = {
+  vente: "للبيع / شراء",
+  location: "للكراء",
+  vacances: "كراء بالليلة",
+  echange: "مبادلة",
+};
+
 /** Sale form. Matters legally and to the buyer's financing. */
 export const kSaleForms = {
   definitif: "بيع بالصيغة النهائية",

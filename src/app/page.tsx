@@ -3,7 +3,7 @@ import { Building, Home, LandPlot, MapPin, Search, Store } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getFeaturedWilayas } from "@/lib/geo";
-import { PlacePicker } from "@/components/search/PlacePicker";
+import { SearchFilters } from "@/components/search/SearchFilters";
 
 // Placeholder taxonomy — replaced by lib/enums.ts once the listing schema lands.
 const propertyTypes = [
@@ -33,7 +33,7 @@ export default function HomePage() {
             </p>
 
             <div className="rounded-card shadow-soft mx-auto mt-8 max-w-xl bg-white p-4 text-start">
-              <PlacePicker />
+              <SearchFilters />
             </div>
 
             <form

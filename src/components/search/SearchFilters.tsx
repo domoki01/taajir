@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, MapPin, Search, X } from "lucide-react";
 import {
@@ -11,25 +11,36 @@ import {
   type Commune,
   type Wilaya,
 } from "@/lib/geo";
+import {
+  kPropertyTypes,
+  kTransactionFilterLabels,
+  kTransactionTypes,
+  type PropertyType,
+  type TransactionType,
+} from "@/lib/enums";
 
 /**
- * Wilaya then commune, as a pair of comboboxes.
+ * The site's one filter: deal, property type, wilaya, commune.
  *
- * The wilaya box accepts a name in Arabic or French *or* the wilaya number,
- * because that is how Algerians identify a wilaya in practice — "16" is Alger
- * to everyone, and plate numbers make the code more familiar than the spelling.
- * With 69 wilayas and up to 57 communes in one of them, a plain <select> means
- * scrolling a list nobody can scan; typing two digits is faster than any menu.
+ * Deal and type are plain <select>s — four and thirteen fixed options each,
+ * which is exactly what a dropdown is for, and the native control gives the
+ * phone its own picker for free. The wilaya is not: it accepts a name in Arabic
+ * or French *or* the wilaya number, because that is how Algerians identify a
+ * wilaya in practice — "16" is Alger to everyone, and plate numbers make the
+ * code more familiar than the spelling. With 69 wilayas and up to 57 communes
+ * in one of them, a dropdown means scrolling a list nobody can scan; typing two
+ * digits is faster than any menu.
  */
-export function PlacePicker({
+export function SearchFilters({
+  initialTransaction,
+  initialType,
   initialWilaya,
   initialCommune,
-  transaction,
 }: {
+  initialTransaction?: string;
+  initialType?: string;
   initialWilaya?: string;
   initialCommune?: string;
-  /** When set, results land on the canonical browse route instead of /recherche. */
-  transaction?: string;
 }) {
   const router = useRouter();
 
@@ -38,6 +49,17 @@ export function PlacePicker({
   const seedWilaya = initialWilaya
     ? (kWilayas.find((w) => w.slug === initialWilaya) ?? null)
     : null;
+
+  const [transaction, setTransaction] = useState<TransactionType | "">(
+    initialTransaction && initialTransaction in kTransactionTypes
+      ? (initialTransaction as TransactionType)
+      : "",
+  );
+  const [propertyType, setPropertyType] = useState<PropertyType | "">(
+    initialType && initialType in kPropertyTypes
+      ? (initialType as PropertyType)
+      : "",
+  );
 
   const [wilaya, setWilaya] = useState<Wilaya | null>(seedWilaya);
   const [commune, setCommune] = useState<Commune | null>(
@@ -50,6 +72,25 @@ export function PlacePicker({
   const [communeQuery, setCommuneQuery] = useState("");
   const [openList, setOpenList] = useState<"wilaya" | "commune" | null>(null);
   const communeInput = useRef<HTMLInputElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+
+  // An open list sits over everything below it, including the search button, so
+  // without this a click aimed at the button lands on a commune instead.
+  useEffect(() => {
+    if (!openList) return;
+    const onDown = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpenList(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenList(null);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [openList]);
 
   const wilayaMatches = useMemo(() => {
     const q = normalize(wilayaQuery);
@@ -88,27 +129,92 @@ export function PlacePicker({
     requestAnimationFrame(() => communeInput.current?.focus());
   }
 
-  function submit(w: Wilaya | null, c: Commune | null) {
-    if (!w) return;
-    if (transaction) {
-      // Canonical, indexable route. A commune needs a property type ahead of it
-      // to keep the segment order unambiguous.
-      const parts = c
-        ? [transaction, "appartement", w.slug, c.slug]
-        : [transaction, "appartement", w.slug];
+  /**
+   * Prefer the canonical `/vente/appartement/alger` route: it is indexable,
+   * cached, and the one a share of the link should land on. It can only carry
+   * a *specific* deal and type though — there is no segment meaning "any" —
+   * so a partial selection falls back to /recherche, which can express
+   * anything and is noindex for exactly that reason.
+   */
+  function submit(
+    w: Wilaya | null,
+    c: Commune | null,
+    deal: TransactionType | "" = transaction,
+    type: PropertyType | "" = propertyType,
+  ) {
+    const canonical = deal && (type || (!w && !c));
+    if (canonical) {
+      const parts: string[] = [deal];
+      if (type) parts.push(type);
+      if (w) parts.push(w.slug);
+      if (w && c) parts.push(c.slug);
       router.push(`/${parts.join("/")}`);
       return;
     }
-    const params = new URLSearchParams({ wilaya: w.slug });
-    if (c) params.set("commune", c.slug);
-    router.push(`/recherche?${params}`);
+
+    const params = new URLSearchParams();
+    if (deal) params.set("transaction", deal);
+    if (type) params.set("type", type);
+    if (w) params.set("wilaya", w.slug);
+    if (w && c) params.set("commune", c.slug);
+    router.push(`/recherche${params.size ? `?${params}` : ""}`);
   }
 
   const box =
     "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-accent";
+  // appearance-none so the native arrow does not sit on the wrong side in RTL;
+  // the chevron below is placed with a logical property instead.
+  const select = `${box} appearance-none pe-10 font-semibold`;
 
   return (
-    <div className="space-y-2">
+    <div ref={root} className="space-y-2">
+      {/* ── DEAL AND PROPERTY TYPE ───────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="relative">
+          <label htmlFor="filter-transaction" className="sr-only">
+            نوع العملية
+          </label>
+          <select
+            id="filter-transaction"
+            value={transaction}
+            onChange={(e) =>
+              setTransaction(e.target.value as TransactionType | "")
+            }
+            className={select}
+          >
+            <option value="">بيع ولا كراء</option>
+            {Object.entries(kTransactionFilterLabels).map(([slug, label]) => (
+              <option key={slug} value={slug}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="text-dim pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2" />
+        </div>
+
+        <div className="relative">
+          <label htmlFor="filter-type" className="sr-only">
+            نوع العقار
+          </label>
+          <select
+            id="filter-type"
+            value={propertyType}
+            onChange={(e) =>
+              setPropertyType(e.target.value as PropertyType | "")
+            }
+            className={select}
+          >
+            <option value="">كل أنواع العقار</option>
+            {Object.entries(kPropertyTypes).map(([slug, label]) => (
+              <option key={slug} value={slug}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="text-dim pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2" />
+        </div>
+      </div>
+
       {/* ── WILAYA ───────────────────────────────────────────────────────── */}
       {wilaya ? (
         <div className="rounded-input border-accent bg-accent-soft flex items-center gap-2 border px-4 py-3">
@@ -188,6 +294,22 @@ export function PlacePicker({
 
         {openList === "commune" && wilaya && communeMatches.length > 0 && (
           <ul className="rounded-card border-border shadow-soft absolute z-20 mt-1 max-h-72 w-full overflow-auto border bg-white py-1">
+            {/* The whole wilaya is a normal thing to want, and the list opens
+                on top of the search button — so the way out has to be inside
+                the list rather than under it. */}
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommune(null);
+                  setOpenList(null);
+                  submit(wilaya, null);
+                }}
+                className="hover:bg-surface-soft text-accent border-border w-full border-b px-4 py-2.5 text-start text-sm font-bold"
+              >
+                كل بلديات {wilaya.nameAr}
+              </button>
+            </li>
             {communeMatches.map((c) => (
               <li key={c.slug}>
                 <button
@@ -195,6 +317,8 @@ export function PlacePicker({
                   onClick={() => {
                     setCommune(c);
                     setOpenList(null);
+                    // Picking a commune is the end of the sentence, so it runs
+                    // the search rather than waiting for the button.
                     submit(wilaya, c);
                   }}
                   className="hover:bg-surface-soft flex w-full items-center gap-2 px-4 py-2.5 text-start text-sm font-semibold"
@@ -210,16 +334,15 @@ export function PlacePicker({
 
       <button
         type="button"
-        disabled={!wilaya}
         onClick={() => submit(wilaya, commune)}
-        className="bg-accent rounded-input inline-flex w-full items-center justify-center gap-2 py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+        className="bg-accent rounded-input inline-flex w-full items-center justify-center gap-2 py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
       >
         <Search className="size-4" strokeWidth={3} />
         {commune
           ? `شوف إعلانات ${commune.nameAr}`
           : wilaya
             ? `شوف إعلانات ${wilaya.nameAr}`
-            : "اختر الولاية"}
+            : "شوف الإعلانات"}
       </button>
     </div>
   );

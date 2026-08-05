@@ -6,7 +6,7 @@ import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { listListings } from "@/server/listings";
 import { getCommune, getWilaya } from "@/lib/geo";
-import { PlacePicker } from "@/components/search/PlacePicker";
+import { SearchFilters } from "@/components/search/SearchFilters";
 import {
   kPropertyTypes,
   kTransactionTypes,
@@ -80,8 +80,9 @@ export default async function SearchPage({
           </h1>
 
           <div className="rounded-card border-border bg-surface shadow-soft mt-5 border p-4">
-            <p className="mb-3 text-sm font-extrabold">الموقع</p>
-            <PlacePicker
+            <SearchFilters
+              initialTransaction={transactionType}
+              initialType={propertyType}
               initialWilaya={wilaya?.slug}
               initialCommune={commune?.slug}
             />

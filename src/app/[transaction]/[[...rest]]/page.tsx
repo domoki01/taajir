@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
+import { SearchFilters } from "@/components/search/SearchFilters";
 import { listListings } from "@/server/listings";
 import { getWilaya, kWilayas } from "@/lib/geo";
 import {
@@ -128,6 +129,17 @@ export default async function BrowsePage({
           <p className="text-muted ltr-nums mt-1 text-sm font-semibold">
             {listings.length} إعلان
           </p>
+
+          {/* Seeded from the path, so it reads as "this is what you are looking
+              at" rather than an empty form above narrowed results. */}
+          <div className="rounded-card border-border bg-surface shadow-soft mt-5 border p-4">
+            <SearchFilters
+              initialTransaction={parsed.transaction}
+              initialType={parsed.propertyType}
+              initialWilaya={parsed.wilaya?.slug}
+              initialCommune={parsed.communeSlug}
+            />
+          </div>
 
           <div className="mt-6">
             <ListingGrid listings={listings} />
