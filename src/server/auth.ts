@@ -58,6 +58,19 @@ export async function requireAdmin(): Promise<SessionUser> {
 }
 
 /**
+ * Stricter than requireAdmin, which also lets moderators through.
+ *
+ * Anything that hands out access itself needs this: a moderator who could edit
+ * roles could make themselves an admin, which makes the distinction between the
+ * two roles decorative. Same for quotas and bans — they decide who may do what.
+ */
+export async function requireSuperAdmin(): Promise<SessionUser> {
+  const user = await requireUser("/admin");
+  if (user.role !== "admin") redirect("/admin");
+  return user;
+}
+
+/**
  * Create the users/{uid} document on first sign-in.
  *
  * This runs on the server because the quota fields decide how many ads someone

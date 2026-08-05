@@ -29,3 +29,34 @@ export async function getComments(
     return [];
   }
 }
+
+/**
+ * Every listing's comments in one stream, newest first, for the moderation
+ * screen. Hidden ones are included — the point of hiding rather than deleting
+ * is that the decision stays reviewable.
+ *
+ * A collection-group query, so it needs its own index with COLLECTION_GROUP
+ * scope; the one serving getComments() above does not cover it.
+ */
+export async function listRecentComments(max = 100): Promise<Comment[] | null> {
+  try {
+    const snap = await adminDb()
+      .collectionGroup("comments")
+      .orderBy("createdAt", "desc")
+      .limit(max)
+      .get();
+    return snap.docs.map(
+      (d) =>
+        ({
+          id: d.id,
+          ...d.data(),
+          // The parent listing id is in the path, and a comment written before
+          // listingId was denormalized would not have the field.
+          listingId: d.ref.parent.parent?.id ?? "",
+        }) as Comment,
+    );
+  } catch (error) {
+    console.error("[comments] group read failed:", error);
+    return null;
+  }
+}

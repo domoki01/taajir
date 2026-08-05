@@ -25,18 +25,22 @@ export default async function AdminLayout({
                 {admin.email}
               </span>
             </p>
-            <Link
-              href="/admin/moderation"
-              className="rounded-input border-border bg-surface hover:border-accent border px-4 py-2 text-sm font-bold transition-colors"
-            >
-              طابور المراجعة
-            </Link>
-            <Link
-              href="/admin/publicites"
-              className="rounded-input border-border bg-surface hover:border-accent border px-4 py-2 text-sm font-bold transition-colors"
-            >
-              الإشهارات
-            </Link>
+            {[
+              ["/admin", "نظرة عامة"],
+              ["/admin/moderation", "طابور المراجعة"],
+              ["/admin/commentaires", "التعليقات"],
+              ["/admin/utilisateurs", "الحسابات"],
+              ["/admin/publicites", "الإشهارات"],
+              ["/admin/journal", "السجلّ"],
+            ].map(([href, label]) => (
+              <Link
+                key={href}
+                href={href}
+                className="rounded-input border-border bg-surface hover:border-accent border px-4 py-2 text-sm font-bold transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
           </div>
           {children}
         </Container>

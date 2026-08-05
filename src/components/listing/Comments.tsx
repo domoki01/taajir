@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -9,6 +14,9 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { addComment, deleteComment } from "@/server/actions/comments";
 import type { Comment } from "@/types/comment";
+
+/** A comment plus the absolute date the server already formatted for it. */
+export type ThreadComment = Comment & { createdAtLabel: string };
 
 /** "قبل 5 دقائق" — Intl handles the Arabic plural forms we would get wrong. */
 function timeAgo(ms: number): string {
@@ -35,9 +43,24 @@ export function Comments({
 }: {
   listingId: string;
   listingPath: string;
-  comments: Comment[];
+  comments: ThreadComment[];
 }) {
   const router = useRouter();
+
+  // Relative time is computed from Date.now(), which differs between the server
+  // render and hydration — React discards the server HTML for the mismatched
+  // subtree. So the first paint shows the absolute date the server formatted,
+  // and this flips to "قبل 5 دقائق" once hydrated. Both are correct readings of
+  // the same timestamp, so the swap is not a flash of wrong content.
+  //
+  // useSyncExternalStore rather than an effect: it is the one hook that takes a
+  // separate server snapshot, so React knows the two renders differ on purpose
+  // instead of finding out by comparing the DOM.
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   // Resolved client-side so the page around it stays statically cached. Until
   // it settles, `undefined` means "unknown" and neither the composer nor the
@@ -122,9 +145,12 @@ export function Comments({
                       صاحب الإعلان
                     </span>
                   )}
-                  <span className="text-dim text-xs font-semibold">
-                    {timeAgo(c.createdAt)}
-                  </span>
+                  <time
+                    dateTime={new Date(c.createdAt).toISOString()}
+                    className="text-dim text-xs font-semibold"
+                  >
+                    {hydrated ? timeAgo(c.createdAt) : c.createdAtLabel}
+                  </time>
                 </p>
                 <p className="text-muted mt-1 text-sm leading-relaxed whitespace-pre-line">
                   {c.text}

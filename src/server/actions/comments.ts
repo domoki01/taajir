@@ -94,6 +94,7 @@ export async function deleteComment(
 
   const listing = (await db.collection("listings").doc(listingId).get()).data();
   if (listing) revalidatePath(`/annonce/${listingId}/${listing.slug}`);
+  revalidatePath("/admin/commentaires");
   return { ok: true };
 }
 
@@ -122,5 +123,30 @@ export async function hideComment(
 
   const listing = (await db.collection("listings").doc(listingId).get()).data();
   if (listing) revalidatePath(`/annonce/${listingId}/${listing.slug}`);
+  revalidatePath("/admin/commentaires");
+  return { ok: true };
+}
+
+/** Undo a hide. The counterpart of the above, so a mistake is recoverable. */
+export async function showComment(
+  listingId: string,
+  commentId: string,
+): Promise<CommentResult> {
+  const user = await requireUser();
+  if (user.role !== "admin" && user.role !== "moderator") {
+    return { ok: false, error: "ماشي من صلاحياتك" };
+  }
+
+  const db = adminDb();
+  await db
+    .collection("listings")
+    .doc(listingId)
+    .collection("comments")
+    .doc(commentId)
+    .update({ status: "visible", hiddenReason: null });
+
+  const listing = (await db.collection("listings").doc(listingId).get()).data();
+  if (listing) revalidatePath(`/annonce/${listingId}/${listing.slug}`);
+  revalidatePath("/admin/commentaires");
   return { ok: true };
 }

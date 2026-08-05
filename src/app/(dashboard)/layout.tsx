@@ -26,10 +26,22 @@ export default async function DashboardLayout({
               <p className="font-extrabold">{user.name || user.email}</p>
             </div>
             <Link
+              href="/tableau-de-bord"
+              className="rounded-input border-border bg-surface hover:border-accent border px-4 py-2 text-sm font-bold transition-colors"
+            >
+              نظرة عامة
+            </Link>
+            <Link
               href="/tableau-de-bord/annonces"
               className="rounded-input border-border bg-surface hover:border-accent border px-4 py-2 text-sm font-bold transition-colors"
             >
               إعلاناتي
+            </Link>
+            <Link
+              href="/tableau-de-bord/profil"
+              className="rounded-input border-border bg-surface hover:border-accent border px-4 py-2 text-sm font-bold transition-colors"
+            >
+              معلوماتي
             </Link>
             <SignOutButton />
           </div>

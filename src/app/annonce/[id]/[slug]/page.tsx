@@ -10,6 +10,7 @@ import { ListingGrid } from "@/components/listing/ListingGrid";
 import { getListing, getSimilarListings } from "@/server/listings";
 import { getComments } from "@/server/comments";
 import { Comments } from "@/components/listing/Comments";
+import { formatDateTime } from "@/lib/datetime";
 import { getCommune, getWilaya, placeLabel } from "@/lib/geo";
 import { formatPrice, formatPriceExact } from "@/lib/price";
 import {
@@ -257,7 +258,10 @@ export default async function ListingPage({ params }: { params: Params }) {
           <Comments
             listingId={listing.id}
             listingPath={`/annonce/${listing.id}/${listing.slug}`}
-            comments={comments}
+            comments={comments.map((c) => ({
+              ...c,
+              createdAtLabel: formatDateTime(c.createdAt),
+            }))}
           />
 
           {similar.length > 0 && (

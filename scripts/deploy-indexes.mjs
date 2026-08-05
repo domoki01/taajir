@@ -86,3 +86,71 @@ console.log(
     ? `up to date (${wanted.length} indexes)`
     : `${created} index(es) ${kDry ? "missing" : "building"}`,
 );
+
+// ── FIELD OVERRIDES ──────────────────────────────────────────────────────────
+// Single-field index settings, which are a different API from the composite
+// indexes above and were previously not deployed at all. Two kinds live here:
+// turning indexing *off* for a field too large to index (listings.description),
+// and turning collection-group ordering *on*, which single-field indexes do not
+// get by default — the moderation screen's query across every listing's
+// comments fails without it, and the composite API rejects it as "not
+// necessary", which is easy to read as "nothing to do".
+
+const overrides = JSON.parse(
+  readFileSync("firestore.indexes.json", "utf8"),
+).fieldOverrides;
+if (!overrides?.length) process.exit(0);
+
+let patched = 0;
+for (const override of overrides) {
+  const field = `${base}/${override.collectionGroup}/fields/${override.fieldPath}`;
+  const current = await fetch(field, { headers: auth }).then((r) => r.json());
+
+  const key = (i) =>
+    `${i.order ?? i.arrayConfig}:${i.queryScope || "COLLECTION"}`;
+  const have = new Set((current.indexConfig?.indexes ?? []).map(key));
+  const want = new Set(override.indexes.map(key));
+  const same = have.size === want.size && [...want].every((k) => have.has(k));
+  if (same) continue;
+
+  const label = `${override.collectionGroup}.${override.fieldPath}`;
+  if (kDry) {
+    console.log(
+      `would set — ${label} [${[...want].join(", ") || "no indexes"}]`,
+    );
+    patched++;
+    continue;
+  }
+
+  // updateMask targets indexConfig alone so the TTL setting on the field, if it
+  // ever gains one, is not wiped by this call.
+  const res = await fetch(`${field}?updateMask=indexConfig`, {
+    method: "PATCH",
+    headers: { ...auth, "content-type": "application/json" },
+    body: JSON.stringify({
+      indexConfig: {
+        indexes: override.indexes.map((i) => ({
+          queryScope: i.queryScope || "COLLECTION",
+          fields: [
+            {
+              fieldPath: override.fieldPath,
+              ...(i.arrayConfig
+                ? { arrayConfig: i.arrayConfig }
+                : { order: i.order }),
+            },
+          ],
+        })),
+      },
+    }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(`${label}: ${JSON.stringify(body)}`);
+  console.log(`set — ${label}`);
+  patched++;
+}
+
+console.log(
+  patched === 0
+    ? `field overrides up to date (${overrides.length})`
+    : `${patched} field override(s) ${kDry ? "differ" : "applied"}`,
+);
