@@ -20,83 +20,10 @@ import {
   type TransactionType,
 } from "@/lib/enums";
 import { kMaxImages } from "@/lib/constants";
+import { buildListingSlug } from "@/lib/slug";
 
 export type CreateListingResult =
   { ok: true; id: string; slug: string } | { ok: false; error: string };
-
-const kLatin: Record<string, string> = {
-  à: "a",
-  â: "a",
-  ä: "a",
-  é: "e",
-  è: "e",
-  ê: "e",
-  ë: "e",
-  î: "i",
-  ï: "i",
-  ô: "o",
-  ö: "o",
-  ù: "u",
-  û: "u",
-  ü: "u",
-  ç: "c",
-};
-
-/**
- * Arabic titles have to become Latin URL segments — an Arabic slug
- * percent-encodes into unreadable bytes and breaks WhatsApp previews, which is
- * the main way listings get shared here. The transliteration is deliberately
- * rough: the id after the slug is what actually resolves the page.
- */
-const kArabicToLatin: Record<string, string> = {
-  ا: "a",
-  أ: "a",
-  إ: "a",
-  آ: "a",
-  ب: "b",
-  ت: "t",
-  ث: "th",
-  ج: "j",
-  ح: "h",
-  خ: "kh",
-  د: "d",
-  ذ: "dh",
-  ر: "r",
-  ز: "z",
-  س: "s",
-  ش: "ch",
-  ص: "s",
-  ض: "d",
-  ط: "t",
-  ظ: "z",
-  ع: "a",
-  غ: "gh",
-  ف: "f",
-  ق: "q",
-  ك: "k",
-  ل: "l",
-  م: "m",
-  ن: "n",
-  ه: "h",
-  و: "w",
-  ي: "y",
-  ى: "a",
-  ة: "a",
-  ء: "",
-  ئ: "y",
-  ؤ: "w",
-};
-
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .split("")
-    .map((ch) => kArabicToLatin[ch] ?? kLatin[ch] ?? ch)
-    .join("")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
 
 function tokenize(text: string): string[] {
   return [
@@ -187,7 +114,13 @@ export async function createListing(
   const area = input.areaBuilt ?? input.areaLand ?? 0;
 
   const id = randomUUID().replace(/-/g, "").slice(0, 12);
-  const slug = slugify(title) || "annonce";
+  const slug = buildListingSlug({
+    transactionType,
+    propertyType,
+    roomsCode: input.roomsCode as never,
+    communeSlug: input.communeSlug,
+    wilayaSlug: wilaya.slug,
+  });
   const now = Date.now();
 
   const db = adminDb();

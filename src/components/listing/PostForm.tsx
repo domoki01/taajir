@@ -312,25 +312,47 @@ export function PostForm() {
             <option value="dzd">دج</option>
           </select>
         </div>
-        <div className="mt-3 flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm font-semibold">
-            <input
-              type="checkbox"
-              checked={priceOnRequest}
-              onChange={(e) => setPriceOnRequest(e.target.checked)}
-              className="size-4"
-            />
-            السعر بالاتفاق
-          </label>
-          <label className="flex items-center gap-2 text-sm font-semibold">
+        {/* These two used to read almost identically ("بالاتفاق" vs "قابل
+            للتفاوض"), and ticking the first silently threw away a price the
+            seller had already typed. Now the first says plainly that the price
+            will be hidden, and a warning appears when it would discard input. */}
+        <div className="mt-3 space-y-2">
+          <label className="flex items-start gap-2 text-sm font-semibold">
             <input
               type="checkbox"
               checked={isNegotiable}
               onChange={(e) => setIsNegotiable(e.target.checked)}
-              className="size-4"
+              className="mt-0.5 size-4 shrink-0"
             />
-            قابل للتفاوض
+            <span>
+              السعر قابل للتفاوض
+              <span className="text-dim block text-xs font-normal">
+                يظهر السعر، مع إشارة أنه قابل للنقاش.
+              </span>
+            </span>
           </label>
+
+          <label className="flex items-start gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={priceOnRequest}
+              onChange={(e) => setPriceOnRequest(e.target.checked)}
+              className="mt-0.5 size-4 shrink-0"
+            />
+            <span>
+              لا تعرض السعر إطلاقاً
+              <span className="text-dim block text-xs font-normal">
+                يظهر «السعر بالاتفاق» بدل الرقم، والزبون لازم يتصل بيك.
+              </span>
+            </span>
+          </label>
+
+          {priceOnRequest && priceAmount.trim() !== "" && (
+            <p className="rounded-input bg-warning/10 text-warning px-3 py-2 text-xs font-bold">
+              السعر اللي كتبت ({priceAmount}) ما راح يتسجّلش. حيّد العلامة إذا
+              تحب يظهر.
+            </p>
+          )}
         </div>
       </section>
 
