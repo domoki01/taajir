@@ -31,6 +31,12 @@ export default async function AdminLayout({
             >
               طابور المراجعة
             </Link>
+            <Link
+              href="/admin/publicites"
+              className="rounded-input border-border bg-surface hover:border-accent border px-4 py-2 text-sm font-bold transition-colors"
+            >
+              الإشهارات
+            </Link>
           </div>
           {children}
         </Container>

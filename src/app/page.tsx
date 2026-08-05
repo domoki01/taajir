@@ -4,6 +4,8 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getFeaturedWilayas } from "@/lib/geo";
 import { SearchFilters } from "@/components/search/SearchFilters";
+import { PromoCarousel } from "@/components/home/PromoCarousel";
+import { listActivePromos } from "@/server/promos";
 
 // Placeholder taxonomy — replaced by lib/enums.ts once the listing schema lands.
 const propertyTypes = [
@@ -13,8 +15,14 @@ const propertyTypes = [
   { slug: "local", label: "محلات", icon: Store },
 ];
 
-export default function HomePage() {
+// The banners are the only thing on this page that comes from Firestore, and
+// they change when an advertising slot is sold rather than by the minute. The
+// carousel actions revalidate this path directly, so the window is a backstop.
+export const revalidate = 300;
+
+export default async function HomePage() {
   const wilayas = getFeaturedWilayas();
+  const promos = await listActivePromos();
 
   return (
     <>
@@ -55,6 +63,12 @@ export default function HomePage() {
                 بحث
               </button>
             </form>
+
+            {promos.length > 0 && (
+              <div className="mx-auto mt-8 max-w-3xl">
+                <PromoCarousel promos={promos} />
+              </div>
+            )}
           </div>
         </section>
 

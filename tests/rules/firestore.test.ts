@@ -101,6 +101,22 @@ beforeEach(async () => {
       status: "hidden",
       createdAt: 2,
     });
+    await setDoc(doc(db, "promos/promo-1"), {
+      title: "وكالة الأمل",
+      imageUrl: "https://example.com/a.webp",
+      storagePath: "promos/a.webp",
+      linkUrl: "https://example.com",
+      isActive: true,
+      order: 0,
+    });
+    await setDoc(doc(db, "promos/promo-hidden"), {
+      title: "منتهي",
+      imageUrl: "https://example.com/b.webp",
+      storagePath: "promos/b.webp",
+      linkUrl: "https://example.com",
+      isActive: false,
+      order: 1,
+    });
     await setDoc(doc(db, "plans/basic"), { isActive: true, priceDzd: 5000 });
     await setDoc(doc(db, "catalog/prod-1"), { code: "b36" });
   });
@@ -267,6 +283,55 @@ describe("comments", () => {
     // created on published ads — and closing it would cost a get() on the
     // parent for every comment read. Revisit if drafts ever gain comments.
     await assertSucceeds(getDoc(doc(anon(), "listings/draft-1/comments/c-2")));
+  });
+});
+
+describe("promos", () => {
+  it("lets anyone query the active banners", async () => {
+    const snap = await assertSucceeds(
+      getDocs(
+        query(collection(anon(), "promos"), where("isActive", "==", true)),
+      ),
+    );
+    expect(snap.size).toBe(1);
+  });
+
+  it("hides an inactive banner from the public", async () => {
+    await assertFails(getDoc(doc(anon(), "promos/promo-hidden")));
+    await assertSucceeds(getDoc(doc(admin(), "promos/promo-hidden")));
+  });
+
+  it("survives a banner missing the fields the rule inspects", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "promos/promo-old"), { title: "ناقص" });
+    });
+    await assertSucceeds(
+      getDocs(
+        query(collection(anon(), "promos"), where("isActive", "==", true)),
+      ),
+    );
+  });
+
+  // Write access to this collection is write access to the first image and the
+  // first link on the front page, so it is denied to clients outright — staff
+  // included, exactly as for listings.
+  it("refuses every client write, admins included", async () => {
+    const banner = {
+      title: "إشهار مزوّر",
+      imageUrl: "https://evil.example/a.webp",
+      linkUrl: "https://evil.example",
+      isActive: true,
+      order: 0,
+    };
+    await assertFails(setDoc(doc(anon(), "promos/x"), banner));
+    await assertFails(setDoc(doc(authed(kOther), "promos/x"), banner));
+    await assertFails(setDoc(doc(admin(), "promos/x"), banner));
+    await assertFails(
+      updateDoc(doc(admin(), "promos/promo-1"), {
+        linkUrl: "https://evil.example",
+      }),
+    );
+    await assertFails(deleteDoc(doc(admin(), "promos/promo-1")));
   });
 });
 

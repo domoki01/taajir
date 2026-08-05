@@ -41,6 +41,16 @@ service firebase.storage {
                    && isImage() && underMb(6);
     }
 
+    // ── ADVERTISING BANNERS ──────────────────────────────────────────────────
+    // Uploaded straight from the admin screen, then recorded in Firestore by a
+    // Server Action. Staff-only: this path is the home page's first image, so
+    // write access to it is write access to the front of the site.
+
+    match /promos/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && underMb(4);
+    }
+
     // ── AGENCY BRANDING ──────────────────────────────────────────────────────
 
     match /agencies/{agencyId}/public/{fileName} {
