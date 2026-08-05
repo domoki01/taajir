@@ -2,7 +2,7 @@
 // Values that are part of the product definition rather than configuration.
 // Anything that differs per environment belongs in .env, not here.
 
-export const kSiteName = "تاجر";
+export const kSiteName = "تأجير";
 export const kSiteTagline = "عقارات الجزائر";
 
 /** Absolute origin, needed by metadataBase, sitemap and canonical URLs. */

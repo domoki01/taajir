@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { kSiteName } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "المساعدة",
-  description:
-    "أسئلة شائعة حول نشر الإعلانات، البحث عن عقار، والاشتراكات في منصة تاجر.",
+  description: `أسئلة شائعة حول نشر الإعلانات، البحث عن عقار، والاشتراكات في منصة ${kSiteName}.`,
 };
 
 const faq = [

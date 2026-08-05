@@ -2,7 +2,7 @@
   "name": "taajir",
   "version": "0.1.0",
   "private": true,
-  "description": "تاجر — منصة إعلانات كراء وبيع العقارات في الجزائر",
+  "description": "تأجير — منصة إعلانات كراء وبيع العقارات في الجزائر",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

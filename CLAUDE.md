@@ -1,4 +1,4 @@
-# تاجر — conventions
+# تأجير — conventions
 
 Arabic-first real-estate classifieds for Algeria. Next.js 16 (App Router) +
 Firebase. Read this before adding code.
