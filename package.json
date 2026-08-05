@@ -14,7 +14,8 @@
     "format:check": "prettier --check .",
     "test:rules": "firebase emulators:exec --only firestore --project demo-taajir \"vitest run tests/rules\"",
     "emulators": "firebase emulators:start --project demo-taajir",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed.mjs",
+    "set-role": "node scripts/set-role.mjs"
   },
   "dependencies": {
     "clsx": "2.1.1",

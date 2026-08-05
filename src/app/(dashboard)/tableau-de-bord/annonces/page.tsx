@@ -7,6 +7,7 @@ import { formatPrice } from "@/lib/price";
 import { placeLabel } from "@/lib/geo";
 import { kListingStatuses, kPropertyTypes } from "@/lib/enums";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ListingRowActions } from "@/components/listing/ListingRowActions";
 import type { Listing } from "@/types/listing";
 
 export const metadata: Metadata = {
@@ -34,7 +35,9 @@ async function myListings(uid: string): Promise<Listing[] | null> {
       .orderBy("updatedAt", "desc")
       .limit(50)
       .get();
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Listing);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as Listing)
+      .filter((l) => l.status !== "archived");
   } catch (error) {
     console.error("[my-listings] read failed:", error);
     return null;
@@ -55,11 +58,23 @@ export default async function MyListingsPage({
 }) {
   const user = await requireUser("/tableau-de-bord/annonces");
   const listings = await myListings(user.uid);
-  const justPosted = (await searchParams).nouveau === "1";
+  const sp = await searchParams;
+  const justPosted = sp.nouveau === "1";
+  const justEdited = sp.modifie === "1";
 
   return (
     <div>
       <h1 className="text-2xl font-black">إعلاناتي</h1>
+
+      {justEdited && (
+        <p
+          role="status"
+          className="rounded-input bg-success/10 text-success mt-4 flex items-center gap-2 px-4 py-3 text-sm font-bold"
+        >
+          <CheckCircle2 className="size-5 shrink-0" />
+          تسجّلت التعديلات.
+        </p>
+      )}
 
       {justPosted && (
         <p
@@ -125,6 +140,8 @@ export default async function MyListingsPage({
                     سبب الرفض: {listing.rejectionReason}
                   </p>
                 )}
+
+                <ListingRowActions listing={listing} />
               </li>
             ))}
           </ul>
