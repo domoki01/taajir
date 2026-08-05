@@ -8,6 +8,8 @@ import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { getListing, getSimilarListings } from "@/server/listings";
+import { getComments } from "@/server/comments";
+import { Comments } from "@/components/listing/Comments";
 import { getCommune, getWilaya, placeLabel } from "@/lib/geo";
 import { formatPrice, formatPriceExact } from "@/lib/price";
 import {
@@ -64,7 +66,14 @@ export default async function ListingPage({ params }: { params: Params }) {
   }
 
   const wilaya = getWilaya(listing.wilayaSlug);
-  const similar = await getSimilarListings(listing);
+  // No getUser() here on purpose: reading cookies would opt this route out of
+  // ISR, and this is the page search engines actually land on. Comments render
+  // from the cache (good — they are indexable content); who is *viewing* is
+  // resolved on the client instead.
+  const [similar, comments] = await Promise.all([
+    getSimilarListings(listing),
+    getComments(listing.id),
+  ]);
   const area = listing.areaBuilt ?? listing.areaLand;
 
   const specs = [
@@ -244,6 +253,12 @@ export default async function ListingPage({ params }: { params: Params }) {
               </div>
             </aside>
           </div>
+
+          <Comments
+            listingId={listing.id}
+            listingPath={`/annonce/${listing.id}/${listing.slug}`}
+            comments={comments}
+          />
 
           {similar.length > 0 && (
             <section className="mt-12">

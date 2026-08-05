@@ -68,6 +68,23 @@ service cloud.firestore {
                   || isOwner(resource.data.get('ownerUid', ''))
                   || isAdmin();
       allow create, update, delete: if false;
+
+      // ── COMMENTS ───────────────────────────────────────────────────────────
+      // Public read of visible comments, so the thread is indexable and can
+      // later be made realtime from the client without touching rules again.
+      // Writes are denied for the same reason as the listing itself: the
+      // author name, photo and the "صاحب الإعلان" badge are denormalized from
+      // the verified session by a Server Action. If a client could write here
+      // it could post as anyone, and the badge that tells a buyer they are
+      // talking to the actual owner would mean nothing.
+      match /comments/{commentId} {
+        // Same .get() defence as above — one comment written before the
+        // `status` field existed would otherwise deny the whole thread query.
+        allow read: if resource.data.get('status', '') == 'visible'
+                    || isOwner(resource.data.get('authorUid', ''))
+                    || isAdmin();
+        allow create, update, delete: if false;
+      }
     }
 
     // ── USERS ────────────────────────────────────────────────────────────────

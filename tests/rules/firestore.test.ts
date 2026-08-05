@@ -83,6 +83,24 @@ beforeEach(async () => {
       amountDzd: 5000,
       provider: "manual_ccp",
     });
+    await setDoc(doc(db, "listings/pub-1/comments/c-1"), {
+      listingId: "pub-1",
+      authorUid: kOther,
+      authorName: "زائر",
+      isOwner: false,
+      text: "الطابق الكم؟",
+      status: "visible",
+      createdAt: 1,
+    });
+    await setDoc(doc(db, "listings/pub-1/comments/c-hidden"), {
+      listingId: "pub-1",
+      authorUid: kOther,
+      authorName: "زائر",
+      isOwner: false,
+      text: "سبام",
+      status: "hidden",
+      createdAt: 2,
+    });
     await setDoc(doc(db, "plans/basic"), { isActive: true, priceDzd: 5000 });
     await setDoc(doc(db, "catalog/prod-1"), { code: "b36" });
   });
@@ -160,6 +178,95 @@ describe("listings", () => {
     await assertFails(
       updateDoc(doc(admin(), "listings/pub-1"), { isFeatured: true }),
     );
+  });
+});
+
+describe("comments", () => {
+  const thread = (db: ReturnType<typeof anon>) =>
+    collection(db, "listings/pub-1/comments");
+
+  it("lets anyone read the visible thread", async () => {
+    const snap = await assertSucceeds(
+      getDocs(query(thread(anon()), where("status", "==", "visible"))),
+    );
+    expect(snap.size).toBe(1);
+  });
+
+  it("hides a hidden comment from the public but not from its author", async () => {
+    await assertFails(getDoc(doc(anon(), "listings/pub-1/comments/c-hidden")));
+    await assertSucceeds(
+      getDoc(doc(authed(kOther), "listings/pub-1/comments/c-hidden")),
+    );
+    await assertSucceeds(
+      getDoc(doc(admin(), "listings/pub-1/comments/c-hidden")),
+    );
+  });
+
+  // Same failure mode the listings rules were bitten by: a `get` would pass
+  // while every thread query on the site returned permission-denied.
+  it("survives a comment missing the fields the rule inspects", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "listings/pub-1/comments/c-old"), {
+        text: "من نسخة قديمة",
+      });
+    });
+    await assertSucceeds(
+      getDocs(query(thread(anon()), where("status", "==", "visible"))),
+    );
+  });
+
+  // The point of the feature: the author name and the "صاحب الإعلان" badge are
+  // denormalized from the session, so a client that could write here could
+  // impersonate the owner of the ad it is commenting on.
+  it("refuses every client write, signed in or not", async () => {
+    const forged = {
+      listingId: "pub-1",
+      authorUid: kOwner,
+      authorName: "وكالة موثّقة",
+      isOwner: true,
+      text: "تواصل معي على هذا الرقم",
+      status: "visible",
+      createdAt: 3,
+    };
+    await assertFails(
+      setDoc(doc(authed(kOther), "listings/pub-1/comments/c-forged"), forged),
+    );
+    await assertFails(
+      setDoc(doc(anon(), "listings/pub-1/comments/c-anon"), forged),
+    );
+    await assertFails(
+      updateDoc(doc(authed(kOther), "listings/pub-1/comments/c-1"), {
+        text: "معدّل",
+      }),
+    );
+    // Even deleting your own goes through the Server Action, which is what
+    // lets it revalidate the cached listing page.
+    await assertFails(
+      deleteDoc(doc(authed(kOther), "listings/pub-1/comments/c-1")),
+    );
+    await assertFails(
+      updateDoc(doc(admin(), "listings/pub-1/comments/c-1"), {
+        status: "hidden",
+      }),
+    );
+  });
+
+  it("does not expose the thread of an unpublished listing", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "listings/draft-1/comments/c-2"), {
+        listingId: "draft-1",
+        authorUid: kOther,
+        text: "سؤال",
+        status: "visible",
+        createdAt: 1,
+      });
+    });
+    // Documented gap, asserted so it is a decision rather than a surprise: the
+    // subcollection rule stands alone, so a guessed listing id would expose a
+    // draft's thread. It is not reachable in practice — comments are only ever
+    // created on published ads — and closing it would cost a get() on the
+    // parent for every comment read. Revisit if drafts ever gain comments.
+    await assertSucceeds(getDoc(doc(anon(), "listings/draft-1/comments/c-2")));
   });
 });
 
