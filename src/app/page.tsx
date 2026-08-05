@@ -3,6 +3,7 @@ import { Building, Home, LandPlot, MapPin, Search, Store } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getFeaturedWilayas } from "@/lib/geo";
+import { PlacePicker } from "@/components/search/PlacePicker";
 
 // Placeholder taxonomy — replaced by lib/enums.ts once the listing schema lands.
 const propertyTypes = [
@@ -31,15 +32,19 @@ export default function HomePage() {
               ومن الوكالات الموثّقة.
             </p>
 
+            <div className="rounded-card shadow-soft mx-auto mt-8 max-w-xl bg-white p-4 text-start">
+              <PlacePicker />
+            </div>
+
             <form
               action="/recherche"
-              className="rounded-card shadow-soft mx-auto mt-8 flex max-w-2xl items-center gap-2 bg-white p-2"
+              className="rounded-card shadow-soft mx-auto mt-3 flex max-w-xl items-center gap-2 bg-white p-2"
             >
               <Search className="text-dim ms-2 size-5 shrink-0" />
               <input
                 name="q"
                 type="search"
-                placeholder="ابحث ببلدية، حي أو نوع العقار…"
+                placeholder="ولا ابحث بكلمة: حي، نوع العقار…"
                 aria-label="البحث عن عقار"
                 className="placeholder:text-dim min-w-0 flex-1 bg-transparent py-2 text-base outline-none"
               />

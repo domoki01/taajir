@@ -5,7 +5,8 @@ import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { listListings } from "@/server/listings";
-import { getWilaya } from "@/lib/geo";
+import { getCommune, getWilaya } from "@/lib/geo";
+import { PlacePicker } from "@/components/search/PlacePicker";
 import {
   kPropertyTypes,
   kTransactionTypes,
@@ -38,6 +39,13 @@ export default async function SearchPage({
   const transactionType = one(sp.transaction) as TransactionType | undefined;
   const propertyType = one(sp.type) as PropertyType | undefined;
   const wilayaSlug = one(sp.wilaya);
+  const communeSlug = one(sp.commune);
+
+  const wilaya = wilayaSlug ? getWilaya(wilayaSlug) : undefined;
+  // A commune is only meaningful inside its wilaya, and an unvalidated one would
+  // silently return nothing rather than saying the place was not recognised.
+  const commune =
+    wilaya && communeSlug ? getCommune(wilaya.code, communeSlug) : undefined;
 
   const listings = await listListings({
     q,
@@ -47,8 +55,15 @@ export default async function SearchPage({
         : undefined,
     propertyType:
       propertyType && propertyType in kPropertyTypes ? propertyType : undefined,
-    wilayaSlug: wilayaSlug && getWilaya(wilayaSlug) ? wilayaSlug : undefined,
+    wilayaSlug: wilaya?.slug,
+    communeSlug: commune?.slug,
   });
+
+  const place = commune
+    ? `${commune.nameAr}، ${wilaya!.nameAr}`
+    : wilaya
+      ? wilaya.nameAr
+      : null;
 
   return (
     <>
@@ -57,12 +72,24 @@ export default async function SearchPage({
       <main className="flex-1 py-8">
         <Container>
           <h1 className="text-2xl font-black md:text-3xl">
-            {q ? `نتائج البحث عن «${q}»` : "كل الإعلانات"}
+            {place
+              ? `إعلانات ${place}`
+              : q
+                ? `نتائج البحث عن «${q}»`
+                : "كل الإعلانات"}
           </h1>
+
+          <div className="rounded-card border-border bg-surface shadow-soft mt-5 border p-4">
+            <p className="mb-3 text-sm font-extrabold">الموقع</p>
+            <PlacePicker
+              initialWilaya={wilaya?.slug}
+              initialCommune={commune?.slug}
+            />
+          </div>
 
           <form
             action="/recherche"
-            className="rounded-card shadow-soft border-border mt-5 flex items-center gap-2 border bg-white p-2"
+            className="rounded-card shadow-soft border-border mt-3 flex items-center gap-2 border bg-white p-2"
           >
             <Search className="text-dim ms-2 size-5 shrink-0" />
             <input
