@@ -11,6 +11,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { requireAdmin, requireUser } from "@/server/auth";
 import { priceBucket, toDinars } from "@/lib/price";
+import { notifyMatchingSearches } from "@/server/push";
 import type { Listing } from "@/types/listing";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -55,6 +56,14 @@ export async function approveListing(id: string): Promise<ActionResult> {
 
   await writeAudit(admin.uid, "approve", id, null);
   revalidateListing({ ...listing, id });
+
+  // Approval is the moment the ad becomes visible, so it is the only honest
+  // moment to announce it: on submission the content is unmoderated, and a
+  // rejected ad would have been announced and then vanished. Awaited so the
+  // moderator's click covers the send, but it swallows its own failures — a
+  // push that did not go out must never look like an approval that did not.
+  await notifyMatchingSearches({ ...listing, id, status: "published" });
+
   return { ok: true };
 }
 

@@ -18,6 +18,7 @@ import {
   type PropertyType,
   type TransactionType,
 } from "@/lib/enums";
+import { searchHref } from "@/lib/searchHref";
 
 /**
  * The site's one filter: deal, property type, wilaya, commune.
@@ -129,35 +130,20 @@ export function SearchFilters({
     requestAnimationFrame(() => communeInput.current?.focus());
   }
 
-  /**
-   * Prefer the canonical `/vente/appartement/alger` route: it is indexable,
-   * cached, and the one a share of the link should land on. It can only carry
-   * a *specific* deal and type though — there is no segment meaning "any" —
-   * so a partial selection falls back to /recherche, which can express
-   * anything and is noindex for exactly that reason.
-   */
   function submit(
     w: Wilaya | null,
     c: Commune | null,
     deal: TransactionType | "" = transaction,
     type: PropertyType | "" = propertyType,
   ) {
-    const canonical = deal && (type || (!w && !c));
-    if (canonical) {
-      const parts: string[] = [deal];
-      if (type) parts.push(type);
-      if (w) parts.push(w.slug);
-      if (w && c) parts.push(c.slug);
-      router.push(`/${parts.join("/")}`);
-      return;
-    }
-
-    const params = new URLSearchParams();
-    if (deal) params.set("transaction", deal);
-    if (type) params.set("type", type);
-    if (w) params.set("wilaya", w.slug);
-    if (w && c) params.set("commune", c.slug);
-    router.push(`/recherche${params.size ? `?${params}` : ""}`);
+    router.push(
+      searchHref({
+        transactionType: deal,
+        propertyType: type,
+        wilayaSlug: w?.slug,
+        communeSlug: c?.slug,
+      }),
+    );
   }
 
   const box =

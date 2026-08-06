@@ -117,6 +117,23 @@ beforeEach(async () => {
       isActive: false,
       order: 1,
     });
+    await setDoc(doc(db, "savedSearches/alert-1"), {
+      ownerUid: kOwner,
+      transactionType: "location",
+      propertyType: "appartement",
+      wilayaSlug: "alger",
+      communeSlug: "bab-ezzouar",
+      label: "شقق للكراء في باب الزوار، الجزائر",
+      notify: true,
+      createdAt: 1,
+      lastNotifiedAt: null,
+      matchCount: 0,
+    });
+    await setDoc(doc(db, `users/${kOwner}/devices/dev-1`), {
+      token: "fcm-token-value",
+      userAgent: "Mozilla/5.0",
+      updatedAt: 1,
+    });
     await setDoc(doc(db, "plans/basic"), { isActive: true, priceDzd: 5000 });
     await setDoc(doc(db, "catalog/prod-1"), { code: "b36" });
   });
@@ -332,6 +349,82 @@ describe("promos", () => {
       }),
     );
     await assertFails(deleteDoc(doc(admin(), "promos/promo-1")));
+  });
+});
+
+describe("saved searches", () => {
+  it("lets someone read their own alerts and nobody else's", async () => {
+    await assertSucceeds(getDoc(doc(authed(kOwner), "savedSearches/alert-1")));
+    await assertFails(getDoc(doc(authed(kOther), "savedSearches/alert-1")));
+    await assertFails(getDoc(doc(anon(), "savedSearches/alert-1")));
+  });
+
+  // A saved search decides who receives a push. A client that could write one
+  // could point an alert at someone else's account and turn their phone into a
+  // spam target, so creates go through a Server Action that derives the label,
+  // caps the count and rejects duplicates.
+  it("refuses every client write, owner included", async () => {
+    const alert = {
+      ownerUid: kOther,
+      wilayaSlug: "alger",
+      communeSlug: null,
+      transactionType: null,
+      propertyType: null,
+      label: "كلش",
+      notify: true,
+      createdAt: 2,
+      lastNotifiedAt: null,
+      matchCount: 0,
+    };
+    await assertFails(setDoc(doc(anon(), "savedSearches/x"), alert));
+    await assertFails(setDoc(doc(authed(kOther), "savedSearches/x"), alert));
+    // Not even for oneself: the cap and the derived label only hold server-side.
+    await assertFails(
+      setDoc(doc(authed(kOwner), "savedSearches/y"), {
+        ...alert,
+        ownerUid: kOwner,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "savedSearches/alert-1"), {
+        notify: false,
+      }),
+    );
+    await assertFails(deleteDoc(doc(authed(kOwner), "savedSearches/alert-1")));
+  });
+
+  it("survives an alert written before ownerUid existed", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "savedSearches/legacy"), {
+        label: "ناقص",
+      });
+    });
+    await assertFails(getDoc(doc(authed(kOwner), "savedSearches/legacy")));
+  });
+});
+
+describe("push devices", () => {
+  // The document holds an FCM registration token, which is a capability: anyone
+  // who reads it can be sent to, and anyone who writes one can redirect another
+  // account's notifications to their own browser.
+  it("hides device tokens from every client, owner and admin alike", async () => {
+    await assertFails(
+      getDoc(doc(authed(kOwner), `users/${kOwner}/devices/dev-1`)),
+    );
+    await assertFails(getDoc(doc(admin(), `users/${kOwner}/devices/dev-1`)));
+    await assertFails(
+      setDoc(doc(authed(kOwner), `users/${kOwner}/devices/dev-2`), {
+        token: "mine",
+      }),
+    );
+    await assertFails(
+      setDoc(doc(authed(kOther), `users/${kOwner}/devices/dev-2`), {
+        token: "theirs",
+      }),
+    );
+    await assertFails(
+      deleteDoc(doc(authed(kOwner), `users/${kOwner}/devices/dev-1`)),
+    );
   });
 });
 

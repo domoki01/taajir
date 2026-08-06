@@ -20,6 +20,7 @@ import {
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { getMessaging } from "firebase-admin/messaging";
 import { firebaseConfig } from "./config";
 
 const kAppName = "taajir-admin";
@@ -78,5 +79,6 @@ function adminApp(): App {
 export const adminAuth = () => getAuth(adminApp());
 export const adminDb = () => getFirestore(adminApp());
 export const adminStorage = () => getStorage(adminApp());
+export const adminMessaging = () => getMessaging(adminApp());
 
 export { getApp as getAdminApp };

@@ -112,6 +112,16 @@ service cloud.firestore {
       match /favorites/{listingId} {
         allow read, write: if isOwner(userId) && notBanned();
       }
+
+      // ── PUSH DEVICES ───────────────────────────────────────────────────────
+      // One document per browser that agreed to receive notifications, holding
+      // its FCM registration token. Written only by a Server Action, which
+      // attaches the token to the session that presented it — a client-writable
+      // version would let anyone point someone else's account at their own
+      // device, or read the tokens needed to impersonate a delivery target.
+      match /devices/{deviceId} {
+        allow read, write: if false;
+      }
     }
 
     // ── AGENCIES ─────────────────────────────────────────────────────────────
@@ -186,10 +196,18 @@ service cloud.firestore {
     }
 
     // ── SAVED SEARCHES ───────────────────────────────────────────────────────
+    // These documents decide who gets a push, so they are server territory. The
+    // label is derived, the count is capped, and duplicates are rejected — all
+    // in a Server Action. A client that could create them could subscribe an
+    // account to everything on the site, which is a spam cannon aimed at a real
+    // person's phone.
+    //
+    // Reads go through the Admin SDK too: what someone is looking for is nobody
+    // else's business, and no client ever needs to query this collection.
 
     match /savedSearches/{id} {
-      allow read, update, delete: if isOwner(resource.data.ownerUid) || isAdmin();
-      allow create: if notBanned() && request.resource.data.ownerUid == uid();
+      allow read: if isOwner(resource.data.get('ownerUid', '')) || isAdmin();
+      allow create, update, delete: if false;
     }
 
     // ── MESSAGING ────────────────────────────────────────────────────────────

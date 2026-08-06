@@ -18,6 +18,12 @@ export const kFreeListingQuota = 3;
 /** Days a listing stays published before it needs renewing. */
 export const kListingLifetimeDays = 60;
 
+/**
+ * Saved searches one account may keep. Generous for a person, and low enough
+ * that approving an ad fans out to a bounded number of pushes.
+ */
+export const kMaxSavedSearches = 10;
+
 // ── PRICE UNITS ──────────────────────────────────────────────────────────────
 // Algerians quote property prices in "ملايين" — millions of centimes.
 // 1 مليون = 100 * 10_000 centimes = 10_000 DZD. A flat advertised at
