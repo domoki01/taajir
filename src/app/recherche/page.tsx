@@ -7,6 +7,7 @@ import { ListingGrid } from "@/components/listing/ListingGrid";
 import { listListings } from "@/server/listings";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { SearchFilters } from "@/components/search/SearchFilters";
+import { getVisibleFilterOptions } from "@/server/filterSettings";
 import {
   kPropertyTypes,
   kTransactionTypes,
@@ -47,17 +48,22 @@ export default async function SearchPage({
   const commune =
     wilaya && communeSlug ? getCommune(wilaya.code, communeSlug) : undefined;
 
-  const listings = await listListings({
-    q,
-    transactionType:
-      transactionType && transactionType in kTransactionTypes
-        ? transactionType
-        : undefined,
-    propertyType:
-      propertyType && propertyType in kPropertyTypes ? propertyType : undefined,
-    wilayaSlug: wilaya?.slug,
-    communeSlug: commune?.slug,
-  });
+  const [listings, filterOptions] = await Promise.all([
+    listListings({
+      q,
+      transactionType:
+        transactionType && transactionType in kTransactionTypes
+          ? transactionType
+          : undefined,
+      propertyType:
+        propertyType && propertyType in kPropertyTypes
+          ? propertyType
+          : undefined,
+      wilayaSlug: wilaya?.slug,
+      communeSlug: commune?.slug,
+    }),
+    getVisibleFilterOptions(),
+  ]);
 
   const place = commune
     ? `${commune.nameAr}، ${wilaya!.nameAr}`
@@ -85,6 +91,8 @@ export default async function SearchPage({
               initialType={propertyType}
               initialWilaya={wilaya?.slug}
               initialCommune={commune?.slug}
+              transactionOptions={filterOptions.transactionTypes}
+              propertyOptions={filterOptions.propertyTypes}
             />
           </div>
 

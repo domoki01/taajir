@@ -19,6 +19,7 @@ import {
   type TransactionType,
 } from "@/lib/enums";
 import { searchHref } from "@/lib/searchHref";
+import type { FilterOption } from "@/types/filterSettings";
 
 /**
  * The site's one filter: deal, property type, wilaya, commune.
@@ -31,18 +32,38 @@ import { searchHref } from "@/lib/searchHref";
  * code more familiar than the spelling. With 69 wilayas and up to 57 communes
  * in one of them, a dropdown means scrolling a list nobody can scan; typing two
  * digits is faster than any menu.
+ *
+ * The two dropdown lists arrive as props rather than being read from the enums
+ * here: an admin decides which options the filter offers and in what order, and
+ * that decision lives in Firestore. They fall back to the full code lists so a
+ * caller that has not been updated — or a failed settings read — still renders
+ * a working filter.
  */
 export function SearchFilters({
   initialTransaction,
   initialType,
   initialWilaya,
   initialCommune,
+  transactionOptions,
+  propertyOptions,
 }: {
   initialTransaction?: string;
   initialType?: string;
   initialWilaya?: string;
   initialCommune?: string;
+  transactionOptions?: FilterOption<TransactionType>[];
+  propertyOptions?: FilterOption<PropertyType>[];
 }) {
+  const deals =
+    transactionOptions ??
+    (
+      Object.entries(kTransactionFilterLabels) as [TransactionType, string][]
+    ).map(([slug, label]) => ({ slug, label, hidden: false }));
+  const types =
+    propertyOptions ??
+    (Object.entries(kPropertyTypes) as [PropertyType, string][]).map(
+      ([slug, label]) => ({ slug, label, hidden: false }),
+    );
   const router = useRouter();
 
   // Seeded from the URL so landing on a filtered page shows what is filtered,
@@ -169,9 +190,9 @@ export function SearchFilters({
             className={select}
           >
             <option value="">بيع ولا كراء</option>
-            {Object.entries(kTransactionFilterLabels).map(([slug, label]) => (
-              <option key={slug} value={slug}>
-                {label}
+            {deals.map((o) => (
+              <option key={o.slug} value={o.slug}>
+                {o.label}
               </option>
             ))}
           </select>
@@ -191,9 +212,9 @@ export function SearchFilters({
             className={select}
           >
             <option value="">كل أنواع العقار</option>
-            {Object.entries(kPropertyTypes).map(([slug, label]) => (
-              <option key={slug} value={slug}>
-                {label}
+            {types.map((o) => (
+              <option key={o.slug} value={o.slug}>
+                {o.label}
               </option>
             ))}
           </select>

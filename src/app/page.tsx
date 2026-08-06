@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getFeaturedWilayas } from "@/lib/geo";
 import { SearchFilters } from "@/components/search/SearchFilters";
+import { getVisibleFilterOptions } from "@/server/filterSettings";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { listActivePromos } from "@/server/promos";
 
@@ -22,7 +23,10 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   const wilayas = getFeaturedWilayas();
-  const promos = await listActivePromos();
+  const [promos, filterOptions] = await Promise.all([
+    listActivePromos(),
+    getVisibleFilterOptions(),
+  ]);
 
   return (
     <>
@@ -41,7 +45,10 @@ export default async function HomePage() {
             </p>
 
             <div className="rounded-card shadow-soft mx-auto mt-8 max-w-xl bg-white p-4 text-start">
-              <SearchFilters />
+              <SearchFilters
+                transactionOptions={filterOptions.transactionTypes}
+                propertyOptions={filterOptions.propertyTypes}
+              />
             </div>
 
             <form

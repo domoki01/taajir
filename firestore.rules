@@ -194,6 +194,17 @@ service cloud.firestore {
       }
     }
 
+    // ── SITE SETTINGS ────────────────────────────────────────────────────────
+    // Which options the search filter offers, and in what order. Public config,
+    // not secrets — but writing it reshapes the front page for every visitor,
+    // so it goes through a Server Action that checks the admin role and
+    // validates every slug against the enums.
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow create, update, delete: if false;
+    }
+
     // ── PLANS ────────────────────────────────────────────────────────────────
 
     match /plans/{planId} {

@@ -163,6 +163,14 @@ beforeEach(async () => {
       status: "visible",
       createdAt: 3,
     });
+    await setDoc(doc(db, "settings/filter"), {
+      hiddenPropertyTypes: ["hangar"],
+      hiddenTransactionTypes: [],
+      propertyTypeOrder: ["appartement", "villa"],
+      transactionTypeOrder: [],
+      updatedAt: 1,
+      updatedBy: "admin-uid",
+    });
     await setDoc(doc(db, "plans/basic"), { isActive: true, priceDzd: 5000 });
     await setDoc(doc(db, "catalog/prod-1"), { code: "b36" });
   });
@@ -545,6 +553,32 @@ describe("request replies", () => {
     await assertFails(
       deleteDoc(doc(authed(kOther), "requests/req-1/replies/rep-1")),
     );
+  });
+});
+
+describe("site settings", () => {
+  it("is publicly readable — it decides what the filter shows", async () => {
+    await assertSucceeds(getDoc(doc(anon(), "settings/filter")));
+  });
+
+  // Writing this reshapes the front page for every visitor, so it goes through
+  // a Server Action that checks the admin role and validates every slug.
+  it("refuses every client write, admins included", async () => {
+    const settings = {
+      hiddenPropertyTypes: [],
+      hiddenTransactionTypes: [],
+      propertyTypeOrder: [],
+      transactionTypeOrder: [],
+      updatedAt: 2,
+      updatedBy: kOther,
+    };
+    await assertFails(setDoc(doc(anon(), "settings/filter"), settings));
+    await assertFails(setDoc(doc(authed(kOther), "settings/filter"), settings));
+    await assertFails(setDoc(doc(admin(), "settings/filter"), settings));
+    await assertFails(
+      updateDoc(doc(admin(), "settings/filter"), { hiddenPropertyTypes: [] }),
+    );
+    await assertFails(deleteDoc(doc(admin(), "settings/filter")));
   });
 });
 

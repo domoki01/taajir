@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { SearchFilters } from "@/components/search/SearchFilters";
+import { getVisibleFilterOptions } from "@/server/filterSettings";
 import { listListings } from "@/server/listings";
 import { getWilaya, kWilayas } from "@/lib/geo";
 import {
@@ -91,12 +92,15 @@ export default async function BrowsePage({
   const parsed = parse(await params);
   if (!parsed) notFound();
 
-  const listings = await listListings({
-    transactionType: parsed.transaction,
-    propertyType: parsed.propertyType,
-    wilayaSlug: parsed.wilaya?.slug,
-    communeSlug: parsed.communeSlug,
-  });
+  const [listings, filterOptions] = await Promise.all([
+    listListings({
+      transactionType: parsed.transaction,
+      propertyType: parsed.propertyType,
+      wilayaSlug: parsed.wilaya?.slug,
+      communeSlug: parsed.communeSlug,
+    }),
+    getVisibleFilterOptions(),
+  ]);
 
   const title = heading(parsed);
 
@@ -141,6 +145,8 @@ export default async function BrowsePage({
               initialType={parsed.propertyType}
               initialWilaya={parsed.wilaya?.slug}
               initialCommune={parsed.communeSlug}
+              transactionOptions={filterOptions.transactionTypes}
+              propertyOptions={filterOptions.propertyTypes}
             />
           </div>
 
