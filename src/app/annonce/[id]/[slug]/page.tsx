@@ -9,6 +9,7 @@ import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { getListing, getSimilarListings } from "@/server/listings";
 import { getComments } from "@/server/comments";
+import { guardPrelaunch } from "@/server/launch";
 import { Comments } from "@/components/listing/Comments";
 import { formatDateTime } from "@/lib/datetime";
 import { getCommune, getWilaya, placeLabel } from "@/lib/geo";
@@ -56,6 +57,7 @@ export async function generateMetadata({
 }
 
 export default async function ListingPage({ params }: { params: Params }) {
+  await guardPrelaunch();
   const { id, slug } = await params;
   const listing = await getListing(id);
   if (!listing) notFound();

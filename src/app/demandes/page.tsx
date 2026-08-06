@@ -9,6 +9,7 @@ import { RequestCard } from "@/components/requests/RequestCard";
 import { RequestFilter } from "@/components/requests/RequestFilter";
 import { listRequests } from "@/server/requests";
 import { getUser } from "@/server/auth";
+import { guardPrelaunch } from "@/server/launch";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { formatFullDateTime } from "@/lib/datetime";
 
@@ -32,6 +33,8 @@ export default async function RequestsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  await guardPrelaunch();
+
   const sp = await searchParams;
 
   // Validated against the dataset rather than passed through: an unknown slug

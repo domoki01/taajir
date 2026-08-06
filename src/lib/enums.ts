@@ -196,6 +196,10 @@ export function defaultPriceUnit(transaction: TransactionType): PriceUnit {
 export const kListingStatuses = {
   draft: "مسودة",
   pending: "في انتظار المراجعة",
+  // Submitted while the site is held behind the pre-launch countdown. Hidden
+  // from the public by the same rule as every other unpublished status, so
+  // holding content costs nothing in firestore.rules.
+  pendingLaunch: "محجوز للإطلاق",
   published: "منشور",
   rejected: "مرفوض",
   expired: "منتهي",

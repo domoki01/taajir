@@ -29,8 +29,12 @@ export type PropertyRequest = {
   wilayaSlug: string;
   communeSlug: string | null;
 
-  /** Hidden stays readable to its author and to admins, as with comments. */
-  status: "visible" | "hidden";
+  /**
+   * Hidden stays readable to its author and to admins, as with comments.
+   * `pendingLaunch` is a demand posted while the site was held behind the
+   * countdown — invisible until the launch publishes it.
+   */
+  status: "visible" | "hidden" | "pendingLaunch";
   hiddenReason: string | null;
 
   /** derived — kept on the document so a feed card needs no subcollection read */

@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { getUser, requireUser } from "@/server/auth";
+import { isPrelaunch } from "@/server/launch";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { containsLink, kNoLinksMessage } from "@/lib/text";
 import { kMaxOpenRequests } from "@/lib/constants";
@@ -120,6 +121,8 @@ export async function createRequest(
     };
   }
 
+  const held = await isPrelaunch();
+
   const ref = await db.collection("requests").add({
     ownerUid: who.uid,
     ownerName: who.name,
@@ -129,7 +132,10 @@ export async function createRequest(
     description,
     wilayaSlug: wilaya.slug,
     communeSlug: commune?.slug ?? null,
-    status: "visible",
+    // Held demands are invisible until the launch publishes them, the same as
+    // held listings — a feed with three posts in it on opening day is worse
+    // than a feed that opens full.
+    status: held ? "pendingLaunch" : "visible",
     hiddenReason: null,
     replyCount: 0,
     createdAt: Date.now(),

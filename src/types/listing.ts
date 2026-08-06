@@ -82,6 +82,14 @@ export type Listing = {
   status: ListingStatus;
   /** Shown to the owner on their dashboard when a moderator rejects an ad. */
   rejectionReason: string | null;
+  /**
+   * Cleared for the launch batch while `status` is still `pendingLaunch`.
+   *
+   * Separate from the status on purpose: an ad approved during the hold has to
+   * stay invisible until the switch, and reusing `published` for "approved"
+   * would put it on the site the moment a moderator clicked.
+   */
+  approvedForLaunch?: boolean;
   isFeatured: boolean;
   pinnedUntil: number | null;
   createdAt: number;

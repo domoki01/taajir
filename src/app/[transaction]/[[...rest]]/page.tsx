@@ -8,6 +8,7 @@ import { ListingGrid } from "@/components/listing/ListingGrid";
 import { SearchFilters } from "@/components/search/SearchFilters";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
 import { listListings } from "@/server/listings";
+import { guardPrelaunch } from "@/server/launch";
 import { getWilaya, kWilayas } from "@/lib/geo";
 import {
   kPropertyTypes,
@@ -90,6 +91,7 @@ export default async function BrowsePage({
   params: Promise<Params>;
 }) {
   const parsed = parse(await params);
+  await guardPrelaunch();
   if (!parsed) notFound();
 
   const [listings, filterOptions] = await Promise.all([

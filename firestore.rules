@@ -205,6 +205,16 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // ── LAUNCH OUTBOX ────────────────────────────────────────────────────────
+    // One row per person per channel, holding an email address or a phone
+    // number. That is a mailing list of every registered user, which is exactly
+    // the thing worth stealing from a classifieds site — so no client reads it,
+    // staff included, and nothing writes it but the launch.
+
+    match /launchOutbox/{entryId} {
+      allow read, write: if false;
+    }
+
     // ── PLANS ────────────────────────────────────────────────────────────────
 
     match /plans/{planId} {

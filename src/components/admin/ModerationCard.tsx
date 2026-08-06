@@ -24,7 +24,21 @@ const kQuickReasons = [
   "العقار ماشي متوفّر",
 ];
 
-export function ModerationCard({ listing }: { listing: Listing }) {
+export function ModerationCard({
+  listing,
+  children,
+}: {
+  listing: Listing;
+  /**
+   * Extra controls rendered inside the card's own <li>.
+   *
+   * A slot rather than a wrapper: the card *is* the list item, and wrapping it
+   * in a second <li> nests one inside the other. The browser's parser hoists
+   * the inner one out, which does not match what React rendered on the server —
+   * a hydration mismatch that throws away the whole subtree.
+   */
+  children?: React.ReactNode;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [rejecting, setRejecting] = useState(false);
@@ -210,6 +224,8 @@ export function ModerationCard({ listing }: { listing: Listing }) {
           </Link>
         </div>
       )}
+
+      {children}
     </li>
   );
 }

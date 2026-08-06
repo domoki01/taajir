@@ -709,6 +709,34 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "listings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "approvedForLaunch",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "launchOutbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "channel",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [

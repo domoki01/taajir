@@ -32,6 +32,7 @@ export default async function AdminLayout({
               ["/admin/utilisateurs", "الحسابات"],
               ["/admin/publicites", "الإشهارات"],
               ["/admin/filtre", "الفلتر"],
+              ["/admin/lancement", "الإطلاق"],
               ["/admin/journal", "السجلّ"],
             ].map(([href, label]) => (
               <Link

@@ -8,6 +8,7 @@ import { listListings } from "@/server/listings";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { SearchFilters } from "@/components/search/SearchFilters";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
+import { guardPrelaunch } from "@/server/launch";
 import {
   kPropertyTypes,
   kTransactionTypes,
@@ -47,6 +48,8 @@ export default async function SearchPage({
   // silently return nothing rather than saying the place was not recognised.
   const commune =
     wilaya && communeSlug ? getCommune(wilaya.code, communeSlug) : undefined;
+
+  await guardPrelaunch();
 
   const [listings, filterOptions] = await Promise.all([
     listListings({

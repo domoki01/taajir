@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/server/auth";
+import { isPrelaunch } from "@/server/launch";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { areaBucket, priceBucket, toDinars } from "@/lib/price";
 import {
@@ -122,6 +123,10 @@ export async function createListing(
     wilayaSlug: wilaya.slug,
   });
   const now = Date.now();
+  // Read once, outside the transaction: the launch state is site configuration
+  // that changes a handful of times ever, and a transaction that also had to
+  // watch it would contend on one document for every ad posted.
+  const held = await isPrelaunch();
 
   const db = adminDb();
   const userRef = db.collection("users").doc(user.uid);
@@ -193,8 +198,11 @@ export async function createListing(
         allowWhatsapp: input.allowWhatsapp,
 
         // Every new ad waits for a human. Auto-publishing is the single biggest
-        // lever a scammer has on a classifieds site in its first year.
-        status: "pending",
+        // lever a scammer has on a classifieds site in its first year. While
+        // the site is held, it waits for the launch as well — same invisibility,
+        // a different queue.
+        status: held ? "pendingLaunch" : "pending",
+        approvedForLaunch: false,
         rejectionReason: null,
         isFeatured: false,
         pinnedUntil: null,

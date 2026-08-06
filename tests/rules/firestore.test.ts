@@ -171,6 +171,22 @@ beforeEach(async () => {
       updatedAt: 1,
       updatedBy: "admin-uid",
     });
+    await setDoc(doc(db, "settings/launch"), {
+      state: "prelaunch",
+      launchAt: 9_999_999_999_999,
+      launchedAt: null,
+      updatedAt: 1,
+      updatedBy: "admin-uid",
+    });
+    await setDoc(doc(db, "launchOutbox/out-1"), {
+      uid: kOwner,
+      channel: "email",
+      target: "someone@example.com",
+      status: "queued",
+      error: null,
+      createdAt: 1,
+      sentAt: null,
+    });
     await setDoc(doc(db, "plans/basic"), { isActive: true, priceDzd: 5000 });
     await setDoc(doc(db, "catalog/prod-1"), { code: "b36" });
   });
@@ -579,6 +595,66 @@ describe("site settings", () => {
       updateDoc(doc(admin(), "settings/filter"), { hiddenPropertyTypes: [] }),
     );
     await assertFails(deleteDoc(doc(admin(), "settings/filter")));
+  });
+});
+
+describe("launch", () => {
+  // The countdown page and the poll both need it, and it says nothing the
+  // closed page does not already tell every visitor.
+  it("lets anyone read the launch state", async () => {
+    await assertSucceeds(getDoc(doc(anon(), "settings/launch")));
+  });
+
+  it("refuses every client write to the launch state", async () => {
+    const open = {
+      state: "active",
+      launchAt: null,
+      launchedAt: 2,
+      updatedAt: 2,
+      updatedBy: kOther,
+    };
+    await assertFails(setDoc(doc(anon(), "settings/launch"), open));
+    await assertFails(setDoc(doc(authed(kOther), "settings/launch"), open));
+    await assertFails(setDoc(doc(admin(), "settings/launch"), open));
+    await assertFails(
+      updateDoc(doc(admin(), "settings/launch"), { state: "active" }),
+    );
+  });
+
+  // One row per person per channel, each holding an email address or a phone
+  // number: a mailing list of every registered user, which is the thing most
+  // worth stealing from a classifieds site.
+  it("hides the launch outbox from everyone, staff included", async () => {
+    await assertFails(getDoc(doc(anon(), "launchOutbox/out-1")));
+    await assertFails(getDoc(doc(authed(kOwner), "launchOutbox/out-1")));
+    await assertFails(getDoc(doc(admin(), "launchOutbox/out-1")));
+    await assertFails(getDocs(collection(admin(), "launchOutbox")));
+    await assertFails(
+      setDoc(doc(admin(), "launchOutbox/x"), { uid: kOther, channel: "sms" }),
+    );
+    await assertFails(deleteDoc(doc(admin(), "launchOutbox/out-1")));
+  });
+
+  // Held content is unpublished, so the listing rule already hides it — no new
+  // rule, which is the point of reusing `status`.
+  it("keeps a held listing out of the public query", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "listings/held-1"), {
+        ...publishedListing,
+        status: "pendingLaunch",
+        approvedForLaunch: true,
+      });
+    });
+    const snap = await assertSucceeds(
+      getDocs(
+        query(
+          collection(anon(), "listings"),
+          where("status", "==", "published"),
+        ),
+      ),
+    );
+    expect(snap.size).toBe(1);
+    await assertFails(getDoc(doc(anon(), "listings/held-1")));
   });
 });
 

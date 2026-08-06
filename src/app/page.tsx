@@ -7,6 +7,10 @@ import { SearchFilters } from "@/components/search/SearchFilters";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { listActivePromos } from "@/server/promos";
+import { PrelaunchLanding } from "@/components/launch/PrelaunchLanding";
+import { getLaunchStatus } from "@/server/launch";
+import { getUser } from "@/server/auth";
+import { StaffHoldBanner } from "@/components/launch/StaffHoldBanner";
 
 // Placeholder taxonomy — replaced by lib/enums.ts once the listing schema lands.
 const propertyTypes = [
@@ -16,20 +20,36 @@ const propertyTypes = [
   { slug: "local", label: "محلات", icon: Store },
 ];
 
-// The banners are the only thing on this page that comes from Firestore, and
-// they change when an advertising slot is sold rather than by the minute. The
-// carousel actions revalidate this path directly, so the window is a backstop.
-export const revalidate = 300;
+// Reading the launch state and the session makes this route dynamic, so the
+// five-minute ISR window it used to have no longer applies. That is the price
+// of a switch that takes effect the moment it is thrown: a cached home page
+// would keep showing the funnel to some visitors and the site to others for
+// minutes after launch.
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const wilayas = getFeaturedWilayas();
-  const [promos, filterOptions] = await Promise.all([
+  const [promos, filterOptions, launch, user] = await Promise.all([
     listActivePromos(),
     getVisibleFilterOptions(),
+    getLaunchStatus(),
+    getUser(),
   ]);
+
+  const isStaff = user?.role === "admin" || user?.role === "moderator";
+
+  // Held: the funnel replaces the site. Staff see the real thing behind a
+  // banner, because reviewing what is queued means opening the pages that hold
+  // it.
+  if (launch.state === "prelaunch" && !isStaff) {
+    return (
+      <PrelaunchLanding launchAt={launch.launchAt} signedIn={user !== null} />
+    );
+  }
 
   return (
     <>
+      {launch.state === "prelaunch" && <StaffHoldBanner />}
       <Header />
 
       <main className="flex-1">
