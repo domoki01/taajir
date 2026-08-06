@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { MobileTopBar } from "@/components/layout/MobileTopBar";
 import { kSiteName, kSiteTagline, kSiteUrl } from "@/lib/constants";
 import "./globals.css";
 
@@ -50,10 +51,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${cairo.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        {/* Both are mounted here rather than per page: every route composes its
+            own Header and Footer, but they all share this root, so this is the
+            only place that covers the dashboard and admin sections too. The
+            back bar comes first because it is `sticky top-0` and has to sit
+            ahead of the content it sticks above. */}
+        <MobileTopBar />
         {children}
-        {/* Mounted once here rather than per page: every route composes its own
-            Header and Footer, but they all share this root, so this is the only
-            place that covers the dashboard and admin sections too. */}
         <BottomNav />
       </body>
     </html>

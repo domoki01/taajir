@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Send } from "lucide-react";
+import { Plus, Send, X } from "lucide-react";
 import { createRequest } from "@/server/actions/requests";
 import { getCommunes, kWilayas } from "@/lib/geo";
 import { kRequestIntents } from "@/lib/enums";
@@ -20,6 +20,10 @@ export function RequestComposer({ signedIn }: { signedIn: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Collapsed by default. Most people arrive here to read other people's
+  // demands, not to write one, and a five-field form at the top pushes the
+  // whole list below the fold on a phone.
+  const [open, setOpen] = useState(false);
 
   const [intent, setIntent] = useState<"vente" | "location">("vente");
   const [title, setTitle] = useState("");
@@ -49,6 +53,7 @@ export function RequestComposer({ signedIn }: { signedIn: boolean }) {
         setTitle("");
         setDescription("");
         setCommuneSlug("");
+        setOpen(false);
         router.refresh();
       } else {
         setError(res.error);
@@ -85,11 +90,43 @@ export function RequestComposer({ signedIn }: { signedIn: boolean }) {
     );
   }
 
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-card border-border bg-surface hover:border-primary flex w-full items-center gap-3 border border-dashed p-4 text-start transition-colors"
+      >
+        <span className="bg-accent grid size-9 shrink-0 place-items-center rounded-full text-white">
+          <Plus className="size-5" strokeWidth={3} />
+        </span>
+        <span>
+          <span className="block text-sm font-extrabold">انشر طلب</span>
+          <span className="text-dim block text-xs">
+            قول واش تحوّس عليه ووين، والناس تجاوبك.
+          </span>
+        </span>
+      </button>
+    );
+  }
+
   return (
     <form
       onSubmit={onSubmit}
       className="rounded-card border-border bg-surface shadow-soft border p-5"
     >
+      <div className="mb-3 flex items-center">
+        <h2 className="me-auto font-extrabold">طلب جديد</h2>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="إغلاق"
+          className="text-dim hover:text-primary grid size-8 place-items-center rounded-full transition-colors"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
+
       {/* ── INTENT ───────────────────────────────────────────────────────────
           Two segmented buttons rather than a dropdown: it is the first decision
           and there are exactly two answers, so making it visible costs one row

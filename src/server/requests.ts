@@ -18,16 +18,26 @@ async function safely<T>(work: () => Promise<T>, fallback: T): Promise<T> {
   }
 }
 
-/** The feed, newest first, optionally narrowed to one wilaya. */
+/**
+ * The feed, newest first, optionally narrowed to a wilaya and then a commune.
+ *
+ * The commune filter only applies inside a wilaya: on its own a commune slug is
+ * not unique across the 69 wilayas, and a query on it alone would mix places
+ * that merely share a name.
+ */
 export async function listRequests(
   wilayaSlug?: string,
+  communeSlug?: string,
   max = 40,
 ): Promise<PropertyRequest[]> {
   return safely(async () => {
     let query = adminDb()
       .collection("requests")
       .where("status", "==", "visible");
-    if (wilayaSlug) query = query.where("wilayaSlug", "==", wilayaSlug);
+    if (wilayaSlug) {
+      query = query.where("wilayaSlug", "==", wilayaSlug);
+      if (communeSlug) query = query.where("communeSlug", "==", communeSlug);
+    }
 
     const snap = await query.orderBy("createdAt", "desc").limit(max).get();
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as PropertyRequest);
