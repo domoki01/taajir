@@ -7,6 +7,11 @@ const links = [
   { href: "/securite", label: "نصائح الأمان" },
   { href: "/cgu", label: "شروط الاستعمال" },
   { href: "/confidentialite", label: "الخصوصية" },
+  // Shown to everyone, signed in or not. The footer renders on every page,
+  // including the statically cached home and listing pages, and reading the
+  // session here to hide it would opt the whole site out of that caching — a
+  // steep price for one redundant link.
+  { href: "/inscription", label: "حساب جديد" },
 ];
 
 export function Footer() {
