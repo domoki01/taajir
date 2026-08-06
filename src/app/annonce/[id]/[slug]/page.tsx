@@ -139,13 +139,13 @@ export default async function ListingPage({ params }: { params: Params }) {
             aria-label="مسار التصفّح"
             className="text-dim mb-3 text-xs font-semibold"
           >
-            <Link href="/" className="hover:text-accent">
+            <Link href="/" className="hover:text-primary">
               الرئيسية
             </Link>
             <span className="mx-1.5">/</span>
             <Link
               href={`/${listing.transactionType}/${listing.propertyType}/${listing.wilayaSlug}`}
-              className="hover:text-accent"
+              className="hover:text-primary"
             >
               {kPropertyTypes[listing.propertyType]}{" "}
               {wilaya ? `في ${wilaya.nameAr}` : ""}
@@ -227,7 +227,7 @@ export default async function ListingPage({ params }: { params: Params }) {
                     {listing.amenities.map((a) => (
                       <li
                         key={a}
-                        className="bg-accent-soft text-accent rounded-input px-3 py-1.5 text-xs font-bold"
+                        className="bg-primary-soft text-primary rounded-input px-3 py-1.5 text-xs font-bold"
                       >
                         {kAmenities[a]}
                       </li>
@@ -241,7 +241,7 @@ export default async function ListingPage({ params }: { params: Params }) {
                 becomes the fixed bar below, which is the conversion surface. */}
             <aside className="hidden lg:block">
               <div className="rounded-card border-border bg-surface shadow-soft sticky top-24 border p-5">
-                <p className="text-accent ltr-nums text-2xl font-black">
+                <p className="text-primary ltr-nums text-2xl font-black">
                   {listing.priceOnRequest
                     ? "السعر بالاتفاق"
                     : formatPriceExact(listing.price)}
@@ -277,7 +277,7 @@ export default async function ListingPage({ params }: { params: Params }) {
 
       <div className="bg-surface border-border fixed inset-x-0 bottom-0 z-30 border-t p-3 lg:hidden">
         <Container className="flex items-center gap-3 px-0">
-          <p className="text-accent ltr-nums shrink-0 text-lg font-black">
+          <p className="text-primary ltr-nums shrink-0 text-lg font-black">
             {listing.priceOnRequest ? "بالاتفاق" : formatPrice(listing.price)}
           </p>
           <ContactButtons listing={listing} className="ms-auto" />
@@ -312,7 +312,11 @@ function ContactButtons({
           href={`https://wa.me/${listing.contactPhone.replace(/[^0-9]/g, "")}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-success rounded-input inline-flex flex-1 items-center justify-center gap-1.5 px-4 py-3 text-sm font-bold text-white"
+          // WhatsApp's own green, not the palette's. It sits directly beside
+          // the emerald call button, and two greens a shade apart would read as
+          // one control split in half — the WhatsApp button is only useful if
+          // it is recognisable before it is read.
+          className="bg-whatsapp rounded-input inline-flex flex-1 items-center justify-center gap-1.5 px-4 py-3 text-sm font-bold text-white"
         >
           <MessageCircle className="size-4" />
           واتساب

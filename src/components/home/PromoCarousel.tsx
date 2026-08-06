@@ -139,7 +139,7 @@ export function PromoCarousel({ promos }: { promos: Promo[] }) {
                 aria-current={i === index}
                 onClick={() => goTo(i)}
                 className={`h-2 rounded-full transition-all ${
-                  i === index ? "bg-accent w-6" : "bg-border w-2"
+                  i === index ? "bg-primary w-6" : "bg-border w-2"
                 }`}
               />
             ))}

@@ -121,9 +121,9 @@ export function PromoManager({ promos }: { promos: Promo[] }) {
   }
 
   const field =
-    "rounded-input border-border focus:border-accent w-full border bg-white px-4 py-2.5 text-sm outline-none";
+    "rounded-input border-border focus:border-primary w-full border bg-white px-4 py-2.5 text-sm outline-none";
   const iconButton =
-    "rounded-input border-border hover:border-accent grid size-9 place-items-center border bg-white transition-colors disabled:opacity-40";
+    "rounded-input border-border hover:border-primary grid size-9 place-items-center border bg-white transition-colors disabled:opacity-40";
 
   return (
     <div className="space-y-8">
@@ -134,7 +134,7 @@ export function PromoManager({ promos }: { promos: Promo[] }) {
       >
         <p className="text-sm font-extrabold">زيد إشهار جديد</p>
 
-        <label className="rounded-input border-border hover:border-accent flex cursor-pointer items-center justify-center gap-2 border border-dashed bg-white py-6 text-sm font-bold transition-colors">
+        <label className="rounded-input border-border hover:border-primary flex cursor-pointer items-center justify-center gap-2 border border-dashed bg-white py-6 text-sm font-bold transition-colors">
           <ImagePlus className="size-5" />
           {uploading ? "جاري الرفع…" : upload ? "بدّل الصورة" : "اختر صورة"}
           <input
@@ -358,7 +358,7 @@ export function PromoManager({ promos }: { promos: Promo[] }) {
                       setEditTitle(promo.title);
                       setEditLink(promo.linkUrl);
                     }}
-                    className="text-accent mt-2 text-xs font-bold underline"
+                    className="text-primary mt-2 text-xs font-bold underline"
                   >
                     عدّل الوصف والرابط
                   </button>

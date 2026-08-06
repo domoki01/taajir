@@ -36,7 +36,7 @@ export default async function AdminLayout({
               <Link
                 key={href}
                 href={href}
-                className="rounded-input border-border bg-surface hover:border-accent border px-4 py-2 text-sm font-bold transition-colors"
+                className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
               >
                 {label}
               </Link>

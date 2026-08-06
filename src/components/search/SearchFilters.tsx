@@ -161,7 +161,7 @@ export function SearchFilters({
   }
 
   const box =
-    "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-accent";
+    "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-primary";
   // appearance-none so the native arrow does not sit on the wrong side in RTL;
   // the chevron below is placed with a logical property instead.
   const select = `${box} appearance-none pe-10 font-semibold`;
@@ -217,10 +217,10 @@ export function SearchFilters({
 
       {/* ── WILAYA ───────────────────────────────────────────────────────── */}
       {wilaya ? (
-        <div className="rounded-input border-accent bg-accent-soft flex items-center gap-2 border px-4 py-3">
-          <MapPin className="text-accent size-4 shrink-0" />
-          <span className="text-accent font-bold">{wilaya.nameAr}</span>
-          <span className="text-accent/70 ltr-nums text-xs font-bold">
+        <div className="rounded-input border-primary bg-primary-soft flex items-center gap-2 border px-4 py-3">
+          <MapPin className="text-primary size-4 shrink-0" />
+          <span className="text-primary font-bold">{wilaya.nameAr}</span>
+          <span className="text-primary/70 ltr-nums text-xs font-bold">
             {String(wilaya.code).padStart(2, "0")}
           </span>
           <button
@@ -231,7 +231,7 @@ export function SearchFilters({
               setCommune(null);
               setOpenList("wilaya");
             }}
-            className="text-accent ms-auto"
+            className="text-primary ms-auto"
           >
             <X className="size-4" strokeWidth={3} />
           </button>
@@ -305,7 +305,7 @@ export function SearchFilters({
                   setOpenList(null);
                   submit(wilaya, null);
                 }}
-                className="hover:bg-surface-soft text-accent border-border w-full border-b px-4 py-2.5 text-start text-sm font-bold"
+                className="hover:bg-surface-soft text-primary border-border w-full border-b px-4 py-2.5 text-start text-sm font-bold"
               >
                 كل بلديات {wilaya.nameAr}
               </button>

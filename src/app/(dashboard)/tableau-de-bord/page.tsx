@@ -129,7 +129,7 @@ export default async function DashboardPage() {
         <div className="bg-surface-soft mt-2 h-2 w-full overflow-hidden rounded-full">
           <div
             className={`h-full rounded-full ${
-              remaining === 0 ? "bg-danger" : "bg-accent"
+              remaining === 0 ? "bg-danger" : "bg-primary"
             }`}
             style={{
               width: `${Math.min(
@@ -152,9 +152,9 @@ export default async function DashboardPage() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Link
           href="/publier"
-          className="rounded-card border-border bg-surface hover:border-accent flex items-center gap-3 border p-4 transition-colors"
+          className="rounded-card border-border bg-surface hover:border-primary flex items-center gap-3 border p-4 transition-colors"
         >
-          <span className="bg-accent-soft text-accent grid size-10 shrink-0 place-items-center rounded-[12px]">
+          <span className="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-[12px]">
             <PlusCircle className="size-5" />
           </span>
           <span>
@@ -167,9 +167,9 @@ export default async function DashboardPage() {
 
         <Link
           href="/tableau-de-bord/profil"
-          className="rounded-card border-border bg-surface hover:border-accent flex items-center gap-3 border p-4 transition-colors"
+          className="rounded-card border-border bg-surface hover:border-primary flex items-center gap-3 border p-4 transition-colors"
         >
-          <span className="bg-accent-soft text-accent grid size-10 shrink-0 place-items-center rounded-[12px]">
+          <span className="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-[12px]">
             <UserRound className="size-5" />
           </span>
           <span>

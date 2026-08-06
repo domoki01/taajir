@@ -9,7 +9,7 @@ export default function NotFound() {
       <Header />
       <main className="flex-1 py-20">
         <Container className="max-w-md text-center">
-          <p className="text-accent ltr-nums text-5xl font-black">404</p>
+          <p className="text-primary ltr-nums text-5xl font-black">404</p>
           <h1 className="mt-4 text-xl font-extrabold">ما لقيناش هذه الصفحة</h1>
           <p className="text-muted mt-2 leading-relaxed">
             يمكن الإعلان تحيّد ولا الرابط فيه غلطة.

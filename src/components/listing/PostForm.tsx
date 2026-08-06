@@ -25,7 +25,7 @@ import { getCommunes, kWilayas } from "@/lib/geo";
 type Img = { url: string; w: number; h: number };
 
 const field =
-  "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-accent";
+  "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-primary";
 const label = "mb-1.5 block text-sm font-bold";
 
 /**
@@ -500,7 +500,7 @@ export function PostForm() {
                   }
                   className={`rounded-input border px-3 py-2 text-xs font-bold transition-colors ${
                     on
-                      ? "border-accent bg-accent-soft text-accent"
+                      ? "border-primary bg-primary-soft text-primary"
                       : "border-border bg-white"
                   }`}
                 >
@@ -585,7 +585,7 @@ export function PostForm() {
           </ul>
         )}
 
-        <label className="rounded-input border-border hover:border-accent flex cursor-pointer items-center justify-center gap-2 border border-dashed bg-white px-4 py-6 text-sm font-bold transition-colors">
+        <label className="rounded-input border-border hover:border-primary flex cursor-pointer items-center justify-center gap-2 border border-dashed bg-white px-4 py-6 text-sm font-bold transition-colors">
           {uploading ? (
             <>
               <Loader2 className="size-5 animate-spin" />

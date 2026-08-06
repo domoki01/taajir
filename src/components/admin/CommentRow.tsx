@@ -49,7 +49,7 @@ export function CommentRow({
 
   const hidden = comment.status === "hidden";
   const control =
-    "rounded-input border-border hover:border-accent border bg-white px-3 py-2 text-sm font-bold transition-colors disabled:opacity-40";
+    "rounded-input border-border hover:border-primary border bg-white px-3 py-2 text-sm font-bold transition-colors disabled:opacity-40";
 
   return (
     <li
@@ -62,7 +62,7 @@ export function CommentRow({
           <p className="flex flex-wrap items-center gap-2 text-sm font-bold">
             {comment.authorName}
             {comment.isOwner && (
-              <span className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[11px] font-bold">
+              <span className="bg-primary-soft text-primary rounded-full px-2 py-0.5 text-[11px] font-bold">
                 صاحب الإعلان
               </span>
             )}
@@ -89,7 +89,7 @@ export function CommentRow({
           {listingSlug ? (
             <Link
               href={`/annonce/${comment.listingId}/${listingSlug}`}
-              className="text-accent mt-2 inline-block truncate text-xs font-bold underline"
+              className="text-primary mt-2 inline-block truncate text-xs font-bold underline"
             >
               على: {listingTitle}
             </Link>
@@ -152,7 +152,7 @@ export function CommentRow({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="رقم هاتف، إهانة، إشهار…"
-              className="rounded-input border-border focus:border-accent w-full border bg-white px-3 py-2 text-sm outline-none"
+              className="rounded-input border-border focus:border-primary w-full border bg-white px-3 py-2 text-sm outline-none"
             />
           </div>
           <button

@@ -40,9 +40,31 @@ a redirect, not a migration.
 
 ## Design
 
-Palette, radii and shadows come from `catalogev` and are defined once in
-`src/app/globals.css` under `@theme`. Use the token utilities (`bg-accent`,
-`rounded-card`, `shadow-soft`), never raw hex.
+Palette, radii and shadows are defined once in `src/app/globals.css` under
+`@theme`. Use the token utilities (`bg-accent`, `rounded-card`, `shadow-soft`),
+never raw hex. The site no longer shares catalogev's purple.
+
+**Two brand colours, and the split is load-bearing:**
+
+- `primary` — navy `#1e293b`. Structure and information: logo, headings, links,
+  prices, badges, active borders, focus rings, progress bars.
+- `accent` — emerald `#059669`. **Filled action buttons only** — submit,
+  contact, search, publish.
+
+This is a 60/30/10 layout: light surfaces, navy structure, green actions. The
+ratio only holds while `accent` stays on buttons; the first price or link that
+borrows it is the point the buttons stop reading as buttons. When adding a
+coloured element, ask whether it is something you _press_. If not, it is
+`primary`.
+
+Red is for destructive actions and alerts, never for areas. `success` is a
+lighter green than `accent` on purpose, so a "منشورة" chip and a publish button
+do not read as the same thing. `whatsapp` is WhatsApp's own green, for the
+WhatsApp button alone — beside the emerald call button, anything else is
+unrecognisable.
+
+`muted` and `dim` are the two secondary text greys, both at or above 4.5:1 on
+white. Do not lighten them; `text-dim` alone carries ~70 small labels.
 
 ## Data access
 

@@ -7,7 +7,7 @@ export function Header() {
     <header className="bg-surface/90 border-border sticky top-0 z-40 border-b backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
         <Link href="/" className="flex items-center gap-2">
-          <span className="bg-accent grid size-9 place-items-center rounded-[12px] text-white">
+          <span className="bg-primary grid size-9 place-items-center rounded-[12px] text-white">
             <Building2 className="size-5" strokeWidth={2.4} />
           </span>
           <span className="text-lg font-extrabold tracking-tight">
@@ -16,18 +16,18 @@ export function Header() {
         </Link>
 
         <nav className="text-muted ms-auto flex items-center gap-4 text-sm font-semibold sm:gap-6">
-          <Link href="/vente" className="hover:text-accent transition-colors">
+          <Link href="/vente" className="hover:text-primary transition-colors">
             للبيع
           </Link>
           <Link
             href="/location"
-            className="hover:text-accent transition-colors"
+            className="hover:text-primary transition-colors"
           >
             للكراء
           </Link>
           <Link
             href="/recherche"
-            className="hover:text-accent hidden transition-colors sm:inline"
+            className="hover:text-primary hidden transition-colors sm:inline"
           >
             بحث
           </Link>

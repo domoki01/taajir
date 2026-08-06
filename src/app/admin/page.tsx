@@ -101,7 +101,7 @@ export default async function AdminHome() {
           <li key={tile.label}>
             <Link
               href={tile.href}
-              className="rounded-card border-border bg-surface hover:border-accent block border p-4 transition-colors"
+              className="rounded-card border-border bg-surface hover:border-primary block border p-4 transition-colors"
             >
               <p className="text-dim flex items-center gap-2 text-xs font-bold">
                 <tile.icon className="size-4" />
@@ -118,9 +118,9 @@ export default async function AdminHome() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Link
           href="/admin/commentaires"
-          className="rounded-card border-border bg-surface hover:border-accent flex items-center gap-3 border p-4 transition-colors"
+          className="rounded-card border-border bg-surface hover:border-primary flex items-center gap-3 border p-4 transition-colors"
         >
-          <span className="bg-accent-soft text-accent grid size-10 shrink-0 place-items-center rounded-[12px]">
+          <span className="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-[12px]">
             <MessageSquare className="size-5" />
           </span>
           <span>
@@ -132,9 +132,9 @@ export default async function AdminHome() {
         </Link>
         <Link
           href="/admin/journal"
-          className="rounded-card border-border bg-surface hover:border-accent flex items-center gap-3 border p-4 transition-colors"
+          className="rounded-card border-border bg-surface hover:border-primary flex items-center gap-3 border p-4 transition-colors"
         >
-          <span className="bg-accent-soft text-accent grid size-10 shrink-0 place-items-center rounded-[12px]">
+          <span className="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-[12px]">
             <ScrollText className="size-5" />
           </span>
           <span>

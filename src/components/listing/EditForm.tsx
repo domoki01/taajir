@@ -7,7 +7,7 @@ import { fromDinars } from "@/lib/price";
 import type { Listing } from "@/types/listing";
 
 const field =
-  "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-accent";
+  "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-primary";
 const label = "mb-1.5 block text-sm font-bold";
 
 export function EditForm({ listing }: { listing: Listing }) {

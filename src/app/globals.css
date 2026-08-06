@@ -1,33 +1,65 @@
 @import "tailwindcss";
 
 /* ── DESIGN TOKENS ───────────────────────────────────────────────────────────
-   Palette carried over from the sibling catalogev app so both products read as
-   one brand. Tailwind v4 is CSS-first: every token below becomes a utility
-   (bg-accent, text-muted, rounded-card, shadow-soft …) with no JS config file. */
+   Tailwind v4 is CSS-first: every token below becomes a utility (bg-accent,
+   text-muted, rounded-card, shadow-soft …) with no JS config file.
+
+   Two colours carry the brand, and the split is the whole point:
+
+     primary — navy. Structure and information: the logo, headings, links,
+               prices, badges, active borders, focus rings. Reads as
+               institutional and steady, which is what someone deciding to
+               spend eight million dinars needs from the page around them.
+
+     accent  — emerald. Actions only: the filled buttons that submit, contact,
+               search or publish. Green reads as "home, settled, safe", and
+               reserving it for the ~17 solid buttons is what keeps it at the
+               10% of a 60/30/10 layout. The moment prices or links borrow it,
+               the buttons stop standing out and the ratio is gone.
+
+   This replaces the single purple `accent` inherited from catalogev, which did
+   both jobs at once. Anything that is not a filled action button belongs to
+   primary. */
 
 @theme {
-  --color-bg: #f7f5fb;
+  --color-bg: #f8fafc;
   --color-surface: #ffffff;
-  --color-surface-soft: #f2eefa;
-  --color-border: #e7e2f1;
+  --color-surface-soft: #f1f5f9;
+  --color-border: #e2e8f0;
 
-  --color-text: #1b1230;
-  --color-muted: #6b6480;
-  --color-dim: #b5aec7;
+  --color-text: #0f172a;
+  /* Both of these are darker than the palette they replace: the old muted and
+     dim sat at roughly 3:1 and 2.3:1 on white, under the 4.5:1 WCAG AA floor,
+     and `text-dim` alone is used on 70-odd small labels. */
+  --color-muted: #475569;
+  --color-dim: #64748b;
 
-  --color-accent: #6c47e4;
-  --color-accent-soft: #ede6fe;
+  --color-primary: #1e293b;
+  --color-primary-strong: #0f172a;
+  --color-primary-soft: #dde5f0;
 
-  --color-success: #2fb98a;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
+  --color-accent: #059669;
+  --color-accent-strong: #047857;
+  --color-accent-soft: #d1fae5;
+
+  /* Status colours are for badges and alerts, never for large areas. `success`
+     is a lighter green than the CTA on purpose — a "منشورة" chip and a publish
+     button must not read as the same thing. */
+  --color-success: #10b981;
+  --color-warning: #b45309;
+  --color-danger: #dc2626;
+
+  /* WhatsApp's own green. It is a brand mark, not a palette choice: next to the
+     emerald call button the two would otherwise be indistinguishable, and the
+     one thing a WhatsApp button must be is recognisable at a glance. */
+  --color-whatsapp: #25d366;
 
   --radius-input: 14px;
   --radius-card: 20px;
   --radius-sheet: 28px;
 
-  --shadow-soft: 0 6px 16px rgb(108 71 228 / 0.06);
-  --shadow-lifted: 0 10px 30px rgb(108 71 228 / 0.12);
+  --shadow-soft: 0 6px 16px rgb(15 23 42 / 0.06);
+  --shadow-lifted: 0 10px 30px rgb(15 23 42 / 0.1);
 
   --font-sans: var(--font-cairo), system-ui, sans-serif;
 }
@@ -51,8 +83,10 @@
     unicode-bidi: isolate;
   }
 
+  /* Navy, not green: the focus ring marks *where you are*, which is structure,
+     and it has to be legible on top of a green button too. */
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 }

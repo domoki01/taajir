@@ -59,7 +59,7 @@ export function UserRow({
 
   const wilaya = user.wilayaCode ? getWilaya(user.wilayaCode) : null;
   const control =
-    "rounded-input border-border focus:border-accent border bg-white px-3 py-2 text-sm outline-none disabled:opacity-40";
+    "rounded-input border-border focus:border-primary border bg-white px-3 py-2 text-sm outline-none disabled:opacity-40";
 
   return (
     <li
@@ -72,7 +72,7 @@ export function UserRow({
           <p className="flex flex-wrap items-center gap-2 font-bold">
             {user.displayName || "بلا اسم"}
             {user.role !== "user" && (
-              <span className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[11px] font-bold">
+              <span className="bg-primary-soft text-primary rounded-full px-2 py-0.5 text-[11px] font-bold">
                 {roleLabels[user.role] ?? user.role}
               </span>
             )}

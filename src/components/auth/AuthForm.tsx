@@ -124,7 +124,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   }
 
   const field =
-    "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-accent";
+    "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-primary";
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
@@ -216,7 +216,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         type="button"
         onClick={onGoogle}
         disabled={busy}
-        className="rounded-input border-border hover:border-accent w-full border bg-white py-3.5 text-sm font-bold transition-colors disabled:opacity-50"
+        className="rounded-input border-border hover:border-primary w-full border bg-white py-3.5 text-sm font-bold transition-colors disabled:opacity-50"
       >
         كمّل بحساب Google
       </button>
@@ -225,14 +225,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {mode === "signup" ? (
           <>
             عندك حساب؟{" "}
-            <Link href="/connexion" className="text-accent font-bold">
+            <Link href="/connexion" className="text-primary font-bold">
               دخول
             </Link>
           </>
         ) : (
           <>
             ما عندكش حساب؟{" "}
-            <Link href="/inscription" className="text-accent font-bold">
+            <Link href="/inscription" className="text-primary font-bold">
               أنشئ واحد
             </Link>
             <button

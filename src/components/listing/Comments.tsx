@@ -141,7 +141,7 @@ export function Comments({
                 <p className="flex flex-wrap items-center gap-2 text-sm font-bold">
                   {c.authorName}
                   {c.isOwner && (
-                    <span className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[11px] font-bold">
+                    <span className="bg-primary-soft text-primary rounded-full px-2 py-0.5 text-[11px] font-bold">
                       صاحب الإعلان
                     </span>
                   )}
@@ -186,7 +186,7 @@ export function Comments({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="اسأل عن العقار: الطابق، الوثائق، وقت المعاينة…"
-            className="rounded-input border-border focus:border-accent w-full border bg-white px-4 py-3 text-base outline-none"
+            className="rounded-input border-border focus:border-primary w-full border bg-white px-4 py-3 text-base outline-none"
           />
 
           {error && (

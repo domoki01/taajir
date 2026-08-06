@@ -31,7 +31,7 @@ export function ListingRowActions({ listing }: { listing: Listing }) {
     <div className="flex w-full flex-wrap items-center gap-3">
       <Link
         href={`/tableau-de-bord/annonces/${listing.id}/modifier`}
-        className="text-accent text-xs font-bold underline"
+        className="text-primary text-xs font-bold underline"
       >
         تعديل
       </Link>

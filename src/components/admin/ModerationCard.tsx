@@ -87,7 +87,7 @@ export function ModerationCard({ listing }: { listing: Listing }) {
 
         <div className="min-w-0 flex-1">
           <p className="font-bold">{listing.title}</p>
-          <p className="text-accent ltr-nums mt-1 text-sm font-extrabold">
+          <p className="text-primary ltr-nums mt-1 text-sm font-extrabold">
             {listing.priceOnRequest
               ? "السعر بالاتفاق"
               : formatPriceExact(listing.price)}
@@ -130,7 +130,7 @@ export function ModerationCard({ listing }: { listing: Listing }) {
                 onClick={() => setReason(r)}
                 className={`rounded-input border px-3 py-1.5 text-xs font-bold ${
                   reason === r
-                    ? "border-accent bg-accent-soft text-accent"
+                    ? "border-primary bg-primary-soft text-primary"
                     : "border-border bg-white"
                 }`}
               >
@@ -204,7 +204,7 @@ export function ModerationCard({ listing }: { listing: Listing }) {
           </button>
           <Link
             href={`/annonce/${listing.id}/${listing.slug}`}
-            className="text-accent ms-auto text-xs font-bold underline"
+            className="text-primary ms-auto text-xs font-bold underline"
           >
             معاينة
           </Link>

@@ -110,11 +110,14 @@ export default async function BrowsePage({
             aria-label="مسار التصفّح"
             className="text-dim mb-3 text-xs font-semibold"
           >
-            <Link href="/" className="hover:text-accent">
+            <Link href="/" className="hover:text-primary">
               الرئيسية
             </Link>
             <span className="mx-1.5">/</span>
-            <Link href={`/${parsed.transaction}`} className="hover:text-accent">
+            <Link
+              href={`/${parsed.transaction}`}
+              className="hover:text-primary"
+            >
               {kTransactionTypes[parsed.transaction]}
             </Link>
             {parsed.wilaya && (
@@ -156,7 +159,7 @@ export default async function BrowsePage({
                 <li key={w.slug}>
                   <Link
                     href={`/${parsed.transaction}/${parsed.propertyType ?? "appartement"}/${w.slug}`}
-                    className="rounded-input border-border bg-surface hover:border-accent inline-block border px-3 py-1.5 text-xs font-semibold transition-colors"
+                    className="rounded-input border-border bg-surface hover:border-primary inline-block border px-3 py-1.5 text-xs font-semibold transition-colors"
                   >
                     {w.nameAr}
                   </Link>

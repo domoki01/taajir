@@ -13,7 +13,7 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
     <li>
       <Link
         href={`/annonce/${listing.id}/${listing.slug}`}
-        className="rounded-card border-border bg-surface hover:border-accent hover:shadow-soft group flex h-full flex-col overflow-hidden border transition-all"
+        className="rounded-card border-border bg-surface hover:border-primary hover:shadow-soft group flex h-full flex-col overflow-hidden border transition-all"
       >
         <div className="bg-surface-soft relative aspect-4/3 overflow-hidden">
           {listing.coverUrl ? (
@@ -33,14 +33,14 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
           )}
 
           {listing.isFeatured && (
-            <span className="bg-accent absolute start-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold text-white">
+            <span className="bg-primary absolute start-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold text-white">
               مميّز
             </span>
           )}
         </div>
 
         <div className="flex flex-1 flex-col gap-2 p-4">
-          <p className="text-accent ltr-nums text-lg font-extrabold">
+          <p className="text-primary ltr-nums text-lg font-extrabold">
             {listing.priceOnRequest
               ? "السعر بالاتفاق"
               : formatPrice(listing.price)}

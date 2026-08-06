@@ -30,7 +30,7 @@ export default async function HomePage() {
 
       <main className="flex-1">
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
-        <section className="from-accent-soft to-bg bg-gradient-to-b">
+        <section className="from-primary-soft to-bg bg-gradient-to-b">
           <div className="mx-auto max-w-6xl px-4 py-14 text-center md:py-20">
             <h1 className="text-3xl leading-tight font-black tracking-tight text-balance md:text-5xl">
               دار، شقة ولا أرض — لقّاها في بلاصتها
@@ -82,9 +82,9 @@ export default async function HomePage() {
               <li key={slug}>
                 <Link
                   href={`/vente/${slug}`}
-                  className="rounded-card border-border bg-surface hover:border-accent hover:shadow-soft flex flex-col items-center gap-3 border p-6 transition-all"
+                  className="rounded-card border-border bg-surface hover:border-primary hover:shadow-soft flex flex-col items-center gap-3 border p-6 transition-all"
                 >
-                  <span className="bg-accent-soft text-accent grid size-12 place-items-center rounded-[14px]">
+                  <span className="bg-primary-soft text-primary grid size-12 place-items-center rounded-[14px]">
                     <Icon className="size-6" strokeWidth={2.2} />
                   </span>
                   <span className="text-sm font-bold">{label}</span>
@@ -104,9 +104,9 @@ export default async function HomePage() {
               <li key={wilaya.slug}>
                 <Link
                   href={`/vente/appartement/${wilaya.slug}`}
-                  className="rounded-input border-border bg-surface hover:border-accent flex items-center gap-2 border px-4 py-3 transition-colors"
+                  className="rounded-input border-border bg-surface hover:border-primary flex items-center gap-2 border px-4 py-3 transition-colors"
                 >
-                  <MapPin className="text-accent size-4 shrink-0" />
+                  <MapPin className="text-primary size-4 shrink-0" />
                   <span className="truncate text-sm font-bold">
                     {wilaya.nameAr}
                   </span>

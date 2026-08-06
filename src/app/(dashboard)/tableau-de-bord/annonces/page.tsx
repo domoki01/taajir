@@ -112,7 +112,7 @@ export default async function MyListingsPage({
                   </p>
                 </div>
 
-                <p className="text-accent ltr-nums font-extrabold">
+                <p className="text-primary ltr-nums font-extrabold">
                   {listing.priceOnRequest
                     ? "بالاتفاق"
                     : formatPrice(listing.price)}
@@ -129,7 +129,7 @@ export default async function MyListingsPage({
                 {listing.status === "published" && (
                   <Link
                     href={`/annonce/${listing.id}/${listing.slug}`}
-                    className="text-accent text-xs font-bold underline"
+                    className="text-primary text-xs font-bold underline"
                   >
                     عرض
                   </Link>

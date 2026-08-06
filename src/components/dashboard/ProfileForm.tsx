@@ -50,7 +50,7 @@ export function ProfileForm({ profile }: { profile: AppUser }) {
   }
 
   const field =
-    "rounded-input border-border focus:border-accent w-full border bg-white px-4 py-3 text-base outline-none";
+    "rounded-input border-border focus:border-primary w-full border bg-white px-4 py-3 text-base outline-none";
 
   return (
     <form onSubmit={onSubmit} className="mt-6 max-w-lg space-y-4">
