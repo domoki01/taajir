@@ -40,10 +40,14 @@ export function Header() {
         </nav>
 
         {/* "الوكالات" stays hidden until agency profiles exist — a link that
-            404s is worse than no link. */}
+            404s is worse than no link.
+
+            Hidden on phones: the raised button in the bottom nav is the publish
+            entry point there, and dropping it here gives the links back the
+            ~110px they were fighting over at 390px. */}
         <Link
           href="/publier"
-          className="bg-accent rounded-input ms-1 inline-flex shrink-0 items-center gap-1.5 px-3 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 sm:px-4"
+          className="bg-accent rounded-input ms-1 hidden shrink-0 items-center gap-1.5 px-3 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 sm:px-4 md:inline-flex"
         >
           <Plus className="size-4" strokeWidth={3} />
           نشر إعلان

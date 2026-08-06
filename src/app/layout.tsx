@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
+import { BottomNav } from "@/components/layout/BottomNav";
 import { kSiteName, kSiteTagline, kSiteUrl } from "@/lib/constants";
 import "./globals.css";
 
@@ -33,6 +34,9 @@ export const viewport: Viewport = {
   themeColor: "#0f172a",
   width: "device-width",
   initialScale: 1,
+  // Required by the bottom nav: without it `env(safe-area-inset-bottom)` is
+  // always 0, and the bar sits underneath the iPhone home indicator.
+  viewportFit: "cover",
   // Deliberately NOT maximum-scale=1 / user-scalable=no. The sibling app
   // disabled pinch zoom, which fails WCAG 1.4.4 and hurts users reading
   // property details on small screens.
@@ -45,7 +49,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       dir="rtl"
       className={`${cairo.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        {/* Mounted once here rather than per page: every route composes its own
+            Header and Footer, but they all share this root, so this is the only
+            place that covers the dashboard and admin sections too. */}
+        <BottomNav />
+      </body>
     </html>
   );
 }
