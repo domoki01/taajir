@@ -2,6 +2,7 @@ import Link from "next/link";
 import { kSiteName } from "@/lib/constants";
 
 const links = [
+  { href: "/demandes", label: "طلبات العقار" },
   { href: "/a-propos", label: "من نحن" },
   { href: "/aide", label: "المساعدة" },
   { href: "/securite", label: "نصائح الأمان" },

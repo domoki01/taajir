@@ -15,6 +15,10 @@ import { kWilayas } from "@/lib/geo";
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages = [
     "",
+    // The demand feed itself, not the individual requests: those are
+    // user-written, short-lived and turn over constantly, so listing them would
+    // spend the crawl budget on pages that are gone by the next visit.
+    "/demandes",
     "/aide",
     "/a-propos",
     "/securite",

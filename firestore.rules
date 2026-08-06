@@ -162,6 +162,38 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // ── PROPERTY REQUESTS ────────────────────────────────────────────────────
+    // The demand feed. Public read of visible posts so the feed is indexable;
+    // all writes denied, as everywhere else content is denormalized.
+    //
+    // The reply's attached listing is the reason this cannot be relaxed later:
+    // it carries a title, a price and a link, all denormalized. A client that
+    // could write a reply could staple any title to any link and put it under
+    // someone else's request, which is an advertisement wearing a neighbour's
+    // name.
+
+    match /requests/{requestId} {
+      // .get() with a default rather than a bare property read: the feed
+      // *queries* this collection, and one document missing `status` would
+      // raise "property is undefined" and deny the whole query — taking the
+      // feed down rather than hiding one post.
+      allow read: if resource.data.get('status', '') == 'visible'
+                  || isOwner(resource.data.get('ownerUid', ''))
+                  || isAdmin();
+      allow create, update, delete: if false;
+
+      // Named `replies`, not `comments`: the moderation screen runs a
+      // collection-group query over `comments`, and a second collection by that
+      // name would pour these into a list whose every link points at a listing
+      // that does not exist.
+      match /replies/{replyId} {
+        allow read: if resource.data.get('status', '') == 'visible'
+                    || isOwner(resource.data.get('authorUid', ''))
+                    || isAdmin();
+        allow create, update, delete: if false;
+      }
+    }
+
     // ── PLANS ────────────────────────────────────────────────────────────────
 
     match /plans/{planId} {

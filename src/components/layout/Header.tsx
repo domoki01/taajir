@@ -26,6 +26,12 @@ export function Header() {
             للكراء
           </Link>
           <Link
+            href="/demandes"
+            className="hover:text-primary transition-colors"
+          >
+            طلبات
+          </Link>
+          <Link
             href="/recherche"
             className="hover:text-primary hidden transition-colors sm:inline"
           >

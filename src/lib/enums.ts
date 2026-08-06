@@ -31,6 +31,21 @@ export const kTransactionFilterLabels: Record<TransactionType, string> = {
   echange: "مبادلة",
 };
 
+/**
+ * A demand, worded from the side of the person who wants something rather than
+ * the person offering it.
+ *
+ * The slugs are the listing's own, so a request and the ads that answer it stay
+ * one vocabulary: `vente` on a request means "I want to buy", which is exactly
+ * what a `vente` ad offers.
+ */
+export const kRequestIntents = {
+  vente: "نشري",
+  location: "نكري",
+} as const;
+
+export type RequestIntent = keyof typeof kRequestIntents;
+
 /** Sale form. Matters legally and to the buyer's financing. */
 export const kSaleForms = {
   definitif: "بيع بالصيغة النهائية",

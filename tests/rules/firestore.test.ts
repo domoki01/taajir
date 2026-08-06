@@ -134,6 +134,35 @@ beforeEach(async () => {
       userAgent: "Mozilla/5.0",
       updatedAt: 1,
     });
+    await setDoc(doc(db, "requests/req-1"), {
+      ownerUid: kOwner,
+      ownerName: "طالب",
+      intent: "vente",
+      title: "نشري شقة F3 في باب الزوار",
+      description: "ميزانية 800 مليون، الطابق ماشي مهم.",
+      wilayaSlug: "alger",
+      communeSlug: "bab-ezzouar",
+      status: "visible",
+      replyCount: 1,
+      createdAt: 1,
+    });
+    await setDoc(doc(db, "requests/req-hidden"), {
+      ownerUid: kOther,
+      status: "hidden",
+      title: "سبام",
+      wilayaSlug: "alger",
+      createdAt: 2,
+    });
+    await setDoc(doc(db, "requests/req-1/replies/rep-1"), {
+      requestId: "req-1",
+      authorUid: kOther,
+      authorName: "بائع",
+      isOwner: false,
+      text: "عندي شقة تناسبك",
+      listing: { id: "pub-1", slug: "chqa", title: "شقة F3", price: 8000000 },
+      status: "visible",
+      createdAt: 3,
+    });
     await setDoc(doc(db, "plans/basic"), { isActive: true, priceDzd: 5000 });
     await setDoc(doc(db, "catalog/prod-1"), { code: "b36" });
   });
@@ -424,6 +453,97 @@ describe("push devices", () => {
     );
     await assertFails(
       deleteDoc(doc(authed(kOwner), `users/${kOwner}/devices/dev-1`)),
+    );
+  });
+});
+
+describe("property requests", () => {
+  it("lets anyone query the visible demand feed", async () => {
+    const snap = await assertSucceeds(
+      getDocs(
+        query(collection(anon(), "requests"), where("status", "==", "visible")),
+      ),
+    );
+    expect(snap.size).toBe(1);
+  });
+
+  it("hides a hidden request from everyone but its author and staff", async () => {
+    await assertFails(getDoc(doc(anon(), "requests/req-hidden")));
+    await assertFails(getDoc(doc(authed(kOwner), "requests/req-hidden")));
+    await assertSucceeds(getDoc(doc(authed(kOther), "requests/req-hidden")));
+    await assertSucceeds(getDoc(doc(admin(), "requests/req-hidden")));
+  });
+
+  it("survives a request written before status existed", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "requests/req-old"), { title: "ناقص" });
+    });
+    await assertSucceeds(
+      getDocs(
+        query(collection(anon(), "requests"), where("status", "==", "visible")),
+      ),
+    );
+  });
+
+  it("refuses every client write, author included", async () => {
+    const request = {
+      ownerUid: kOwner,
+      ownerName: "وكالة موثّقة",
+      intent: "vente",
+      title: "طلب مزوّر",
+      description: "…",
+      wilayaSlug: "alger",
+      communeSlug: null,
+      status: "visible",
+      replyCount: 0,
+      createdAt: 4,
+    };
+    await assertFails(setDoc(doc(anon(), "requests/x"), request));
+    await assertFails(setDoc(doc(authed(kOwner), "requests/x"), request));
+    await assertFails(setDoc(doc(admin(), "requests/x"), request));
+    // replyCount decides what a feed card claims, and ownerName is the identity
+    // the post is published under — neither is the client's to set.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "requests/req-1"), { replyCount: 999 }),
+    );
+    await assertFails(deleteDoc(doc(authed(kOwner), "requests/req-1")));
+  });
+});
+
+describe("request replies", () => {
+  it("lets anyone read a visible reply", async () => {
+    await assertSucceeds(getDoc(doc(anon(), "requests/req-1/replies/rep-1")));
+  });
+
+  // The attached listing carries a title, a price and a link, all denormalized.
+  // A writable reply is an advertisement that can wear any ad's name.
+  it("refuses every client write, including the attachment", async () => {
+    const reply = {
+      requestId: "req-1",
+      authorUid: kOther,
+      authorName: "بائع",
+      isOwner: false,
+      text: "شوف هذا",
+      listing: {
+        id: "pub-1",
+        slug: "evil",
+        title: "فيلا بلاش",
+        price: 1,
+      },
+      status: "visible",
+      createdAt: 5,
+    };
+    await assertFails(setDoc(doc(anon(), "requests/req-1/replies/x"), reply));
+    await assertFails(
+      setDoc(doc(authed(kOther), "requests/req-1/replies/x"), reply),
+    );
+    await assertFails(
+      updateDoc(doc(authed(kOther), "requests/req-1/replies/rep-1"), {
+        listing: { id: "pub-1", slug: "evil", title: "مزوّر", price: 1 },
+      }),
+    );
+    await assertFails(
+      deleteDoc(doc(authed(kOther), "requests/req-1/replies/rep-1")),
     );
   });
 });

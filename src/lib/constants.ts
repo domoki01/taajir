@@ -24,6 +24,15 @@ export const kListingLifetimeDays = 60;
  */
 export const kMaxSavedSearches = 10;
 
+/**
+ * Open property requests one account may have on the feed.
+ *
+ * Nothing moderates the demand feed before it appears, so the cap is what stops
+ * one person from owning the first screen. Five is more demands than anyone
+ * genuinely has at once.
+ */
+export const kMaxOpenRequests = 5;
+
 // ── PRICE UNITS ──────────────────────────────────────────────────────────────
 // Algerians quote property prices in "ملايين" — millions of centimes.
 // 1 مليون = 100 * 10_000 centimes = 10_000 DZD. A flat advertised at
