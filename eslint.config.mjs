@@ -12,9 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Standalone Node projects with their own tsconfig and typecheck step;
-    // the Next.js rules do not apply to them.
-    "bots/**",
   ]),
 ]);
 
