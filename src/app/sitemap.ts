@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { kSiteUrl } from "@/lib/constants";
-import { kPropertyTypes, kTransactionTypes } from "@/lib/enums";
+import { getTaxonomy } from "@/server/filterSettings";
 import { kWilayas } from "@/lib/geo";
 
 /**
@@ -12,7 +12,16 @@ import { kWilayas } from "@/lib/geo";
  * /recherche is deliberately excluded — it is noindex, and listing its infinite
  * query-string variants would bury these canonical pages.
  */
-export default function sitemap(): MetadataRoute.Sitemap {
+// Regenerated hourly, and immediately when a category is added — the sitemap is
+// how a new /vente/{slug}/alger route gets crawled at all.
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // The live taxonomy, so a category an admin added is crawlable the same day
+  // rather than the next deploy. Hidden ones are included on purpose: hiding
+  // affects the filter, not whether the pages exist.
+  const taxonomy = await getTaxonomy();
+
   const staticPages = [
     "",
     // The demand feed itself, not the individual requests: those are
@@ -32,14 +41,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: path === "" ? 1 : 0.4,
   }));
 
-  for (const transaction of Object.keys(kTransactionTypes)) {
+  for (const transaction of Object.keys(taxonomy.transactionTypes)) {
     entries.push({
       url: `${kSiteUrl}/${transaction}`,
       changeFrequency: "daily",
       priority: 0.9,
     });
 
-    for (const propertyType of Object.keys(kPropertyTypes)) {
+    for (const propertyType of Object.keys(taxonomy.propertyTypes)) {
       entries.push({
         url: `${kSiteUrl}/${transaction}/${propertyType}`,
         changeFrequency: "daily",

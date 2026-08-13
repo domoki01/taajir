@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { requirePermission } from "@/server/auth";
 import { adminDb } from "@/lib/firebase/admin";
 import { ModerationCard } from "@/components/admin/ModerationCard";
 import { HoldApproval } from "@/components/admin/HoldApproval";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getLaunchStatus } from "@/server/launch";
+import { getTaxonomy } from "@/server/filterSettings";
 import type { Listing } from "@/types/listing";
 
 export const metadata: Metadata = {
@@ -34,6 +36,14 @@ async function byStatus(status: string): Promise<Listing[] | null> {
 }
 
 export default async function ModerationPage() {
+  await requirePermission("listings.moderate", "/admin/moderation");
+
+  const taxonomy = await getTaxonomy();
+  const labels = {
+    deals: taxonomy.transactionTypes,
+    types: taxonomy.propertyTypes,
+  };
+
   const [listings, held, launch] = await Promise.all([
     byStatus("pending"),
     byStatus("pendingLaunch"),
@@ -69,7 +79,11 @@ export default async function ModerationPage() {
 
           <ul className="mt-4 space-y-4">
             {held.map((listing) => (
-              <ModerationCard key={listing.id} listing={listing}>
+              <ModerationCard
+                key={listing.id}
+                listing={listing}
+                labels={labels}
+              >
                 <HoldApproval
                   id={listing.id}
                   approved={listing.approvedForLaunch === true}
@@ -94,7 +108,11 @@ export default async function ModerationPage() {
         ) : (
           <ul className="space-y-4">
             {listings.map((listing) => (
-              <ModerationCard key={listing.id} listing={listing} />
+              <ModerationCard
+                key={listing.id}
+                listing={listing}
+                labels={labels}
+              />
             ))}
           </ul>
         )}

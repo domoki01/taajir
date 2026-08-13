@@ -14,11 +14,12 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { isImmersiveRoute } from "@/lib/nav";
-import { kSiteName } from "@/lib/constants";
+import { useBranding } from "@/components/branding/BrandingProvider";
 
 export function MobileTopBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { siteName } = useBranding();
   if (!isImmersiveRoute(pathname)) return null;
 
   function goBack() {
@@ -47,7 +48,7 @@ export function MobileTopBar() {
         <ChevronRight className="size-6" strokeWidth={2.4} />
       </button>
       <Link href="/" className="text-sm font-extrabold tracking-tight">
-        {kSiteName}
+        {siteName}
       </Link>
     </div>
   );

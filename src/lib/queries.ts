@@ -19,11 +19,13 @@ import {
 } from "firebase/firestore";
 import { publicDb } from "@/lib/firebase/public";
 import { bucketsInRange } from "@/lib/price";
-import type { PropertyType, RoomCode, TransactionType } from "@/lib/enums";
+import type { RoomCode } from "@/lib/enums";
 
 export type ListingFilters = {
-  transactionType?: TransactionType;
-  propertyType?: PropertyType;
+  /** Deal slug — renameable from the admin panel, so a plain string. */
+  transactionType?: string;
+  /** Category slug — admin-editable, so not the enum union. */
+  propertyType?: string;
   wilayaSlug?: string;
   communeSlug?: string;
   roomsCode?: RoomCode;
@@ -36,7 +38,7 @@ export type ListingFilters = {
 export type SortMode = "recent" | "price-asc" | "price-desc" | "area-desc";
 
 /** Rentals price on a different scale, so they bucket separately. */
-export function isRental(t: TransactionType | undefined): boolean {
+export function isRental(t: string | undefined): boolean {
   return t === "location" || t === "vacances";
 }
 

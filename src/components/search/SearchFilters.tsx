@@ -11,13 +11,7 @@ import {
   type Commune,
   type Wilaya,
 } from "@/lib/geo";
-import {
-  kPropertyTypes,
-  kTransactionFilterLabels,
-  kTransactionTypes,
-  type PropertyType,
-  type TransactionType,
-} from "@/lib/enums";
+import { kPropertyTypes, kTransactionFilterLabels } from "@/lib/enums";
 import { searchHref } from "@/lib/searchHref";
 import type { FilterOption } from "@/types/filterSettings";
 
@@ -51,19 +45,23 @@ export function SearchFilters({
   initialType?: string;
   initialWilaya?: string;
   initialCommune?: string;
-  transactionOptions?: FilterOption<TransactionType>[];
-  propertyOptions?: FilterOption<PropertyType>[];
+  transactionOptions?: FilterOption<string>[];
+  propertyOptions?: FilterOption<string>[];
 }) {
   const deals =
     transactionOptions ??
-    (
-      Object.entries(kTransactionFilterLabels) as [TransactionType, string][]
-    ).map(([slug, label]) => ({ slug, label, hidden: false }));
+    Object.entries(kTransactionFilterLabels).map(([slug, label]) => ({
+      slug,
+      label,
+      hidden: false,
+    }));
   const types =
     propertyOptions ??
-    (Object.entries(kPropertyTypes) as [PropertyType, string][]).map(
-      ([slug, label]) => ({ slug, label, hidden: false }),
-    );
+    Object.entries(kPropertyTypes).map(([slug, label]) => ({
+      slug,
+      label,
+      hidden: false,
+    }));
   const router = useRouter();
 
   // Seeded from the URL so landing on a filtered page shows what is filtered,
@@ -72,15 +70,15 @@ export function SearchFilters({
     ? (kWilayas.find((w) => w.slug === initialWilaya) ?? null)
     : null;
 
-  const [transaction, setTransaction] = useState<TransactionType | "">(
-    initialTransaction && initialTransaction in kTransactionTypes
-      ? (initialTransaction as TransactionType)
+  // Validated against the lists actually on offer rather than against the code
+  // enums, so a category an admin added seeds the picker like any other.
+  const [transaction, setTransaction] = useState(
+    initialTransaction && deals.some((d) => d.slug === initialTransaction)
+      ? initialTransaction
       : "",
   );
-  const [propertyType, setPropertyType] = useState<PropertyType | "">(
-    initialType && initialType in kPropertyTypes
-      ? (initialType as PropertyType)
-      : "",
+  const [propertyType, setPropertyType] = useState(
+    initialType && types.some((t) => t.slug === initialType) ? initialType : "",
   );
 
   const [wilaya, setWilaya] = useState<Wilaya | null>(seedWilaya);
@@ -154,8 +152,8 @@ export function SearchFilters({
   function submit(
     w: Wilaya | null,
     c: Commune | null,
-    deal: TransactionType | "" = transaction,
-    type: PropertyType | "" = propertyType,
+    deal: string = transaction,
+    type: string = propertyType,
   ) {
     router.push(
       searchHref({
@@ -184,9 +182,7 @@ export function SearchFilters({
           <select
             id="filter-transaction"
             value={transaction}
-            onChange={(e) =>
-              setTransaction(e.target.value as TransactionType | "")
-            }
+            onChange={(e) => setTransaction(e.target.value)}
             className={select}
           >
             <option value="">بيع ولا كراء</option>
@@ -206,9 +202,7 @@ export function SearchFilters({
           <select
             id="filter-type"
             value={propertyType}
-            onChange={(e) =>
-              setPropertyType(e.target.value as PropertyType | "")
-            }
+            onChange={(e) => setPropertyType(e.target.value)}
             className={select}
           >
             <option value="">كل أنواع العقار</option>

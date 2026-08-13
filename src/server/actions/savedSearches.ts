@@ -11,12 +11,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/server/auth";
 import { kMaxSavedSearches } from "@/lib/constants";
 import { getCommune, getWilaya } from "@/lib/geo";
-import {
-  kPropertyTypes,
-  kTransactionFilterLabels,
-  type PropertyType,
-  type TransactionType,
-} from "@/lib/enums";
+import { getTaxonomy, labelOf, type Taxonomy } from "@/server/filterSettings";
 
 export type SavedSearchResult = { ok: true } | { ok: false; error: string };
 
@@ -46,13 +41,17 @@ export async function createSavedSearch(
     return { ok: false, error: "البلدية ماشي من هذه الولاية" };
   }
 
+  // Validated against the resolved taxonomy so an alert can be saved for a
+  // category the admin added — the filter offers it, so this must accept it.
+  const taxonomy = await getTaxonomy();
   const transactionType =
-    input.transactionType && input.transactionType in kTransactionFilterLabels
-      ? (input.transactionType as TransactionType)
+    input.transactionType &&
+    input.transactionType in taxonomy.transactionFilterLabels
+      ? input.transactionType
       : null;
   const propertyType =
-    input.propertyType && input.propertyType in kPropertyTypes
-      ? (input.propertyType as PropertyType)
+    input.propertyType && input.propertyType in taxonomy.propertyTypes
+      ? input.propertyType
       : null;
 
   const db = adminDb();
@@ -91,6 +90,7 @@ export async function createSavedSearch(
       propertyType,
       wilayaSlug,
       communeSlug,
+      taxonomy,
     ),
     notify: true,
     createdAt: Date.now(),
@@ -141,14 +141,17 @@ export async function setSavedSearchNotify(
  * the confirmation and the push notification all say the same thing.
  */
 function describeSearch(
-  transactionType: TransactionType | null,
-  propertyType: PropertyType | null,
+  transactionType: string | null,
+  propertyType: string | null,
   wilayaSlug: string,
   communeSlug: string | null,
+  taxonomy: Taxonomy,
 ): string {
-  const what = propertyType ? kPropertyTypes[propertyType] : "عقارات";
+  const what = propertyType
+    ? labelOf(taxonomy.propertyTypes, propertyType)
+    : "عقارات";
   const deal = transactionType
-    ? ` ${kTransactionFilterLabels[transactionType]}`
+    ? ` ${labelOf(taxonomy.transactionFilterLabels, transactionType)}`
     : "";
 
   // Not placeLabel(): that helper needs a commune and renders "، الجزائر" with

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { adminDb } from "@/lib/firebase/admin";
-import { requireUser } from "@/server/auth";
+import { hasPermission, requireUser } from "@/server/auth";
 import { EditForm } from "@/components/listing/EditForm";
 import type { Listing } from "@/types/listing";
 
@@ -26,8 +26,8 @@ export default async function EditListingPage({
 
   // 404 rather than 403 for someone else's ad: a "forbidden" reply confirms the
   // id exists, which is a free enumeration oracle over every listing.
-  const isStaff = user.role === "admin" || user.role === "moderator";
-  if (listing.ownerUid !== user.uid && !isStaff) notFound();
+  const staff = hasPermission(user, "listings.moderate");
+  if (listing.ownerUid !== user.uid && !staff) notFound();
 
   return (
     <div className="rounded-card border-border bg-surface mx-auto max-w-3xl border p-4 sm:p-6">

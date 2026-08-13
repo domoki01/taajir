@@ -4,7 +4,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { Countdown } from "@/components/launch/Countdown";
 import { IntentPicker } from "@/components/launch/IntentPicker";
-import { kSiteName } from "@/lib/constants";
+import { getBranding } from "@/server/branding";
 
 /**
  * The whole site while it is held: one question, three answers, a clock.
@@ -13,13 +13,15 @@ import { kSiteName } from "@/lib/constants";
  * menu of doors that do not open is worse than no menu. The only ways out are
  * the three intents and the sign-in link.
  */
-export function PrelaunchLanding({
+export async function PrelaunchLanding({
   launchAt,
   signedIn,
 }: {
   launchAt: number | null;
   signedIn: boolean;
 }) {
+  const { siteName } = await getBranding();
+
   return (
     <>
       <main className="from-primary-soft to-bg flex-1 bg-gradient-to-b py-12 md:py-20">
@@ -29,7 +31,7 @@ export function PrelaunchLanding({
               <Building2 className="size-7" strokeWidth={2.4} />
             </span>
             <h1 className="mt-5 text-3xl font-black tracking-tight text-balance md:text-4xl">
-              {kSiteName} — عقارات الجزائر، قريباً
+              {siteName} — عقارات الجزائر، قريباً
             </h1>
             <p className="text-muted mx-auto mt-4 max-w-xl leading-relaxed">
               حنا نجمعو الإعلانات والطلبات قبل الانطلاق. سجّل من دروك وينشر

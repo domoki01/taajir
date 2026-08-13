@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Search } from "lucide-react";
-import { requireAdmin } from "@/server/auth";
-import { listUsers } from "@/server/users";
+import { hasPermission, requireUser } from "@/server/auth";
+import { getRoles } from "@/server/permissions";
+import { getAccessSettings } from "@/server/access";
+import { listPendingUsers, listUsers } from "@/server/users";
 import { UserRow } from "@/components/admin/UserRow";
+import { ApprovalSwitch } from "@/components/admin/ApprovalSwitch";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export const metadata: Metadata = {
@@ -17,14 +21,35 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // The layout already ran requireAdmin; this re-reads the session to find out
-  // *which* admin, because a moderator sees the list read-only.
-  const viewer = await requireAdmin();
+  // Two permissions reach this screen. `users.manage` edits roles, bans and
+  // quotas; `users.approve` works the registration queue. A role holding only
+  // the second one gets the queue and nothing else, which is exactly what a
+  // "front desk" role should be able to do.
+  const viewer = await requireUser("/admin/utilisateurs");
+  const canManage = hasPermission(viewer, "users.manage");
+  const canApprove = hasPermission(viewer, "users.approve");
+  if (!canManage && !canApprove) redirect("/admin");
+
   const sp = await searchParams;
   const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q) ?? "";
 
-  const users = await listUsers(q);
-  const canManage = viewer.role === "admin";
+  const [users, roles, access, pending] = await Promise.all([
+    listUsers(q),
+    getRoles(),
+    getAccessSettings(),
+    listPendingUsers(),
+  ]);
+
+  const roleLabels = Object.fromEntries(
+    Object.entries(roles).map(([id, r]) => [id, r.label]),
+  );
+
+  const rowProps = {
+    canManage,
+    canApprove,
+    requireApproval: access.requireApproval,
+    roleLabels,
+  };
 
   return (
     <div>
@@ -37,15 +62,47 @@ export default async function UsersPage({
             : `${users.length} حساب`}
       </p>
 
+      {canApprove && (
+        <ApprovalSwitch
+          on={access.requireApproval}
+          pendingCount={pending === null ? null : pending.length}
+        />
+      )}
+
       {!canManage && (
         <p className="rounded-input bg-warning/10 text-warning mt-4 px-4 py-3 text-sm font-bold">
-          الأدوار والتوقيف والحصص من صلاحيات المدير وحده. تقدر تشوف القائمة فقط.
+          الأدوار والتوقيف والحصص من صلاحية «إدارة الحسابات». عندك تأكيد
+          التسجيلات برك.
         </p>
+      )}
+
+      {access.requireApproval && pending !== null && pending.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-lg font-extrabold">
+            يستنّاو التأكيد
+            <span className="text-dim ltr-nums ms-2 text-sm font-bold">
+              {pending.length}
+            </span>
+          </h2>
+          <p className="text-dim mt-1 text-xs">
+            الأقدم الأوّل — اللي راه يستنّى من بكري هو اللي يقرب يقلع.
+          </p>
+          <ul className="mt-3 space-y-3">
+            {pending.map((user) => (
+              <UserRow
+                key={user.uid}
+                user={user}
+                isSelf={user.uid === viewer.uid}
+                {...rowProps}
+              />
+            ))}
+          </ul>
+        </section>
       )}
 
       <form
         action="/admin/utilisateurs"
-        className="rounded-card shadow-soft border-border mt-5 flex items-center gap-2 border bg-white p-2"
+        className="rounded-card shadow-soft border-border mt-6 flex items-center gap-2 border bg-white p-2"
       >
         <Search className="text-dim ms-2 size-5 shrink-0" />
         <input
@@ -86,7 +143,7 @@ export default async function UsersPage({
                 key={user.uid}
                 user={user}
                 isSelf={user.uid === viewer.uid}
-                canManage={canManage}
+                {...rowProps}
               />
             ))}
           </ul>

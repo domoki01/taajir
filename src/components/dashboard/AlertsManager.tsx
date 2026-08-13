@@ -11,6 +11,7 @@ import {
 import { disablePush, enablePush, pushState } from "@/lib/firebase/messaging";
 import { getCommunes, kWilayas } from "@/lib/geo";
 import { kPropertyTypes, kTransactionFilterLabels } from "@/lib/enums";
+import type { FilterOption } from "@/types/filterSettings";
 
 export type AlertRow = {
   id: string;
@@ -27,11 +28,30 @@ export function AlertsManager({
   alerts,
   deviceCount,
   max,
+  transactionOptions,
+  propertyOptions,
 }: {
   alerts: AlertRow[];
   deviceCount: number;
   max: number;
+  /** The site's live categories, so an alert can be saved for a custom one. */
+  transactionOptions?: FilterOption<string>[];
+  propertyOptions?: FilterOption<string>[];
 }) {
+  const deals =
+    transactionOptions ??
+    Object.entries(kTransactionFilterLabels).map(([slug, label]) => ({
+      slug,
+      label,
+      hidden: false,
+    }));
+  const types =
+    propertyOptions ??
+    Object.entries(kPropertyTypes).map(([slug, label]) => ({
+      slug,
+      label,
+      hidden: false,
+    }));
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -204,13 +224,11 @@ export function AlertsManager({
                 className={field}
               >
                 <option value="">بيع ولا كراء</option>
-                {Object.entries(kTransactionFilterLabels).map(
-                  ([slug, label]) => (
-                    <option key={slug} value={slug}>
-                      {label}
-                    </option>
-                  ),
-                )}
+                {deals.map((o) => (
+                  <option key={o.slug} value={o.slug}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -228,9 +246,9 @@ export function AlertsManager({
                 className={field}
               >
                 <option value="">كل أنواع العقار</option>
-                {Object.entries(kPropertyTypes).map(([slug, label]) => (
-                  <option key={slug} value={slug}>
-                    {label}
+                {types.map((o) => (
+                  <option key={o.slug} value={o.slug}>
+                    {o.label}
                   </option>
                 ))}
               </select>

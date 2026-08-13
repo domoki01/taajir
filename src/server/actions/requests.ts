@@ -12,8 +12,15 @@
 import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
-import { getUser, requireUser } from "@/server/auth";
+import {
+  actorWith,
+  getUser,
+  hasPermission,
+  kForbidden,
+  requireUser,
+} from "@/server/auth";
 import { isPrelaunch } from "@/server/launch";
+import { getAccessSettings, kNeedsApproval } from "@/server/access";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { containsLink, kNoLinksMessage } from "@/lib/text";
 import { kMaxOpenRequests } from "@/lib/constants";
@@ -49,6 +56,13 @@ async function actor(): Promise<Actor> {
   const profile =
     (await adminDb().collection("users").doc(user.uid).get()).data() ?? {};
   if (profile.isBanned) return { error: { ok: false, error: "حسابك موقّف" } };
+
+  // Approval gates posting, and only posting — reading the feed, opening a
+  // demand and signing in all stay open while the queue is worked through.
+  const { requireApproval } = await getAccessSettings();
+  if (requireApproval && profile.approved === false) {
+    return { error: { ok: false, error: kNeedsApproval } };
+  }
 
   return {
     uid: user.uid,
@@ -152,8 +166,8 @@ export async function deleteRequest(id: string): Promise<RequestResult> {
   const snap = await ref.get();
   if (!snap.exists) return { ok: true };
 
-  const isStaff = user.role === "admin" || user.role === "moderator";
-  if (snap.data()?.ownerUid !== user.uid && !isStaff) {
+  const mayModerate = hasPermission(user, "requests.moderate");
+  if (snap.data()?.ownerUid !== user.uid && !mayModerate) {
     return { ok: false, error: "ماشي طلبك" };
   }
 
@@ -175,10 +189,8 @@ export async function hideRequest(
   id: string,
   reason: string,
 ): Promise<RequestResult> {
-  const user = await requireUser("/demandes");
-  if (user.role !== "admin" && user.role !== "moderator") {
-    return { ok: false, error: "ماشي من صلاحياتك" };
-  }
+  const user = await actorWith("requests.moderate");
+  if (!user) return { ok: false, error: kForbidden };
 
   await adminDb()
     .collection("requests")
@@ -277,8 +289,8 @@ export async function deleteReply(
   const snap = await ref.get();
   if (!snap.exists) return { ok: true };
 
-  const isStaff = user.role === "admin" || user.role === "moderator";
-  if (snap.data()?.authorUid !== user.uid && !isStaff) {
+  const mayModerate = hasPermission(user, "requests.moderate");
+  if (snap.data()?.authorUid !== user.uid && !mayModerate) {
     return { ok: false, error: "ماشي تعليقك" };
   }
 

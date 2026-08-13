@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requirePermission } from "@/server/auth";
 import { PromoManager } from "@/components/admin/PromoManager";
 import { listAllPromos } from "@/server/promos";
 
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function PromosPage() {
-  // The layout's requireAdmin() has already run; the actions re-check anyway.
+  await requirePermission("promos.manage", "/admin/publicites");
+
   const promos = await listAllPromos().catch((error) => {
     console.error("[promos] admin read failed:", error);
     return [];

@@ -16,7 +16,7 @@ import {
   getRequest,
   listMyPublishedListings,
 } from "@/server/requests";
-import { getUser } from "@/server/auth";
+import { getUser, hasPermission } from "@/server/auth";
 import { getWilaya, placeLabel } from "@/lib/geo";
 import { formatFullDateTime } from "@/lib/datetime";
 import { kRequestIntents } from "@/lib/enums";
@@ -49,12 +49,12 @@ export default async function RequestPage({
   const [request, user] = await Promise.all([getRequest(id), getUser()]);
   if (!request) notFound();
 
-  const isStaff = user?.role === "admin" || user?.role === "moderator";
+  const staff = hasPermission(user, "requests.moderate");
   const isOwner = user?.uid === request.ownerUid;
   // A hidden request stays visible to its author and to staff. Anyone else gets
   // the same 404 as a request that never existed — a "this was hidden" page
   // tells a spammer exactly which post was caught.
-  if (request.status !== "visible" && !isOwner && !isStaff) notFound();
+  if (request.status !== "visible" && !isOwner && !staff) notFound();
 
   const [replies, myListings] = await Promise.all([
     getReplies(id),
@@ -131,7 +131,7 @@ export default async function RequestPage({
                 <MapPin className="size-4" />
                 {where}
               </span>
-              {(isOwner || isStaff) && (
+              {(isOwner || staff) && (
                 <span className="ms-auto">
                   <DeleteRequestButton id={id} />
                 </span>
@@ -143,7 +143,7 @@ export default async function RequestPage({
             requestId={id}
             replies={thread}
             viewerUid={user?.uid ?? null}
-            isStaff={isStaff}
+            isStaff={staff}
             myListings={myListings.map((l) => ({ id: l.id, title: l.title }))}
           />
         </Container>

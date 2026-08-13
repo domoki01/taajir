@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { kSiteName, kSiteTagline } from "@/lib/constants";
+import { getBranding } from "@/server/branding";
 
 /**
  * A manifest is not decoration here: iOS Safari has no web push at all until a
@@ -8,10 +8,12 @@ import { kSiteName, kSiteTagline } from "@/lib/constants";
  * of Algerian traffic is mobile, that is the difference between saved-search
  * alerts working for iPhone users and not existing for them.
  */
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const { siteName, tagline } = await getBranding();
+
   return {
-    name: `${kSiteName} — ${kSiteTagline}`,
-    short_name: kSiteName,
+    name: `${siteName} — ${tagline}`,
+    short_name: siteName,
     description:
       "منصة جزائرية لكراء وبيع العقارات: شقق، فيلات، أراضي ومحلات تجارية في كل ولايات الوطن.",
     lang: "ar",

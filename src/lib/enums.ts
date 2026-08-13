@@ -75,10 +75,7 @@ export const kPropertyTypes = {
 export type PropertyType = keyof typeof kPropertyTypes;
 
 /** Property types priced and searched by land area rather than built area. */
-export const kLandPropertyTypes: PropertyType[] = [
-  "terrain",
-  "terrain-agricole",
-];
+export const kLandPropertyTypes: string[] = ["terrain", "terrain-agricole"];
 
 /**
  * Rooms use the Algerian F-nomenclature, where the number counts living rooms
@@ -133,11 +130,7 @@ export const kHousingPrograms = {
 export type HousingProgram = keyof typeof kHousingPrograms;
 
 /** Programmes whose resale is restricted — the form shows a legal warning. */
-export const kRestrictedResalePrograms: HousingProgram[] = [
-  "aadl",
-  "lsp",
-  "social",
-];
+export const kRestrictedResalePrograms: string[] = ["aadl", "lsp", "social"];
 
 export const kConditions = {
   neuf: "جديد",

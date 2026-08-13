@@ -2,33 +2,35 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, RotateCcw, ShieldCheck } from "lucide-react";
+import { Ban, Check, RotateCcw, ShieldCheck, X } from "lucide-react";
 import {
+  setUserApproved,
   setUserBanned,
   setUserQuota,
   setUserRole,
-  type Role,
 } from "@/server/actions/users";
 import { getWilaya } from "@/lib/geo";
 import type { AppUser } from "@/types/user";
-
-const roleLabels: Record<Role, string> = {
-  user: "مستخدم",
-  agency: "وكالة",
-  moderator: "مشرف مساعد",
-  admin: "مدير",
-};
 
 export function UserRow({
   user,
   isSelf,
   canManage,
+  canApprove = false,
+  requireApproval = false,
+  roleLabels,
 }: {
   user: AppUser;
   /** You cannot change your own role or ban yourself; the server refuses too. */
   isSelf: boolean;
-  /** False for moderators — only a full admin may hand out access. */
+  /** Whether this viewer holds `users.manage`. */
   canManage: boolean;
+  /** Whether this viewer holds `users.approve`. */
+  canApprove?: boolean;
+  /** Registration approval is switched on, so the waiting state is meaningful. */
+  requireApproval?: boolean;
+  /** Live role ids to labels, so custom roles appear in the dropdown. */
+  roleLabels: Record<string, string>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -81,6 +83,11 @@ export function UserRow({
                 موقّف
               </span>
             )}
+            {requireApproval && user.approved === false && (
+              <span className="bg-warning/15 text-warning rounded-full px-2 py-0.5 text-[11px] font-bold">
+                يستنّى التأكيد
+              </span>
+            )}
             {isSelf && (
               <span className="text-dim text-[11px] font-bold">(أنت)</span>
             )}
@@ -99,6 +106,30 @@ export function UserRow({
           )}
         </div>
 
+        {canApprove &&
+          requireApproval &&
+          (user.approved === false ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run(() => setUserApproved(user.uid, true))}
+              className="bg-accent rounded-input inline-flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            >
+              <Check className="size-4" strokeWidth={3} />
+              أكّد الحساب
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={pending || isSelf}
+              onClick={() => run(() => setUserApproved(user.uid, false))}
+              className={`${control} text-muted inline-flex shrink-0 items-center gap-1.5 font-bold`}
+            >
+              <X className="size-4" />
+              رجّعه للطابور
+            </button>
+          ))}
+
         {canManage && (
           <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor={`role-${user.uid}`}>
@@ -108,12 +139,10 @@ export function UserRow({
               id={`role-${user.uid}`}
               value={user.role}
               disabled={pending || isSelf}
-              onChange={(e) =>
-                run(() => setUserRole(user.uid, e.target.value as Role))
-              }
+              onChange={(e) => run(() => setUserRole(user.uid, e.target.value))}
               className={`${control} font-semibold`}
             >
-              {(Object.keys(roleLabels) as Role[]).map((role) => (
+              {Object.keys(roleLabels).map((role) => (
                 <option key={role} value={role}>
                   {roleLabels[role]}
                 </option>

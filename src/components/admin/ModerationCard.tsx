@@ -12,7 +12,7 @@ import {
 } from "@/server/actions/moderation";
 import { formatPriceExact } from "@/lib/price";
 import { placeLabel } from "@/lib/geo";
-import { kPaperwork, kPropertyTypes, kTransactionTypes } from "@/lib/enums";
+import { kPaperwork } from "@/lib/enums";
 import type { Listing } from "@/types/listing";
 
 /** Reasons that cover almost every rejection, so the common case is one tap. */
@@ -26,9 +26,17 @@ const kQuickReasons = [
 
 export function ModerationCard({
   listing,
+  labels,
   children,
 }: {
   listing: Listing;
+  /**
+   * Slug → label for deals and categories.
+   *
+   * Passed in rather than imported: categories are admin-editable, so the
+   * mapping is a Firestore read, and this is a client component.
+   */
+  labels: { deals: Record<string, string>; types: Record<string, string> };
   /**
    * Extra controls rendered inside the card's own <li>.
    *
@@ -107,8 +115,8 @@ export function ModerationCard({
               : formatPriceExact(listing.price)}
           </p>
           <p className="text-muted mt-1 text-xs">
-            {kTransactionTypes[listing.transactionType]} ·{" "}
-            {kPropertyTypes[listing.propertyType]} ·{" "}
+            {labels.deals[listing.transactionType] ?? listing.transactionType} ·{" "}
+            {labels.types[listing.propertyType] ?? listing.propertyType} ·{" "}
             {placeLabel(listing.wilayaSlug, listing.communeSlug)}
           </p>
           <p className="text-dim mt-1 text-xs">

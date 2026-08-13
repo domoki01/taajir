@@ -11,10 +11,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, Plus } from "lucide-react";
 import { isCurrent, kNavItems, kPublishHref } from "@/lib/nav";
-import { kSiteName } from "@/lib/constants";
+import { useBranding } from "@/components/branding/BrandingProvider";
 
 export function Header() {
   const pathname = usePathname();
+  const { siteName } = useBranding();
 
   return (
     <header className="bg-surface/90 border-border sticky top-0 z-40 hidden border-b backdrop-blur md:block">
@@ -24,7 +25,7 @@ export function Header() {
             <Building2 className="size-5" strokeWidth={2.4} />
           </span>
           <span className="text-lg font-extrabold tracking-tight">
-            {kSiteName}
+            {siteName}
           </span>
         </Link>
 

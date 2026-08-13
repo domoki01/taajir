@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requirePermission } from "@/server/auth";
 import { listAudit } from "@/server/users";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatFullDateTime } from "@/lib/datetime";
@@ -34,6 +35,8 @@ const targetLabels: Record<string, string> = {
 };
 
 export default async function AuditPage() {
+  await requirePermission("audit.view", "/admin/journal");
+
   const entries = await listAudit(200);
 
   return (

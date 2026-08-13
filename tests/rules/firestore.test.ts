@@ -171,6 +171,30 @@ beforeEach(async () => {
       updatedAt: 1,
       updatedBy: "admin-uid",
     });
+    await setDoc(doc(db, "settings/branding"), {
+      siteName: "تأجير",
+      tagline: "عقارات الجزائر",
+      colors: { primary: "#1e293b" },
+      logoUrl: null,
+      updatedAt: 1,
+      updatedBy: "admin-uid",
+    });
+    await setDoc(doc(db, "settings/roles"), {
+      roles: {
+        moderator: {
+          label: "مشرف",
+          permissions: ["listings.moderate"],
+          builtin: true,
+        },
+      },
+      updatedAt: 1,
+      updatedBy: "admin-uid",
+    });
+    await setDoc(doc(db, "settings/access"), {
+      requireApproval: false,
+      updatedAt: 1,
+      updatedBy: "admin-uid",
+    });
     await setDoc(doc(db, "settings/launch"), {
       state: "prelaunch",
       launchAt: 9_999_999_999_999,
@@ -595,6 +619,42 @@ describe("site settings", () => {
       updateDoc(doc(admin(), "settings/filter"), { hiddenPropertyTypes: [] }),
     );
     await assertFails(deleteDoc(doc(admin(), "settings/filter")));
+  });
+
+  it("keeps branding public — the whole site is painted from it", async () => {
+    await assertSucceeds(getDoc(doc(anon(), "settings/branding")));
+  });
+
+  it("refuses every client write to branding, admins included", async () => {
+    const branding = { siteName: "مخترق", tagline: "x", colors: {} };
+    await assertFails(setDoc(doc(anon(), "settings/branding"), branding));
+    await assertFails(setDoc(doc(admin(), "settings/branding"), branding));
+  });
+
+  // Roles decide what everyone else may do, and the approval flag decides who
+  // may post. Neither says anything a visitor needs, so neither is readable.
+  it("hides roles and access from clients, and lets staff read them", async () => {
+    await assertFails(getDoc(doc(anon(), "settings/roles")));
+    await assertFails(getDoc(doc(authed(kOther), "settings/roles")));
+    await assertFails(getDoc(doc(anon(), "settings/access")));
+    await assertSucceeds(getDoc(doc(admin(), "settings/roles")));
+    await assertSucceeds(getDoc(doc(admin(), "settings/access")));
+  });
+
+  it("refuses every client write to roles — that is the whole point", async () => {
+    // A client that could write this document could grant itself every
+    // permission on the site in one call.
+    const roles = {
+      roles: {
+        user: { label: "مستعمل", permissions: ["roles.manage"], builtin: true },
+      },
+    };
+    await assertFails(setDoc(doc(anon(), "settings/roles"), roles));
+    await assertFails(setDoc(doc(authed(kOther), "settings/roles"), roles));
+    await assertFails(setDoc(doc(admin(), "settings/roles"), roles));
+    await assertFails(
+      updateDoc(doc(admin(), "settings/access"), { requireApproval: false }),
+    );
   });
 });
 

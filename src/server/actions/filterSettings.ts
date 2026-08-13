@@ -1,122 +1,299 @@
 "use server";
 
-// ── FILTER SETTINGS ──────────────────────────────────────────────────────────
-// Which options the site's search filter offers, and in what order.
+// ── CATEGORIES AND FILTER ────────────────────────────────────────────────────
+// Which options the site's filter offers, in what order, and under what names.
 //
-// Site configuration rather than content, so it is `admin` only — a moderator
-// reviews ads, they do not reshape the front page. Every slug is checked
-// against the enums before it is written: the screen only ever sends known
-// values, but the action is what makes that true.
+// Site configuration rather than content, so it sits behind `taxonomy.edit`.
+// Every slug is checked against the resolved taxonomy before it is written: the
+// screen only ever sends known values, but the action is what makes that true.
 
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/firebase/admin";
-import { requireUser } from "@/server/auth";
-import { kFilterSettingsPath } from "@/server/filterSettings";
+import { actorWith, kForbidden } from "@/server/auth";
 import {
-  kPropertyTypes,
-  kTransactionFilterLabels,
-  type PropertyType,
-  type TransactionType,
-} from "@/lib/enums";
+  getTaxonomy,
+  kFilterSettingsPath,
+  kSlugPattern,
+} from "@/server/filterSettings";
+import { kPropertyTypes, kTransactionFilterLabels } from "@/lib/enums";
+import type { CustomPropertyType } from "@/types/filterSettings";
 
 export type FilterSettingsResult = { ok: true } | { ok: false; error: string };
 
-export type FilterSettingsInput = {
-  transactionTypeOrder: string[];
-  hiddenTransactionTypes: string[];
-  propertyTypeOrder: string[];
-  hiddenPropertyTypes: string[];
+export type FilterRow = {
+  slug: string;
+  label: string;
+  hidden: boolean;
 };
 
-/** Keep only known slugs, and only once each. */
-function clean<T extends string>(
-  input: string[],
-  labels: Record<T, string>,
-): T[] {
-  const known = new Set(Object.keys(labels));
-  return [...new Set(input)].filter((s): s is T => known.has(s));
+export type FilterSettingsInput = {
+  transactionTypes: FilterRow[];
+  propertyTypes: FilterRow[];
+};
+
+const kLabel = { min: 2, max: 40 };
+
+/** Split rows into order, hidden set and renamed labels, keeping only known slugs. */
+function split(
+  rows: FilterRow[],
+  known: Set<string>,
+  base: Record<string, string>,
+) {
+  const order: string[] = [];
+  const hidden: string[] = [];
+  const labels: Record<string, string> = {};
+
+  for (const row of rows) {
+    if (!known.has(row.slug) || order.includes(row.slug)) continue;
+    order.push(row.slug);
+    if (row.hidden) hidden.push(row.slug);
+
+    const label = row.label.trim();
+    // Only stored when it differs from the code default. Storing every label
+    // would freeze the wording: a copy fix shipped in `enums.ts` would be
+    // overridden by a settings document written before it.
+    if (label && label !== base[row.slug]) labels[row.slug] = label;
+  }
+
+  return { order, hidden, labels };
+}
+
+function badLabel(rows: FilterRow[]): string | null {
+  for (const row of rows) {
+    const label = row.label.trim();
+    if (label.length < kLabel.min || label.length > kLabel.max) {
+      return `التسمية «${label}» لازم بين ${kLabel.min} و${kLabel.max} حرف`;
+    }
+  }
+  return null;
 }
 
 export async function saveFilterSettings(
   input: FilterSettingsInput,
 ): Promise<FilterSettingsResult> {
-  const user = await requireUser("/admin/filtre");
-  if (user.role !== "admin") {
-    return { ok: false, error: "هذا من صلاحيات المشرف العام وحده" };
-  }
+  const user = await actorWith("taxonomy.edit");
+  if (!user) return { ok: false, error: kForbidden };
 
-  const hiddenTransactionTypes = clean<TransactionType>(
-    input.hiddenTransactionTypes,
-    kTransactionFilterLabels,
-  );
-  const hiddenPropertyTypes = clean<PropertyType>(
-    input.hiddenPropertyTypes,
-    kPropertyTypes,
-  );
+  const taxonomy = await getTaxonomy();
+  const deals = new Set(Object.keys(taxonomy.transactionFilterLabels));
+  const types = new Set(Object.keys(taxonomy.propertyTypes));
+
+  const bad = badLabel(input.transactionTypes) ?? badLabel(input.propertyTypes);
+  if (bad) return { ok: false, error: bad };
+
+  const t = split(input.transactionTypes, deals, kTransactionFilterLabels);
+  const p = split(input.propertyTypes, types, taxonomy.propertyTypes);
 
   // An empty dropdown is a broken page, not a configuration. Refuse rather than
   // let someone lock the filter into a state they cannot see to undo.
-  if (
-    hiddenTransactionTypes.length >=
-    Object.keys(kTransactionFilterLabels).length
-  ) {
+  if (t.hidden.length >= deals.size) {
     return { ok: false, error: "لازم تخلّي نوع عملية واحد على الأقل ظاهر" };
   }
-  if (hiddenPropertyTypes.length >= Object.keys(kPropertyTypes).length) {
+  if (p.hidden.length >= types.size) {
     return { ok: false, error: "لازم تخلّي نوع عقار واحد على الأقل ظاهر" };
   }
 
-  await adminDb()
-    .doc(kFilterSettingsPath)
-    .set(
-      {
-        transactionTypeOrder: clean<TransactionType>(
-          input.transactionTypeOrder,
-          kTransactionFilterLabels,
-        ),
-        hiddenTransactionTypes,
-        propertyTypeOrder: clean<PropertyType>(
-          input.propertyTypeOrder,
-          kPropertyTypes,
-        ),
-        hiddenPropertyTypes,
-        updatedAt: Date.now(),
-        updatedBy: user.uid,
-      },
-      { merge: false },
-    );
+  // Custom rows are rewritten from the posted labels so a rename lands on the
+  // definition rather than piling a label override on top of it.
+  const settings = await adminDb().doc(kFilterSettingsPath).get();
+  const existingCustom = (settings.data()?.customPropertyTypes ??
+    []) as CustomPropertyType[];
+  const renamed = new Map(
+    input.propertyTypes.map((r) => [r.slug, r.label.trim()]),
+  );
+  const customPropertyTypes = existingCustom
+    .filter((c) => types.has(c.slug))
+    .map((c) => ({ slug: c.slug, label: renamed.get(c.slug) || c.label }));
 
-  await adminDb()
-    .collection("adminAudit")
-    .add({
-      actorUid: user.uid,
-      action: "filter-settings",
-      targetType: "settings",
-      targetId: "filter",
-      note: `مخفي: ${hiddenTransactionTypes.length + hiddenPropertyTypes.length}`,
-      at: Date.now(),
-    })
-    .catch(() => {});
+  // A custom slug is not a built-in, so its label is its definition, not an
+  // override — drop it from the override map or it would be stored twice.
+  for (const slug of taxonomy.customSlugs) delete p.labels[slug];
 
-  // The home page is the only cached route that renders the filter — the browse
-  // and search routes are dynamic and pick this up on their next request.
-  revalidatePath("/");
-  revalidatePath("/admin/filtre");
+  await adminDb().doc(kFilterSettingsPath).set(
+    {
+      transactionTypeOrder: t.order,
+      hiddenTransactionTypes: t.hidden,
+      transactionLabels: t.labels,
+      propertyTypeOrder: p.order,
+      hiddenPropertyTypes: p.hidden,
+      propertyLabels: p.labels,
+      customPropertyTypes,
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+    },
+    { merge: false },
+  );
+
+  await audit(
+    user.uid,
+    "filter-settings",
+    `مخفي: ${t.hidden.length + p.hidden.length}`,
+  );
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Add a category.
+ *
+ * The slug is permanent from this moment on: it goes into `/vente/{slug}/alger`
+ * and into every listing document filed under it. Renaming is the label; there
+ * is no rename for the slug, only a delete of an unused one.
+ */
+export async function addPropertyType(
+  slug: string,
+  label: string,
+): Promise<FilterSettingsResult> {
+  const user = await actorWith("taxonomy.edit");
+  if (!user) return { ok: false, error: kForbidden };
+
+  const clean = slug.trim().toLowerCase();
+  if (!kSlugPattern.test(clean)) {
+    return {
+      ok: false,
+      error: "المعرّف: حروف لاتينية صغيرة وأرقام وشرطات، من 3 حروف",
+    };
+  }
+  if (clean in kPropertyTypes) {
+    return { ok: false, error: "المعرّف محجوز لفئة أساسية" };
+  }
+
+  const name = label.trim();
+  if (name.length < kLabel.min || name.length > kLabel.max) {
+    return {
+      ok: false,
+      error: `التسمية لازم بين ${kLabel.min} و${kLabel.max} حرف`,
+    };
+  }
+
+  const taxonomy = await getTaxonomy();
+  if (clean in taxonomy.propertyTypes) {
+    return { ok: false, error: "الفئة موجودة من قبل" };
+  }
+
+  const ref = adminDb().doc(kFilterSettingsPath);
+  const snap = await ref.get();
+  const existing = (snap.data()?.customPropertyTypes ??
+    []) as CustomPropertyType[];
+
+  await ref.set(
+    {
+      customPropertyTypes: [...existing, { slug: clean, label: name }],
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+    },
+    { merge: true },
+  );
+
+  await audit(user.uid, "filter.type-add", clean);
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Remove a category the admin added — but only while nothing is filed under it.
+ *
+ * A listing whose `propertyType` no longer resolves has no label, drops out of
+ * the filter and keeps a URL that now 404s. Counting first is one aggregation
+ * query; the alternative is discovering the problem from a seller whose paid ad
+ * stopped working.
+ */
+export async function deletePropertyType(
+  slug: string,
+): Promise<FilterSettingsResult> {
+  const user = await actorWith("taxonomy.edit");
+  if (!user) return { ok: false, error: kForbidden };
+
+  if (slug in kPropertyTypes) {
+    return { ok: false, error: "الفئات الأساسية تتخبّى برك، ما تتمسحش" };
+  }
+
+  const taxonomy = await getTaxonomy();
+  if (!taxonomy.customSlugs.includes(slug)) return { ok: true };
+
+  let used: number;
+  try {
+    const snap = await adminDb()
+      .collection("listings")
+      .where("propertyType", "==", slug)
+      .count()
+      .get();
+    used = snap.data().count;
+  } catch (error) {
+    console.error("[filter] usage count failed:", error);
+    return { ok: false, error: "ما قدرناش نعدّو الإعلانات، عاود من بعد" };
+  }
+
+  if (used > 0) {
+    return {
+      ok: false,
+      error: `فيه ${used} إعلان في هذي الفئة — خبّيها بدل ما تمسحها`,
+    };
+  }
+
+  const ref = adminDb().doc(kFilterSettingsPath);
+  const snap = await ref.get();
+  const existing = (snap.data()?.customPropertyTypes ??
+    []) as CustomPropertyType[];
+
+  await ref.set(
+    {
+      customPropertyTypes: existing.filter((c) => c.slug !== slug),
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+    },
+    { merge: true },
+  );
+
+  await audit(user.uid, "filter.type-delete", slug);
+  refresh();
   return { ok: true };
 }
 
 /** Back to the code defaults: every option visible, in its original order. */
 export async function resetFilterSettings(): Promise<FilterSettingsResult> {
-  const user = await requireUser("/admin/filtre");
-  if (user.role !== "admin") {
-    return { ok: false, error: "هذا من صلاحيات المشرف العام وحده" };
+  const user = await actorWith("taxonomy.edit");
+  if (!user) return { ok: false, error: kForbidden };
+
+  const taxonomy = await getTaxonomy();
+  if (taxonomy.customSlugs.length > 0) {
+    // Reset is "undo my presentation changes", not "delete my categories". The
+    // second one has its own button, per category, with a usage check behind it.
+    return {
+      ok: false,
+      error: "امسح الفئات المخصّصة الأوّل، من بعد رجّع الافتراضي",
+    };
   }
 
   // Deleted rather than blanked: absent is exactly what "never configured"
   // means, and the reader already falls back to the enums for it.
   await adminDb().doc(kFilterSettingsPath).delete();
 
+  refresh();
+  return { ok: true };
+}
+
+async function audit(actorUid: string, action: string, note: string) {
+  await adminDb()
+    .collection("adminAudit")
+    .add({
+      actorUid,
+      action,
+      targetType: "settings",
+      targetId: "filter",
+      note,
+      at: Date.now(),
+    })
+    .catch(() => {});
+}
+
+/**
+ * The home page is the only cached route that renders the filter — the browse
+ * and search routes are dynamic and pick this up on their next request. The
+ * sitemap is regenerated because a new category adds routes to it.
+ */
+function refresh() {
   revalidatePath("/");
   revalidatePath("/admin/filtre");
-  return { ok: true };
+  revalidatePath("/sitemap.xml");
 }

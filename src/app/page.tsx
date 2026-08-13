@@ -9,7 +9,7 @@ import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { listActivePromos } from "@/server/promos";
 import { PrelaunchLanding } from "@/components/launch/PrelaunchLanding";
 import { getLaunchStatus } from "@/server/launch";
-import { getUser } from "@/server/auth";
+import { getUser, isStaff } from "@/server/auth";
 import { StaffHoldBanner } from "@/components/launch/StaffHoldBanner";
 
 // Placeholder taxonomy — replaced by lib/enums.ts once the listing schema lands.
@@ -36,12 +36,12 @@ export default async function HomePage() {
     getUser(),
   ]);
 
-  const isStaff = user?.role === "admin" || user?.role === "moderator";
+  const staff = isStaff(user);
 
   // Held: the funnel replaces the site. Staff see the real thing behind a
   // banner, because reviewing what is queued means opening the pages that hold
   // it.
-  if (launch.state === "prelaunch" && !isStaff) {
+  if (launch.state === "prelaunch" && !staff) {
     return (
       <PrelaunchLanding launchAt={launch.launchAt} signedIn={user !== null} />
     );

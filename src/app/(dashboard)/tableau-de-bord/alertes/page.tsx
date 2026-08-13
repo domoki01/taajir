@@ -8,6 +8,7 @@ import { countMyDevices, listMySavedSearches } from "@/server/savedSearches";
 import { formatFullDateTime } from "@/lib/datetime";
 import { searchHref } from "@/lib/searchHref";
 import { kMaxSavedSearches } from "@/lib/constants";
+import { getVisibleFilterOptions } from "@/server/filterSettings";
 
 export const metadata: Metadata = {
   title: "تنبيهاتي",
@@ -16,9 +17,10 @@ export const metadata: Metadata = {
 
 export default async function AlertsPage() {
   const user = await requireUser("/tableau-de-bord/alertes");
-  const [searches, devices] = await Promise.all([
+  const [searches, devices, filterOptions] = await Promise.all([
     listMySavedSearches(user.uid),
     countMyDevices(user.uid),
+    getVisibleFilterOptions(),
   ]);
 
   // Dates are formatted here, in Africa/Algiers, and handed down as strings —
@@ -47,6 +49,8 @@ export default async function AlertsPage() {
         alerts={alerts}
         deviceCount={devices}
         max={kMaxSavedSearches}
+        transactionOptions={filterOptions.transactionTypes}
+        propertyOptions={filterOptions.propertyTypes}
       />
     </div>
   );
