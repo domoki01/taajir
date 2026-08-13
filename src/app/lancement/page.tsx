@@ -6,17 +6,24 @@ import { Container } from "@/components/layout/Container";
 import { Countdown } from "@/components/launch/Countdown";
 import { getLaunchStatus } from "@/server/launch";
 import { getUser } from "@/server/auth";
-import { kSiteName } from "@/lib/constants";
+import { getBranding } from "@/server/branding";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "قريباً",
-  description: `${kSiteName} — منصة العقارات في الجزائر. سجّل إعلانك ولا طلبك قبل الانطلاق.`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { siteName } = await getBranding();
+  return {
+    title: "قريباً",
+    description: `${siteName} — منصة العقارات في الجزائر. سجّل إعلانك ولا طلبك قبل الانطلاق.`,
+  };
+}
 
 export default async function LaunchPage() {
-  const [status, user] = await Promise.all([getLaunchStatus(), getUser()]);
+  const [status, user, { siteName }] = await Promise.all([
+    getLaunchStatus(),
+    getUser(),
+    getBranding(),
+  ]);
 
   // Nothing to wait for once the doors are open. Someone who bookmarked this
   // page, or who left the tab sitting here overnight, lands on the real site.
@@ -29,7 +36,7 @@ export default async function LaunchPage() {
           <span className="bg-primary mx-auto grid size-14 place-items-center rounded-[18px] text-white">
             <Building2 className="size-7" strokeWidth={2.4} />
           </span>
-          <h1 className="mt-5 text-3xl font-black">{kSiteName}</h1>
+          <h1 className="mt-5 text-3xl font-black">{siteName}</h1>
 
           {user ? (
             <p

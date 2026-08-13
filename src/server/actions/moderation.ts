@@ -9,7 +9,12 @@
 import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
-import { requireAdmin, requireUser } from "@/server/auth";
+import {
+  actorWith,
+  hasPermission,
+  kForbidden,
+  requireUser,
+} from "@/server/auth";
 import { priceBucket, toDinars } from "@/lib/price";
 import { notifyMatchingSearches } from "@/server/push";
 import type { Listing } from "@/types/listing";
@@ -35,7 +40,9 @@ function revalidateListing(
 // ── ADMIN ────────────────────────────────────────────────────────────────────
 
 export async function approveListing(id: string): Promise<ActionResult> {
-  const admin = await requireAdmin();
+  const admin = await actorWith("listings.moderate");
+  if (!admin) return { ok: false, error: kForbidden };
+
   const ref = adminDb().collection("listings").doc(id);
 
   const snap = await ref.get();
@@ -71,7 +78,8 @@ export async function rejectListing(
   id: string,
   reason: string,
 ): Promise<ActionResult> {
-  const admin = await requireAdmin();
+  const admin = await actorWith("listings.moderate");
+  if (!admin) return { ok: false, error: kForbidden };
 
   const trimmed = reason.trim();
   if (trimmed.length < 5) {
@@ -103,7 +111,9 @@ export async function setFeatured(
   id: string,
   featured: boolean,
 ): Promise<ActionResult> {
-  const admin = await requireAdmin();
+  const admin = await actorWith("listings.moderate");
+  if (!admin) return { ok: false, error: kForbidden };
+
   const ref = adminDb().collection("listings").doc(id);
   const snap = await ref.get();
   if (!snap.exists) return { ok: false, error: "الإعلان ما كاينش" };
@@ -169,7 +179,7 @@ export async function editListing(
   const listing = snap.data() as Listing;
 
   const isOwner = listing.ownerUid === user.uid;
-  const isStaff = user.role === "admin" || user.role === "moderator";
+  const isStaff = hasPermission(user, "listings.moderate");
   if (!isOwner && !isStaff) return { ok: false, error: "ماشي إعلانك" };
 
   const title = input.title.trim();
@@ -232,7 +242,7 @@ export async function deleteListing(id: string): Promise<ActionResult> {
   const listing = snap.data() as Listing;
 
   const isOwner = listing.ownerUid === user.uid;
-  const isStaff = user.role === "admin" || user.role === "moderator";
+  const isStaff = hasPermission(user, "listings.moderate");
   if (!isOwner && !isStaff) return { ok: false, error: "ماشي إعلانك" };
   if (listing.status === "archived") return { ok: true };
 
@@ -257,7 +267,10 @@ export async function markListingClosed(id: string): Promise<ActionResult> {
   const snap = await ref.get();
   if (!snap.exists) return { ok: false, error: "الإعلان ما كاينش" };
   const listing = snap.data() as Listing;
-  if (listing.ownerUid !== user.uid && user.role !== "admin") {
+  if (
+    listing.ownerUid !== user.uid &&
+    !hasPermission(user, "listings.moderate")
+  ) {
     return { ok: false, error: "ماشي إعلانك" };
   }
 

@@ -5,7 +5,8 @@ import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/server/auth";
 import { formatPrice } from "@/lib/price";
 import { placeLabel } from "@/lib/geo";
-import { kListingStatuses, kPropertyTypes } from "@/lib/enums";
+import { kListingStatuses } from "@/lib/enums";
+import { getTaxonomy, labelOf } from "@/server/filterSettings";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ListingRowActions } from "@/components/listing/ListingRowActions";
 import type { Listing } from "@/types/listing";
@@ -58,6 +59,7 @@ export default async function MyListingsPage({
 }) {
   const user = await requireUser("/tableau-de-bord/annonces");
   const listings = await myListings(user.uid);
+  const taxonomy = await getTaxonomy();
   const sp = await searchParams;
   const justPosted = sp.nouveau === "1";
   const justEdited = sp.modifie === "1";
@@ -107,7 +109,7 @@ export default async function MyListingsPage({
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold">{listing.title}</p>
                   <p className="text-muted mt-1 text-xs">
-                    {kPropertyTypes[listing.propertyType]} ·{" "}
+                    {labelOf(taxonomy.propertyTypes, listing.propertyType)} ·{" "}
                     {placeLabel(listing.wilayaSlug, listing.communeSlug)}
                   </p>
                 </div>

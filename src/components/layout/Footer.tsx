@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { kSiteName } from "@/lib/constants";
+import { getBranding } from "@/server/branding";
 
 const links = [
   { href: "/demandes", label: "طلبات العقار" },
@@ -15,7 +15,9 @@ const links = [
   { href: "/inscription", label: "حساب جديد" },
 ];
 
-export function Footer() {
+export async function Footer() {
+  const { siteName } = await getBranding();
+
   return (
     <footer className="border-border bg-surface mt-auto border-t">
       <div className="mx-auto max-w-6xl px-4 py-10">
@@ -32,7 +34,7 @@ export function Footer() {
         </nav>
 
         <p className="text-dim mt-6 text-xs leading-relaxed">
-          {kSiteName} منصة لنشر الإعلانات العقارية، وليست طرفاً في أي معاملة بين
+          {siteName} منصة لنشر الإعلانات العقارية، وليست طرفاً في أي معاملة بين
           المعلن والزبون. تحقّق دائماً من العقار والوثائق قبل دفع أي مبلغ.
         </p>
       </div>

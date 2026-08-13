@@ -2,17 +2,41 @@
 
 // ── ACCOUNT ADMINISTRATION ───────────────────────────────────────────────────
 // Roles, bans and quotas. All of these decide what somebody is allowed to do,
-// so they need requireSuperAdmin rather than requireAdmin — a moderator able to
-// edit roles is a moderator able to become an admin.
+// so they sit behind `users.manage` — and handing out the super-admin role, or
+// taking it away, needs `roles.manage` on top.
 
 import { revalidatePath } from "next/cache";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { requireSuperAdmin } from "@/server/auth";
+import { actorWith, hasPermission, kForbidden } from "@/server/auth";
+import { getRoles } from "@/server/permissions";
+import { kSuperAdminRole } from "@/lib/permissions";
+import { approveEveryone, kAccessSettingsPath } from "@/server/access";
 
 export type UserResult = { ok: true } | { ok: false; error: string };
 
-const kRoles = ["user", "agency", "moderator", "admin"] as const;
-export type Role = (typeof kRoles)[number];
+/** Any role id the roles document knows about. Validated per call, not here. */
+export type Role = string;
+
+/**
+ * How many accounts still hold the super-admin role.
+ *
+ * Read from the `users` mirror rather than by walking every auth account: the
+ * claim is the authority, but `setUserRole` writes both, and listing 100k users
+ * to answer one question is not a trade worth making.
+ */
+async function superAdminCount(): Promise<number | null> {
+  try {
+    const snap = await adminDb()
+      .collection("users")
+      .where("role", "==", kSuperAdminRole)
+      .count()
+      .get();
+    return snap.data().count;
+  } catch (error) {
+    console.error("[users] super-admin count failed:", error);
+    return null;
+  }
+}
 
 async function audit(
   actorUid: string,
@@ -48,17 +72,52 @@ export async function setUserRole(
   uid: string,
   role: Role,
 ): Promise<UserResult> {
-  const admin = await requireSuperAdmin();
+  const admin = await actorWith("users.manage");
+  if (!admin) return { ok: false, error: kForbidden };
 
-  if (!kRoles.includes(role)) return { ok: false, error: "دور ماشي معروف" };
+  const roles = await getRoles();
+  if (!roles[role]) return { ok: false, error: "دور ماشي معروف" };
   if (uid === admin.uid) {
     // Removing your own admin rights cannot be undone from this screen — the
     // only way back is the CLI script and a service-account key.
     return { ok: false, error: "ما تقدرش تبدّل دورك أنت بنفسك" };
   }
 
+  // The super-admin role carries every permission there is, including the one
+  // that edits permissions. Granting or revoking it is therefore a roles
+  // decision, not an accounts one — otherwise `users.manage` quietly contains
+  // `roles.manage` by way of "promote a friend, ask them to promote you".
+  const existing = await adminAuth()
+    .getUser(uid)
+    .catch(() => null);
+  const current = existing?.customClaims?.role as string | undefined;
+  const touchesSuperAdmin =
+    role === kSuperAdminRole || current === kSuperAdminRole;
+  if (touchesSuperAdmin && !hasPermission(admin, "roles.manage")) {
+    return { ok: false, error: "دور المشرف العام يحتاج صلاحية الأدوار" };
+  }
+
+  // Guard: the site must keep at least one super-admin. Demoting the last one
+  // leaves nobody able to edit roles, and the only way back is a service-account
+  // key on a laptop.
+  if (current === kSuperAdminRole && role !== kSuperAdminRole) {
+    const remaining = await superAdminCount();
+    if (remaining === null) {
+      return { ok: false, error: "ما قدرناش نتأكّدو، عاود من بعد" };
+    }
+    if (remaining <= 1) {
+      return { ok: false, error: "لازم يبقى مشرف عام واحد على الأقل" };
+    }
+  }
+
   try {
-    await adminAuth().setCustomUserClaims(uid, { role });
+    // setCustomUserClaims replaces the whole claim object, so `banned` has to be
+    // carried over — dropping it would silently unban an account by changing
+    // its role.
+    await adminAuth().setCustomUserClaims(uid, {
+      role,
+      banned: existing?.customClaims?.banned === true,
+    });
     await adminAuth().revokeRefreshTokens(uid);
   } catch (error) {
     console.error("[users] claim update failed:", error);
@@ -80,7 +139,8 @@ export async function setUserBanned(
   isBanned: boolean,
   reason = "",
 ): Promise<UserResult> {
-  const admin = await requireSuperAdmin();
+  const admin = await actorWith("users.manage");
+  if (!admin) return { ok: false, error: kForbidden };
   if (uid === admin.uid) {
     return { ok: false, error: "ما تقدرش توقّف حسابك أنت بنفسك" };
   }
@@ -137,7 +197,8 @@ export async function setUserQuota(
   listingQuota: number,
   featuredQuota: number,
 ): Promise<UserResult> {
-  const admin = await requireSuperAdmin();
+  const admin = await actorWith("users.manage");
+  if (!admin) return { ok: false, error: kForbidden };
 
   const listing = Math.round(listingQuota);
   const featured = Math.round(featuredQuota);
@@ -158,5 +219,71 @@ export async function setUserQuota(
 
   await audit(admin.uid, "user.quota", uid, `${listing}/${featured}`);
   refresh();
+  return { ok: true };
+}
+
+// ── REGISTRATION APPROVAL ────────────────────────────────────────────────────
+
+/** Let one waiting account publish, or put it back in the queue. */
+export async function setUserApproved(
+  uid: string,
+  approved: boolean,
+): Promise<UserResult> {
+  const admin = await actorWith("users.approve");
+  if (!admin) return { ok: false, error: kForbidden };
+
+  await adminDb()
+    .collection("users")
+    .doc(uid)
+    .set({ approved, updatedAt: Date.now() }, { merge: true });
+
+  await audit(
+    admin.uid,
+    approved ? "user.approve" : "user.unapprove",
+    uid,
+    null,
+  );
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Switch registration approval on or off.
+ *
+ * Switching it *on* approves every account that already exists, in the same
+ * action. Without that, one click would stop every current member of the
+ * platform from posting — people who were approved by the fact that the site
+ * was open when they joined. The feature filters who arrives next; it does not
+ * revoke what is already there.
+ */
+export async function setRequireApproval(on: boolean): Promise<UserResult> {
+  const admin = await actorWith("users.approve");
+  if (!admin) return { ok: false, error: kForbidden };
+
+  let note = on ? "on" : "off";
+  if (on) {
+    try {
+      const touched = await approveEveryone();
+      note = `on · ${touched} حساب موجود تأكّد`;
+    } catch (error) {
+      console.error("[access] back-fill failed:", error);
+      // Refuse rather than switch on regardless: a half-applied back-fill is
+      // exactly the state this guard exists to prevent.
+      return {
+        ok: false,
+        error: "ما نجحناش نأكّدو الحسابات الموجودة — ما بدّلناش والو",
+      };
+    }
+  }
+
+  await adminDb()
+    .doc(kAccessSettingsPath)
+    .set(
+      { requireApproval: on, updatedAt: Date.now(), updatedBy: admin.uid },
+      { merge: false },
+    );
+
+  await audit(admin.uid, "access.approval", "settings/access", note);
+  revalidatePath("/admin/utilisateurs");
   return { ok: true };
 }

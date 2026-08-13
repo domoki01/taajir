@@ -7,7 +7,14 @@
 
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/firebase/admin";
-import { getUser, requireUser } from "@/server/auth";
+import {
+  actorWith,
+  getUser,
+  hasPermission,
+  kForbidden,
+  requireUser,
+} from "@/server/auth";
+import { getAccessSettings, kNeedsApproval } from "@/server/access";
 import type { Listing } from "@/types/listing";
 
 export type CommentResult =
@@ -50,6 +57,11 @@ export async function addComment(
   const profile = userSnap.data() ?? {};
   if (profile.isBanned) return { ok: false, error: "حسابك موقّف" };
 
+  const { requireApproval } = await getAccessSettings();
+  if (requireApproval && profile.approved === false) {
+    return { ok: false, error: kNeedsApproval };
+  }
+
   const now = Date.now();
   await listingRef.collection("comments").add({
     listingId,
@@ -85,8 +97,8 @@ export async function deleteComment(
   if (!snap.exists) return { ok: true };
 
   const comment = snap.data()!;
-  const isStaff = user.role === "admin" || user.role === "moderator";
-  if (comment.authorUid !== user.uid && !isStaff) {
+  const mayModerate = hasPermission(user, "comments.moderate");
+  if (comment.authorUid !== user.uid && !mayModerate) {
     return { ok: false, error: "ماشي تعليقك" };
   }
 
@@ -108,10 +120,8 @@ export async function hideComment(
   commentId: string,
   reason: string,
 ): Promise<CommentResult> {
-  const user = await requireUser();
-  if (user.role !== "admin" && user.role !== "moderator") {
-    return { ok: false, error: "ماشي من صلاحياتك" };
-  }
+  const user = await actorWith("comments.moderate");
+  if (!user) return { ok: false, error: kForbidden };
 
   const db = adminDb();
   await db
@@ -132,10 +142,8 @@ export async function showComment(
   listingId: string,
   commentId: string,
 ): Promise<CommentResult> {
-  const user = await requireUser();
-  if (user.role !== "admin" && user.role !== "moderator") {
-    return { ok: false, error: "ماشي من صلاحياتك" };
-  }
+  const user = await actorWith("comments.moderate");
+  if (!user) return { ok: false, error: kForbidden };
 
   const db = adminDb();
   await db

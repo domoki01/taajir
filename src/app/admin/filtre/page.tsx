@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SlidersHorizontal } from "lucide-react";
 import { FilterEditor } from "@/components/admin/FilterEditor";
 import { getAllFilterOptions } from "@/server/filterSettings";
-import { requireUser } from "@/server/auth";
+import { requirePermission } from "@/server/auth";
 
 export const metadata: Metadata = {
   title: "الفلتر",
@@ -12,22 +12,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminFilterPage() {
-  // The layout already keeps moderators out of nothing — it admits them. This
-  // page is site configuration rather than moderation, so it is admin-only, and
-  // the Server Action behind the save button checks again independently.
-  const user = await requireUser("/admin/filtre");
+  // The layout admits anyone holding any permission. Reshaping the site's
+  // categories is its own power, so this page checks for that one — and the
+  // Server Action behind the save button checks again independently.
+  await requirePermission("taxonomy.edit", "/admin/filtre");
   const options = await getAllFilterOptions();
-
-  if (user.role !== "admin") {
-    return (
-      <div className="rounded-card border-border bg-surface border p-6">
-        <h1 className="text-xl font-extrabold">الفلتر</h1>
-        <p className="text-muted mt-2 text-sm">
-          تعديل فلتر الموقع من صلاحيات المشرف العام وحده.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div>

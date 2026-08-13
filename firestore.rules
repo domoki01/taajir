@@ -195,13 +195,26 @@ service cloud.firestore {
     }
 
     // ── SITE SETTINGS ────────────────────────────────────────────────────────
-    // Which options the search filter offers, and in what order. Public config,
-    // not secrets — but writing it reshapes the front page for every visitor,
-    // so it goes through a Server Action that checks the admin role and
-    // validates every slug against the enums.
+    // The categories the filter offers, the site's name and palette, the launch
+    // switch, the roles table and the registration-approval flag.
+    //
+    // Nothing here is written by a client, ever. Every one of these documents
+    // decides what somebody else is allowed to do or see — a role's permissions
+    // most obviously — so they go through Server Actions on the Admin SDK, which
+    // check the caller's permission and validate every field before writing.
+    // Denying the whole collection is one line and cannot be got wrong; a
+    // per-field whitelist is a rule that has to be right every time it changes.
+    //
+    // `filter`, `branding` and `launch` stay publicly readable: the front page
+    // renders all three, they are config rather than secrets, and a future
+    // client-side filter would need them. `roles` and `access` are not — they
+    // describe the site's internal structure to no one who needs it.
 
     match /settings/{docId} {
-      allow read: if true;
+      allow read: if docId == 'filter'
+                  || docId == 'branding'
+                  || docId == 'launch'
+                  || isAdmin();
       allow create, update, delete: if false;
     }
 

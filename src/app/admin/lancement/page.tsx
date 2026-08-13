@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Rocket } from "lucide-react";
 import { LaunchPanel } from "@/components/admin/LaunchPanel";
-import { requireUser } from "@/server/auth";
+import { requirePermission } from "@/server/auth";
 import { getLaunchStatus } from "@/server/launch";
 import { channelReady, outboxSummary } from "@/server/launchNotify";
 import { adminDb } from "@/lib/firebase/admin";
@@ -72,18 +72,7 @@ export default async function AdminLaunchPage() {
   // The layout already admits moderators. Deciding whether the public can see
   // the site at all is a different power from reviewing an ad, so this page
   // checks again — and so does every action behind it.
-  const user = await requireUser("/admin/lancement");
-
-  if (user.role !== "admin") {
-    return (
-      <div className="rounded-card border-border bg-surface border p-6">
-        <h1 className="text-xl font-extrabold">الإطلاق</h1>
-        <p className="text-muted mt-2 text-sm">
-          التحكّم في إطلاق الموقع من صلاحيات المشرف العام وحده.
-        </p>
-      </div>
-    );
-  }
+  await requirePermission("launch.control", "/admin/lancement");
 
   const [status, c, outbox] = await Promise.all([
     getLaunchStatus(),

@@ -11,12 +11,12 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/server/auth";
 import { isPrelaunch } from "@/server/launch";
+import { getAccessSettings, kNeedsApproval } from "@/server/access";
+import { getTaxonomy } from "@/server/filterSettings";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { areaBucket, priceBucket, toDinars } from "@/lib/price";
 import {
   defaultPriceUnit,
-  kPropertyTypes,
-  kTransactionTypes,
   type PropertyType,
   type TransactionType,
 } from "@/lib/enums";
@@ -73,10 +73,13 @@ export async function createListing(
   const user = await requireUser("/publier");
 
   // ── validate ───────────────────────────────────────────────────────────────
-  if (!(input.transactionType in kTransactionTypes)) {
+  // Checked against the resolved taxonomy, not the enums: an admin can add
+  // categories, and a form that offers one the action rejects is a dead button.
+  const taxonomy = await getTaxonomy();
+  if (!(input.transactionType in taxonomy.transactionTypes)) {
     return { ok: false, error: "نوع المعاملة ماشي صحيح" };
   }
-  if (!(input.propertyType in kPropertyTypes)) {
+  if (!(input.propertyType in taxonomy.propertyTypes)) {
     return { ok: false, error: "نوع العقار ماشي صحيح" };
   }
   const wilaya = getWilaya(input.wilayaSlug);
@@ -136,6 +139,8 @@ export async function createListing(
   // Quota check and listing creation share one transaction. Reading the count
   // and then writing separately would let two parallel submissions both pass a
   // check that only one of them should.
+  const { requireApproval } = await getAccessSettings();
+
   try {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(userRef);
@@ -143,6 +148,9 @@ export async function createListing(
 
       const data = snap.data()!;
       if (data.isBanned) throw new Error("BANNED");
+      if (requireApproval && data.approved === false) {
+        throw new Error("UNAPPROVED");
+      }
 
       const used = (data.activeListingCount as number) ?? 0;
       const quota = (data.listingQuota as number) ?? 0;
@@ -223,6 +231,7 @@ export async function createListing(
       };
     }
     if (code === "BANNED") return { ok: false, error: "حسابك موقّف" };
+    if (code === "UNAPPROVED") return { ok: false, error: kNeedsApproval };
     console.error("[listings] create failed:", error);
     return { ok: false, error: "ما نجحش النشر. عاود من جديد." };
   }

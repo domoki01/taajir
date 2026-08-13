@@ -5,7 +5,6 @@ import type {
   ListingStatus,
   Paperwork,
   PriceUnit,
-  PropertyType,
   RoomCode,
   SaleForm,
   TransactionType,
@@ -33,7 +32,12 @@ export type Listing = {
   // ── classification ─────────────────────────────────────────────────────────
   transactionType: TransactionType;
   saleForm: SaleForm | null;
-  propertyType: PropertyType;
+  /**
+   * Category slug. A plain string, not the enum union: an admin can add
+   * categories from /admin/filtre, so the set is decided at runtime and the
+   * union would be a compile-time promise the data does not keep.
+   */
+  propertyType: string;
   housingProgram: HousingProgram | null;
 
   // ── money — always whole Algerian dinars, see lib/price.ts ─────────────────

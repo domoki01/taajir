@@ -10,6 +10,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { kFreeListingQuota } from "@/lib/constants";
+import { can, type Permission } from "@/lib/permissions";
+import { permissionsForRole } from "@/server/permissions";
+import { getAccessSettings } from "@/server/access";
 
 /** Firebase Hosting's CDN forwards exactly one cookie name, so use it. */
 export const kSessionCookie = "__session";
@@ -19,8 +22,18 @@ export type SessionUser = {
   uid: string;
   email: string | null;
   name: string;
-  role: "user" | "agency" | "moderator" | "admin";
+  /**
+   * The role id from the token claim. A plain string rather than a union since
+   * an admin can define new roles — the code branches on permissions, not on
+   * this.
+   */
+  role: string;
+  /** Resolved from the role at read time. The only thing worth branching on. */
+  permissions: Permission[];
 };
+
+/** What an action tells a caller who may not do the thing they asked for. */
+export const kForbidden = "ماشي من صلاحياتك";
 
 /** The signed-in user, or null. Never throws — callers decide what to do. */
 export async function getUser(): Promise<SessionUser | null> {
@@ -32,15 +45,30 @@ export async function getUser(): Promise<SessionUser | null> {
     // checkRevoked: a banned or signed-out user must lose access on the next
     // request, not whenever their token happens to expire.
     const claims = await adminAuth().verifySessionCookie(session, true);
+    const role = (claims.role as string) ?? "user";
     return {
       uid: claims.uid,
       email: claims.email ?? null,
       name: (claims.name as string) ?? "",
-      role: (claims.role as SessionUser["role"]) ?? "user",
+      role,
+      permissions: await permissionsForRole(role),
     };
   } catch {
     return null;
   }
+}
+
+/** Does this session hold that permission? The one check every guard is built on. */
+export function hasPermission(
+  user: SessionUser | null | undefined,
+  permission: Permission,
+): boolean {
+  return !!user && can(user.permissions, permission);
+}
+
+/** Staff for the purposes of "can see behind the curtain" — holds anything at all. */
+export function isStaff(user: SessionUser | null | undefined): boolean {
+  return !!user && user.permissions.length > 0;
 }
 
 export async function requireUser(
@@ -51,23 +79,48 @@ export async function requireUser(
   return user;
 }
 
-export async function requireAdmin(): Promise<SessionUser> {
+/**
+ * The door to /admin. Anyone holding at least one permission may come in.
+ *
+ * What they can *do* once inside is decided per screen by requirePermission,
+ * and again, independently, by the Server Action behind every button. Reaching
+ * a page is never treated as proof of anything.
+ */
+export async function requireStaff(): Promise<SessionUser> {
   const user = await requireUser("/admin");
-  if (user.role !== "admin" && user.role !== "moderator") redirect("/");
+  if (!isStaff(user)) redirect("/");
   return user;
 }
 
 /**
- * Stricter than requireAdmin, which also lets moderators through.
+ * Guard one admin screen.
  *
- * Anything that hands out access itself needs this: a moderator who could edit
- * roles could make themselves an admin, which makes the distinction between the
- * two roles decorative. Same for quotas and bans — they decide who may do what.
+ * Someone holding other permissions is sent back to /admin, where the nav shows
+ * what they *can* reach; someone holding none never belonged here and goes
+ * home. Bouncing everyone to /admin would loop the second group forever.
  */
-export async function requireSuperAdmin(): Promise<SessionUser> {
-  const user = await requireUser("/admin");
-  if (user.role !== "admin") redirect("/admin");
+export async function requirePermission(
+  permission: Permission,
+  next = "/admin",
+): Promise<SessionUser> {
+  const user = await requireUser(next);
+  if (!can(user.permissions, permission))
+    redirect(isStaff(user) ? "/admin" : "/");
   return user;
+}
+
+/**
+ * The Server Action counterpart: null when the caller may not do this.
+ *
+ * Actions return an error rather than redirecting. Every export of a
+ * "use server" module is a public endpoint that anything can POST to, and the
+ * honest answer to an unauthorised POST is "no", not a navigation.
+ */
+export async function actorWith(
+  permission: Permission,
+): Promise<SessionUser | null> {
+  const user = await getUser();
+  return hasPermission(user, permission) ? user : null;
 }
 
 /**
@@ -88,8 +141,15 @@ export async function ensureUserDoc(
     return;
   }
 
+  // A new account is approved on the spot unless the admin has switched
+  // registration approval on. Written at creation rather than read live so the
+  // publish gate is one field lookup, and so flipping the switch later never
+  // retroactively mutes anybody — approveEveryone() handles the existing ones.
+  const { requireApproval } = await getAccessSettings();
+
   await ref.set({
     uid,
+    approved: !requireApproval,
     email: data.email,
     displayName: data.name || "مستخدم",
     photoURL: data.photoURL,

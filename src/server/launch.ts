@@ -2,7 +2,7 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { adminDb } from "@/lib/firebase/admin";
-import { getUser } from "@/server/auth";
+import { getUser, isStaff } from "@/server/auth";
 import type { LaunchSettings, LaunchStatus } from "@/types/launch";
 
 export const kLaunchSettingsPath = "settings/launch";
@@ -62,8 +62,7 @@ export async function isPrelaunch(): Promise<boolean> {
 export async function guardPrelaunch(): Promise<void> {
   if (!(await isPrelaunch())) return;
 
-  const user = await getUser();
-  if (user?.role === "admin" || user?.role === "moderator") return;
+  if (isStaff(await getUser())) return;
 
   redirect("/");
 }

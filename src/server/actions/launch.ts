@@ -7,7 +7,7 @@
 
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/firebase/admin";
-import { requireUser } from "@/server/auth";
+import { actorWith, kForbidden } from "@/server/auth";
 import { kLaunchSettingsPath, getLaunchStatus } from "@/server/launch";
 import { runLaunch } from "@/server/launchRun";
 import type { LaunchState } from "@/types/launch";
@@ -16,9 +16,7 @@ export type LaunchResult =
   { ok: true; summary?: string } | { ok: false; error: string };
 
 async function requireSiteAdmin() {
-  const user = await requireUser("/admin/lancement");
-  if (user.role !== "admin") return null;
-  return user;
+  return actorWith("launch.control");
 }
 
 /** Everything the switch touches, so one refresh shows the truth. */
@@ -118,10 +116,8 @@ export async function approveForLaunch(
   id: string,
   approved: boolean,
 ): Promise<LaunchResult> {
-  const user = await requireUser("/admin/moderation");
-  if (user.role !== "admin" && user.role !== "moderator") {
-    return { ok: false, error: "ماشي من صلاحياتك" };
-  }
+  const user = await actorWith("listings.moderate");
+  if (!user) return { ok: false, error: kForbidden };
 
   await adminDb()
     .collection("listings")

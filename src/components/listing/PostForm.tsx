@@ -17,8 +17,6 @@ import {
   kTransactionTypes,
   kLandPropertyTypes,
   options,
-  type PropertyType,
-  type TransactionType,
 } from "@/lib/enums";
 import { getCommunes, kWilayas } from "@/lib/geo";
 
@@ -54,12 +52,40 @@ async function shrink(
   return { blob, w, h };
 }
 
-export function PostForm() {
+export function PostForm({
+  transactionOptions,
+  propertyOptions,
+}: {
+  /**
+   * The site's live categories. Passed in from the page rather than read from
+   * the enums here: an admin can rename them and add new ones, and this is a
+   * client component. Falls back to the code lists when a caller has not been
+   * updated, so the form always renders something publishable.
+   */
+  transactionOptions?: Array<{ value: string; label: string }>;
+  propertyOptions?: Array<{ value: string; label: string }>;
+}) {
   const router = useRouter();
 
-  const [transactionType, setTransactionType] =
-    useState<TransactionType>("vente");
-  const [propertyType, setPropertyType] = useState<PropertyType>("appartement");
+  const deals = transactionOptions?.length
+    ? transactionOptions
+    : options(kTransactionTypes).map((o) => ({
+        value: String(o.value),
+        label: o.label,
+      }));
+  const propertyChoices = propertyOptions?.length
+    ? propertyOptions
+    : options(kPropertyTypes).map((o) => ({
+        value: String(o.value),
+        label: o.label,
+      }));
+
+  const [transactionType, setTransactionType] = useState<string>(
+    deals[0]?.value ?? "vente",
+  );
+  const [propertyType, setPropertyType] = useState<string>(
+    propertyChoices[0]?.value ?? "appartement",
+  );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priceAmount, setPriceAmount] = useState("");
@@ -197,12 +223,10 @@ export function PostForm() {
             <select
               id="tx"
               value={transactionType}
-              onChange={(e) =>
-                setTransactionType(e.target.value as TransactionType)
-              }
+              onChange={(e) => setTransactionType(e.target.value)}
               className={field}
             >
-              {options(kTransactionTypes).map((o) => (
+              {deals.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
@@ -216,10 +240,10 @@ export function PostForm() {
             <select
               id="pt"
               value={propertyType}
-              onChange={(e) => setPropertyType(e.target.value as PropertyType)}
+              onChange={(e) => setPropertyType(e.target.value)}
               className={field}
             >
-              {options(kPropertyTypes).map((o) => (
+              {propertyChoices.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>

@@ -14,13 +14,8 @@ import { Comments } from "@/components/listing/Comments";
 import { formatDateTime } from "@/lib/datetime";
 import { getCommune, getWilaya, placeLabel } from "@/lib/geo";
 import { formatPrice, formatPriceExact } from "@/lib/price";
-import {
-  kAmenities,
-  kConditions,
-  kPaperwork,
-  kPropertyTypes,
-  kTransactionTypes,
-} from "@/lib/enums";
+import { kAmenities, kConditions, kPaperwork } from "@/lib/enums";
+import { getTaxonomy, labelOf } from "@/server/filterSettings";
 import { kSiteUrl } from "@/lib/constants";
 
 export const revalidate = 300;
@@ -68,6 +63,7 @@ export default async function ListingPage({ params }: { params: Params }) {
     permanentRedirect(`/annonce/${listing.id}/${listing.slug}`);
   }
 
+  const taxonomy = await getTaxonomy();
   const wilaya = getWilaya(listing.wilayaSlug);
   // No getUser() here on purpose: reading cookies would opt this route out of
   // ISR, and this is the page search engines actually land on. Comments render
@@ -149,7 +145,7 @@ export default async function ListingPage({ params }: { params: Params }) {
               href={`/${listing.transactionType}/${listing.propertyType}/${listing.wilayaSlug}`}
               className="hover:text-primary"
             >
-              {kPropertyTypes[listing.propertyType]}{" "}
+              {labelOf(taxonomy.propertyTypes, listing.propertyType)}{" "}
               {wilaya ? `في ${wilaya.nameAr}` : ""}
             </Link>
           </nav>
@@ -249,8 +245,8 @@ export default async function ListingPage({ params }: { params: Params }) {
                     : formatPriceExact(listing.price)}
                 </p>
                 <p className="text-dim mt-1 text-xs font-semibold">
-                  {kTransactionTypes[listing.transactionType]} ·{" "}
-                  {kPropertyTypes[listing.propertyType]}
+                  {labelOf(taxonomy.transactionTypes, listing.transactionType)}{" "}
+                  · {labelOf(taxonomy.propertyTypes, listing.propertyType)}
                 </p>
                 <ContactButtons listing={listing} className="mt-4 flex-col" />
               </div>

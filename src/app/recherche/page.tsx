@@ -7,14 +7,8 @@ import { ListingGrid } from "@/components/listing/ListingGrid";
 import { listListings } from "@/server/listings";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { SearchFilters } from "@/components/search/SearchFilters";
-import { getVisibleFilterOptions } from "@/server/filterSettings";
+import { getTaxonomy, getVisibleFilterOptions } from "@/server/filterSettings";
 import { guardPrelaunch } from "@/server/launch";
-import {
-  kPropertyTypes,
-  kTransactionTypes,
-  type PropertyType,
-  type TransactionType,
-} from "@/lib/enums";
 
 // Arbitrary query-string combinations must never enter the index — they would
 // bury the canonical browse pages under thousands of near-duplicates.
@@ -38,8 +32,8 @@ export default async function SearchPage({
   const sp = await searchParams;
 
   const q = one(sp.q);
-  const transactionType = one(sp.transaction) as TransactionType | undefined;
-  const propertyType = one(sp.type) as PropertyType | undefined;
+  const transactionType = one(sp.transaction);
+  const propertyType = one(sp.type);
   const wilayaSlug = one(sp.wilaya);
   const communeSlug = one(sp.commune);
 
@@ -51,15 +45,17 @@ export default async function SearchPage({
 
   await guardPrelaunch();
 
+  const taxonomy = await getTaxonomy();
+
   const [listings, filterOptions] = await Promise.all([
     listListings({
       q,
       transactionType:
-        transactionType && transactionType in kTransactionTypes
+        transactionType && transactionType in taxonomy.transactionTypes
           ? transactionType
           : undefined,
       propertyType:
-        propertyType && propertyType in kPropertyTypes
+        propertyType && propertyType in taxonomy.propertyTypes
           ? propertyType
           : undefined,
       wilayaSlug: wilaya?.slug,

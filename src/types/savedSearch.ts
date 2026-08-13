@@ -1,4 +1,4 @@
-import type { PropertyType, TransactionType } from "@/lib/enums";
+import type { TransactionType } from "@/lib/enums";
 
 /**
  * A standing search a user asked to be told about.
@@ -13,7 +13,7 @@ export type SavedSearch = {
   ownerUid: string;
 
   transactionType: TransactionType | null;
-  propertyType: PropertyType | null;
+  propertyType: string | null;
   wilayaSlug: string;
   communeSlug: string | null;
 

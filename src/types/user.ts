@@ -14,7 +14,15 @@ export type AppUser = {
   photoURL: string | null;
   phone: string | null;
 
-  role: "user" | "agency" | "moderator" | "admin";
+  /** Role id. A plain string: an admin can define new roles from /admin/roles. */
+  role: string;
+
+  /**
+   * May this account publish? Only meaningful while registration approval is
+   * on; absent on documents written before the feature existed, which is read
+   * as approved rather than blocked.
+   */
+  approved?: boolean;
   agencyId: string | null;
   wilayaCode: number | null;
 

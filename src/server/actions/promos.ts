@@ -7,7 +7,7 @@
 
 import { revalidatePath } from "next/cache";
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
-import { requireAdmin } from "@/server/auth";
+import { actorWith, kForbidden } from "@/server/auth";
 import type { Promo } from "@/types/promo";
 
 export type PromoResult = { ok: true } | { ok: false; error: string };
@@ -67,7 +67,8 @@ export type CreatePromoInput = {
 export async function createPromo(
   input: CreatePromoInput,
 ): Promise<PromoResult> {
-  const admin = await requireAdmin();
+  const admin = await actorWith("promos.manage");
+  if (!admin) return { ok: false, error: kForbidden };
 
   const title = input.title.trim();
   if (title.length < 2) {
@@ -129,7 +130,8 @@ export async function updatePromo(
   id: string,
   input: { title: string; linkUrl: string },
 ): Promise<PromoResult> {
-  const admin = await requireAdmin();
+  const admin = await actorWith("promos.manage");
+  if (!admin) return { ok: false, error: kForbidden };
 
   const title = input.title.trim();
   if (title.length < 2) return { ok: false, error: "اكتب وصف قصير للإشهار" };
@@ -157,7 +159,8 @@ export async function setPromoActive(
   id: string,
   isActive: boolean,
 ): Promise<PromoResult> {
-  const admin = await requireAdmin();
+  const admin = await actorWith("promos.manage");
+  if (!admin) return { ok: false, error: kForbidden };
   await adminDb()
     .collection("promos")
     .doc(id)
@@ -179,7 +182,9 @@ export async function movePromo(
   id: string,
   direction: "up" | "down",
 ): Promise<PromoResult> {
-  await requireAdmin();
+  if (!(await actorWith("promos.manage"))) {
+    return { ok: false, error: kForbidden };
+  }
   const db = adminDb();
 
   // Outside the transaction body: Firestore retries that callback on
@@ -213,7 +218,8 @@ export async function movePromo(
 }
 
 export async function deletePromo(id: string): Promise<PromoResult> {
-  const admin = await requireAdmin();
+  const admin = await actorWith("promos.manage");
+  if (!admin) return { ok: false, error: kForbidden };
   const db = adminDb();
   const ref = db.collection("promos").doc(id);
   const snap = await ref.get();

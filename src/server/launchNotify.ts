@@ -1,7 +1,8 @@
 import "server-only";
 
 import { adminDb, adminMessaging } from "@/lib/firebase/admin";
-import { kSiteName, kSiteUrl } from "@/lib/constants";
+import { kSiteUrl } from "@/lib/constants";
+import { getBranding } from "@/server/branding";
 import type { OutboxChannel } from "@/types/launch";
 
 // ── LAUNCH NOTIFICATIONS ─────────────────────────────────────────────────────
@@ -123,6 +124,8 @@ async function sendPushes(uids: string[]): Promise<number> {
   }
   if (tokens.length === 0) return 0;
 
+  const { siteName } = await getBranding();
+
   let ok = 0;
   // sendEachForMulticast caps at 500 tokens per call.
   for (let i = 0; i < tokens.length; i += 500) {
@@ -130,7 +133,7 @@ async function sendPushes(uids: string[]): Promise<number> {
       const res = await adminMessaging().sendEachForMulticast({
         tokens: tokens.slice(i, i + 500),
         notification: {
-          title: `${kSiteName} راه مباشر!`,
+          title: `${siteName} راه مباشر!`,
           body: "الموقع تفتح — إعلانك ولا طلبك راه منشور، وتقدر تشوف كلش توّا.",
         },
         data: { url: kSiteUrl },

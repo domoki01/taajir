@@ -6,16 +6,12 @@ import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { SearchFilters } from "@/components/search/SearchFilters";
-import { getVisibleFilterOptions } from "@/server/filterSettings";
+import { getTaxonomy, getVisibleFilterOptions } from "@/server/filterSettings";
 import { listListings } from "@/server/listings";
 import { guardPrelaunch } from "@/server/launch";
 import { getWilaya, kWilayas } from "@/lib/geo";
-import {
-  kPropertyTypes,
-  kTransactionTypes,
-  type PropertyType,
-  type TransactionType,
-} from "@/lib/enums";
+import type { TransactionType } from "@/lib/enums";
+import type { Taxonomy } from "@/server/filterSettings";
 import { kSiteName } from "@/lib/constants";
 
 // The indexable browse pages — the ones a search for "كراء شقة باب الزوار" is
@@ -36,16 +32,19 @@ type Params = { transaction: string; rest?: string[] };
  * is not a real segment. Without this the route would happily generate an
  * unbounded number of empty pages for a crawler to walk.
  */
-function parse(params: Params) {
+function parse(params: Params, taxonomy: Taxonomy) {
   const transaction = params.transaction as TransactionType;
-  if (!(transaction in kTransactionTypes)) return null;
+  if (!(transaction in taxonomy.transactionTypes)) return null;
 
   const [typeSlug, wilayaSlug, communeSlug] = params.rest ?? [];
 
-  let propertyType: PropertyType | undefined;
+  // Checked against the resolved taxonomy, not the enum, so a category an admin
+  // added routes exactly like a built-in one. Anything else and the filter would
+  // offer a link the router refuses.
+  let propertyType: string | undefined;
   if (typeSlug) {
-    if (!(typeSlug in kPropertyTypes)) return null;
-    propertyType = typeSlug as PropertyType;
+    if (!(typeSlug in taxonomy.propertyTypes)) return null;
+    propertyType = typeSlug;
   }
 
   const wilaya = wilayaSlug ? getWilaya(wilayaSlug) : undefined;
@@ -54,11 +53,14 @@ function parse(params: Params) {
   return { transaction, propertyType, wilaya, communeSlug };
 }
 
-function heading(parsed: NonNullable<ReturnType<typeof parse>>) {
+function heading(
+  parsed: NonNullable<ReturnType<typeof parse>>,
+  taxonomy: Taxonomy,
+) {
   const what = parsed.propertyType
-    ? kPropertyTypes[parsed.propertyType]
+    ? taxonomy.propertyTypes[parsed.propertyType]
     : "عقارات";
-  const deal = kTransactionTypes[parsed.transaction];
+  const deal = taxonomy.transactionTypes[parsed.transaction];
   const where = parsed.wilaya ? ` في ${parsed.wilaya.nameAr}` : " في الجزائر";
   return `${what} لل${deal}${where}`;
 }
@@ -68,10 +70,11 @@ export async function generateMetadata({
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  const parsed = parse(await params);
+  const taxonomy = await getTaxonomy();
+  const parsed = parse(await params, taxonomy);
   if (!parsed) return {};
 
-  const title = heading(parsed);
+  const title = heading(parsed, taxonomy);
   const path = [
     parsed.transaction,
     ...(parsed.propertyType ? [parsed.propertyType] : []),
@@ -90,7 +93,8 @@ export default async function BrowsePage({
 }: {
   params: Promise<Params>;
 }) {
-  const parsed = parse(await params);
+  const taxonomy = await getTaxonomy();
+  const parsed = parse(await params, taxonomy);
   await guardPrelaunch();
   if (!parsed) notFound();
 
@@ -104,7 +108,7 @@ export default async function BrowsePage({
     getVisibleFilterOptions(),
   ]);
 
-  const title = heading(parsed);
+  const title = heading(parsed, taxonomy);
 
   return (
     <>
@@ -124,7 +128,7 @@ export default async function BrowsePage({
               href={`/${parsed.transaction}`}
               className="hover:text-primary"
             >
-              {kTransactionTypes[parsed.transaction]}
+              {taxonomy.transactionTypes[parsed.transaction]}
             </Link>
             {parsed.wilaya && (
               <>
@@ -160,7 +164,7 @@ export default async function BrowsePage({
               at all; without them these routes exist but are unreachable. */}
           <section className="mt-12">
             <h2 className="text-base font-extrabold">
-              {kTransactionTypes[parsed.transaction]} حسب الولاية
+              {taxonomy.transactionTypes[parsed.transaction]} حسب الولاية
             </h2>
             <ul className="mt-3 flex flex-wrap gap-2">
               {kWilayas.slice(0, 24).map((w) => (

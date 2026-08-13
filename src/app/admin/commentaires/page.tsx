@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requirePermission } from "@/server/auth";
 import { adminDb } from "@/lib/firebase/admin";
 import { listRecentComments } from "@/server/comments";
 import { CommentRow } from "@/components/admin/CommentRow";
@@ -46,6 +47,8 @@ async function listingTitles(
 }
 
 export default async function CommentsPage() {
+  await requirePermission("comments.moderate", "/admin/commentaires");
+
   const comments = await listRecentComments();
   const titles = await listingTitles((comments ?? []).map((c) => c.listingId));
 

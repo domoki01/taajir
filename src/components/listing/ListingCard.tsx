@@ -1,13 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ImageOff, MapPin } from "lucide-react";
-import { kPropertyTypes } from "@/lib/enums";
+import { getTaxonomy, labelOf } from "@/server/filterSettings";
 import { formatPrice } from "@/lib/price";
 import { placeLabel } from "@/lib/geo";
 import type { ListingSummary } from "@/types/listing";
 
-export function ListingCard({ listing }: { listing: ListingSummary }) {
+// A Server Component so it can read the site's taxonomy: categories are
+// admin-editable, so the label for a slug is a runtime lookup rather than a
+// constant. The read is cached per request, so a grid of twenty cards costs one.
+export async function ListingCard({ listing }: { listing: ListingSummary }) {
   const area = listing.areaBuilt ?? listing.areaLand;
+  const { propertyTypes } = await getTaxonomy();
 
   return (
     <li>
@@ -58,7 +62,7 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
           </p>
 
           <p className="text-dim flex flex-wrap items-center gap-x-3 text-xs font-semibold">
-            <span>{kPropertyTypes[listing.propertyType]}</span>
+            <span>{labelOf(propertyTypes, listing.propertyType)}</span>
             {listing.roomsCode && (
               <span className="ltr-nums">{listing.roomsCode}</span>
             )}
