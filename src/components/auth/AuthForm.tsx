@@ -13,6 +13,7 @@ import {
   type UserCredential,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
+import { PhoneAuth } from "@/components/auth/PhoneAuth";
 
 type Mode = "signin" | "signup";
 
@@ -47,6 +48,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/tableau-de-bord";
+  // The other page must keep the destination, or someone who taps "عندك حساب؟"
+  // mid-funnel signs in and lands on their dashboard instead of the form they
+  // came for.
+  const carry = `?next=${encodeURIComponent(next)}`;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -54,6 +59,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Email and password are folded away rather than removed: they are what the
+  // accounts created before this screen existed still sign in with. A phone
+  // number is what someone arriving today actually has.
+  const [showEmail, setShowEmail] = useState(false);
 
   /** Trade the Firebase ID token for a server session before navigating. */
   async function establishSession(cred: UserCredential) {
@@ -127,59 +136,116 @@ export function AuthForm({ mode }: { mode: Mode }) {
     "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-primary";
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
-      {mode === "signup" && (
-        <div>
-          <label htmlFor="name" className="mb-1.5 block text-sm font-bold">
-            الاسم
-          </label>
-          <input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoComplete="name"
-            className={field}
-            placeholder="اسمك ولا اسم الوكالة"
-          />
-        </div>
+    <div className="space-y-4">
+      {/* ── PHONE ──────────────────────────────────────────────────────────
+          First, and not behind a toggle. Most people here have a phone number
+          and no Gmail they remember the password to. */}
+      <PhoneAuth onDone={establishSession} />
+
+      <div className="flex items-center gap-3">
+        <span className="bg-border h-px flex-1" />
+        <span className="text-dim text-xs font-semibold">ولا</span>
+        <span className="bg-border h-px flex-1" />
+      </div>
+
+      <button
+        type="button"
+        onClick={onGoogle}
+        disabled={busy}
+        className="rounded-input border-border hover:border-primary w-full border bg-white py-3.5 text-sm font-bold transition-colors disabled:opacity-50"
+      >
+        كمّل بحساب Google
+      </button>
+
+      {!showEmail && (
+        <button
+          type="button"
+          onClick={() => setShowEmail(true)}
+          className="text-dim hover:text-primary w-full text-center text-xs font-bold underline"
+        >
+          {mode === "signup" ? "ولا بالإيميل وكلمة السر" : "دخول بالإيميل"}
+        </button>
       )}
 
-      <div>
-        <label htmlFor="email" className="mb-1.5 block text-sm font-bold">
-          الإيميل
-        </label>
-        <input
-          id="email"
-          type="email"
-          required
-          dir="ltr"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          className={`${field} text-start`}
-          placeholder="nom@example.com"
-        />
-      </div>
+      {showEmail && (
+        <form onSubmit={onSubmit} className="space-y-3 pt-1">
+          {mode === "signup" && (
+            <div>
+              <label htmlFor="name" className="mb-1.5 block text-sm font-bold">
+                الاسم
+              </label>
+              <input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                className={field}
+                placeholder="اسمك ولا اسم الوكالة"
+              />
+            </div>
+          )}
 
-      <div>
-        <label htmlFor="password" className="mb-1.5 block text-sm font-bold">
-          كلمة السر
-        </label>
-        <input
-          id="password"
-          type="password"
-          required
-          minLength={6}
-          dir="ltr"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete={mode === "signup" ? "new-password" : "current-password"}
-          className={`${field} text-start`}
-        />
-        {mode === "signup" && (
-          <p className="text-dim mt-1.5 text-xs">6 حروف على الأقل</p>
-        )}
-      </div>
+          <div>
+            <label htmlFor="email" className="mb-1.5 block text-sm font-bold">
+              الإيميل
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              dir="ltr"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              className={`${field} text-start`}
+              placeholder="nom@example.com"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="mb-1.5 block text-sm font-bold"
+            >
+              كلمة السر
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              dir="ltr"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={
+                mode === "signup" ? "new-password" : "current-password"
+              }
+              className={`${field} text-start`}
+            />
+            {mode === "signup" && (
+              <p className="text-dim mt-1.5 text-xs">6 حروف على الأقل</p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-input border-border hover:border-primary w-full border bg-white py-3.5 text-sm font-bold transition-colors disabled:opacity-50"
+          >
+            {busy ? "..." : mode === "signup" ? "أنشئ الحساب" : "دخول"}
+          </button>
+
+          {mode === "signin" && (
+            <button
+              type="button"
+              onClick={onReset}
+              className="text-muted block w-full text-xs font-semibold underline"
+            >
+              نسيت كلمة السر
+            </button>
+          )}
+        </form>
+      )}
 
       {error && (
         <p
@@ -198,53 +264,29 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={busy}
-        className="bg-accent rounded-input w-full py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-      >
-        {busy ? "..." : mode === "signup" ? "أنشئ الحساب" : "دخول"}
-      </button>
-
-      <div className="flex items-center gap-3 py-1">
-        <span className="bg-border h-px flex-1" />
-        <span className="text-dim text-xs font-semibold">ولا</span>
-        <span className="bg-border h-px flex-1" />
-      </div>
-
-      <button
-        type="button"
-        onClick={onGoogle}
-        disabled={busy}
-        className="rounded-input border-border hover:border-primary w-full border bg-white py-3.5 text-sm font-bold transition-colors disabled:opacity-50"
-      >
-        كمّل بحساب Google
-      </button>
-
-      <div className="text-muted pt-2 text-center text-sm">
+      <p className="text-muted pt-1 text-center text-sm">
         {mode === "signup" ? (
           <>
             عندك حساب؟{" "}
-            <Link href="/connexion" className="text-primary font-bold">
+            <Link
+              href={`/connexion${carry}`}
+              className="text-primary font-bold"
+            >
               دخول
             </Link>
           </>
         ) : (
           <>
             ما عندكش حساب؟{" "}
-            <Link href="/inscription" className="text-primary font-bold">
+            <Link
+              href={`/inscription${carry}`}
+              className="text-primary font-bold"
+            >
               أنشئ واحد
             </Link>
-            <button
-              type="button"
-              onClick={onReset}
-              className="text-muted mt-3 block w-full text-xs font-semibold underline"
-            >
-              نسيت كلمة السر
-            </button>
           </>
         )}
-      </div>
-    </form>
+      </p>
+    </div>
   );
 }

@@ -132,12 +132,20 @@ export async function actorWith(
  */
 export async function ensureUserDoc(
   uid: string,
-  data: { email: string | null; name: string; photoURL: string | null },
+  data: {
+    email: string | null;
+    name: string;
+    photoURL: string | null;
+    phone?: string | null;
+  },
 ) {
   const ref = adminDb().collection("users").doc(uid);
   const snap = await ref.get();
   if (snap.exists) {
-    await ref.update({ lastSeenAt: Date.now() });
+    // A returning phone user whose document predates this field gets it filled
+    // in, but a number they later edited in their profile is never overwritten.
+    const fill = data.phone && !snap.data()?.phone ? { phone: data.phone } : {};
+    await ref.update({ lastSeenAt: Date.now(), ...fill });
     return;
   }
 
@@ -153,7 +161,7 @@ export async function ensureUserDoc(
     email: data.email,
     displayName: data.name || "مستخدم",
     photoURL: data.photoURL,
-    phone: null,
+    phone: data.phone ?? null,
     role: "user",
     agencyId: null,
     wilayaCode: null,

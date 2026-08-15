@@ -56,9 +56,20 @@ export const kPublishHref = "/publier";
  * back bar takes its place at the top.
  */
 export function isImmersiveRoute(pathname: string): boolean {
-  return ["/annonce/", "/publier", "/modifier"].some((p) =>
-    pathname.includes(p),
-  );
+  return [
+    "/annonce/",
+    "/publier",
+    "/modifier",
+    // The funnel and the two wizards behind it: one decision per screen, with
+    // the button pinned to the thumb. A nav bar under that is a second row of
+    // targets competing with the only one that matters.
+    "/bienvenue",
+    "/demandes/nouvelle",
+    "/merci",
+    // Sign-in and sign-up sit between a funnel button and the form it leads to.
+    "/connexion",
+    "/inscription",
+  ].some((p) => pathname.includes(p));
 }
 
 export function isCurrent(pathname: string, item: NavItem): boolean {

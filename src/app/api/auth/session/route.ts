@@ -26,6 +26,10 @@ export async function POST(request: Request) {
       email: decoded.email ?? null,
       name: (decoded.name as string) ?? "",
       photoURL: (decoded.picture as string) ?? null,
+      // Present only for accounts created through phone sign-in. It is the one
+      // way to reach those users, and the publish form prefills the contact
+      // field from it rather than asking for a number they just typed.
+      phone: (decoded.phone_number as string) ?? null,
     });
 
     const cookie = await adminAuth().createSessionCookie(idToken, {
