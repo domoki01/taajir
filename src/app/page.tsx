@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Building, Home, LandPlot, MapPin, Search, Store } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -7,7 +8,7 @@ import { SearchFilters } from "@/components/search/SearchFilters";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { listActivePromos } from "@/server/promos";
-import { PrelaunchLanding } from "@/components/launch/PrelaunchLanding";
+import { kFunnelHome } from "@/lib/funnel";
 import { getLaunchStatus } from "@/server/launch";
 import { getUser, isStaff } from "@/server/auth";
 import { StaffHoldBanner } from "@/components/launch/StaffHoldBanner";
@@ -38,14 +39,12 @@ export default async function HomePage() {
 
   const staff = isStaff(user);
 
-  // Held: the funnel replaces the site. Staff see the real thing behind a
-  // banner, because reviewing what is queued means opening the pages that hold
-  // it.
-  if (launch.state === "prelaunch" && !staff) {
-    return (
-      <PrelaunchLanding launchAt={launch.launchAt} signedIn={user !== null} />
-    );
-  }
+  // Held: the funnel replaces the site. A redirect rather than rendering it
+  // inline, so the funnel has one address — which is what lets the bottom nav
+  // and the back bar stand down on it, and what lets an ad link straight to it
+  // after the launch. Staff see the real site behind a banner, because
+  // reviewing what is queued means opening the pages that hold it.
+  if (launch.state === "prelaunch" && !staff) redirect(kFunnelHome);
 
   return (
     <>

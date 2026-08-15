@@ -3,6 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { adminDb } from "@/lib/firebase/admin";
 import { getUser, isStaff } from "@/server/auth";
+import { kFunnelHome } from "@/lib/funnel";
 import type { LaunchSettings, LaunchStatus } from "@/types/launch";
 
 export const kLaunchSettingsPath = "settings/launch";
@@ -64,5 +65,5 @@ export async function guardPrelaunch(): Promise<void> {
 
   if (isStaff(await getUser())) return;
 
-  redirect("/");
+  redirect(kFunnelHome);
 }
