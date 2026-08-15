@@ -40,6 +40,10 @@ export function PhoneAuth({
   const verifier = useRef<RecaptchaVerifier | null>(null);
   const confirmation = useRef<ConfirmationResult | null>(null);
   const credential = useRef<UserCredential | null>(null);
+  // Surfaced under the error message while this route is new. "وقع مشكل" alone
+  // is unactionable from a phone with no console access — this is what turns a
+  // screenshot into a diagnosis instead of another round of guessing.
+  const [debugCode, setDebugCode] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -94,7 +98,10 @@ export function PhoneAuth({
       );
       setStep("code");
     } catch (e) {
-      setError(humanize((e as { code?: string }).code ?? ""));
+      const err = e as { code?: string; message?: string };
+      console.error("[phone-auth] sendCode failed:", err);
+      setError(humanize(err.code ?? ""));
+      setDebugCode(err.code ?? err.message ?? null);
       // A failed attempt burns the widget; the next one needs a fresh instance.
       verifier.current?.clear();
       verifier.current = null;
@@ -119,7 +126,10 @@ export function PhoneAuth({
       }
       setStep("name");
     } catch (e) {
-      setError(humanize((e as { code?: string }).code ?? ""));
+      const err = e as { code?: string; message?: string };
+      console.error("[phone-auth] verifyCode failed:", err);
+      setError(humanize(err.code ?? ""));
+      setDebugCode(err.code ?? err.message ?? null);
     } finally {
       setBusy(false);
     }
@@ -175,7 +185,7 @@ export function PhoneAuth({
             className={`${field} ltr-nums text-start`}
           />
           <p className="text-dim text-xs">{kPhoneHint}</p>
-          {error && <Alert>{error}</Alert>}
+          {error && <Alert code={debugCode}>{error}</Alert>}
           <button
             type="button"
             onClick={sendCode}
@@ -219,7 +229,7 @@ export function PhoneAuth({
             placeholder="123456"
             className={`${field} ltr-nums text-center text-2xl font-black tracking-[0.4em]`}
           />
-          {error && <Alert>{error}</Alert>}
+          {error && <Alert code={debugCode}>{error}</Alert>}
           <button
             type="button"
             onClick={verifyCode}
@@ -246,7 +256,7 @@ export function PhoneAuth({
             className={field}
           />
           <p className="text-dim text-xs">يبان مع إعلاناتك وطلباتك.</p>
-          {error && <Alert>{error}</Alert>}
+          {error && <Alert code={debugCode}>{error}</Alert>}
           <button
             type="button"
             onClick={saveName}
@@ -268,13 +278,27 @@ export function PhoneAuth({
   );
 }
 
-function Alert({ children }: { children: React.ReactNode }) {
+function Alert({
+  children,
+  code,
+}: {
+  children: React.ReactNode;
+  code?: string | null;
+}) {
   return (
-    <p
+    <div
       role="alert"
       className="rounded-input bg-danger/10 text-danger px-4 py-3 text-sm font-semibold"
     >
       {children}
-    </p>
+      {code && (
+        <p
+          dir="ltr"
+          className="text-dim mt-1 text-start text-[11px] font-normal"
+        >
+          {code}
+        </p>
+      )}
+    </div>
   );
 }
