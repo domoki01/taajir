@@ -21,9 +21,14 @@ type Step = "number" | "code" | "name";
  * `ownerName` is stamped onto every ad at publish time — skipping the name step
  * would put "مستخدم" on every listing this route ever creates.
  *
- * The reCAPTCHA is invisible and mounted once. Firebase requires a verifier
- * even in invisible mode, and re-creating it between attempts leaves the old
- * widget attached to a DOM node that no longer exists.
+ * The reCAPTCHA verifier is created once and never cleared until the
+ * component unmounts — including after a failed attempt. Invisible reCAPTCHA
+ * re-solves on every call to `signInWithPhoneNumber`, so the same instance is
+ * meant to be reused across retries; the first version of this component
+ * called `.clear()` on every failure (server errors included, not just
+ * captcha ones), which leaves grecaptcha's own bookkeeping for that DOM node
+ * out of sync with a freshly constructed verifier and the next attempt fails
+ * immediately with "reCAPTCHA has already been rendered in this element".
  */
 export function PhoneAuth({
   onDone,
@@ -100,11 +105,21 @@ export function PhoneAuth({
     } catch (e) {
       const err = e as { code?: string; message?: string };
       console.error("[phone-auth] sendCode failed:", err);
-      setError(humanize(err.code ?? ""));
       setDebugCode(err.code ?? err.message ?? null);
-      // A failed attempt burns the widget; the next one needs a fresh instance.
-      verifier.current?.clear();
-      verifier.current = null;
+
+      // grecaptcha itself throws this — no `.code`, just this exact message —
+      // when a widget is asked to render into a container it already rendered
+      // into. It means the verifier genuinely is stuck, so this is the one
+      // failure that gets a fresh instance; every other failure leaves the
+      // verifier alone (see the component doc comment) because the widget
+      // itself is fine and a retry should just reuse it.
+      if (err.message?.includes("already been rendered")) {
+        verifier.current?.clear();
+        verifier.current = null;
+        setError("عاود اضغط، تصلّح لوحدها.");
+      } else {
+        setError(humanize(err.code ?? ""));
+      }
     } finally {
       setBusy(false);
     }
