@@ -14,6 +14,9 @@ import { formatLocal, kPhoneHint, toE164 } from "@/lib/phone";
 
 type Step = "number" | "code" | "name";
 
+const kStorageMessage =
+  "المتصفّح ما خلّاش الموقع يحفظ الدخول. اخرج من التصفّح الخفي ولا اسمح بحفظ بيانات الموقع، وعاود.";
+
 /**
  * Sign in with an Algerian mobile number.
  *
@@ -78,9 +81,27 @@ export function PhoneAuth({
         return "مشكل في الاتصال بالأنترنت";
       case "auth/captcha-check-failed":
         return "فشل التحقّق. عاود تحميل الصفحة.";
+      case "auth/web-storage-unsupported":
+        return kStorageMessage;
       default:
         return "وقع مشكل. عاود من جديد.";
     }
+  }
+
+  /**
+   * IndexedDB failures arrive as a raw message with no `auth/` code —
+   * "Database is closing", "Database is hidden", "UnknownError". They are
+   * thrown *after* the credential is already verified with the server, so the
+   * sign-in itself worked and only the local write failed. Worth its own
+   * message: nothing about retrying the code will help, but leaving private
+   * browsing will.
+   */
+  function isStorageFailure(err: { code?: string; message?: string }): boolean {
+    const m = err.message ?? "";
+    return (
+      err.code === "auth/web-storage-unsupported" ||
+      /database is (closing|hidden)|indexeddb|unknownerror/i.test(m)
+    );
   }
 
   async function sendCode() {
@@ -117,6 +138,8 @@ export function PhoneAuth({
         verifier.current?.clear();
         verifier.current = null;
         setError("عاود اضغط، تصلّح لوحدها.");
+      } else if (isStorageFailure(err)) {
+        setError(kStorageMessage);
       } else {
         setError(humanize(err.code ?? ""));
       }
@@ -143,8 +166,10 @@ export function PhoneAuth({
     } catch (e) {
       const err = e as { code?: string; message?: string };
       console.error("[phone-auth] verifyCode failed:", err);
-      setError(humanize(err.code ?? ""));
       setDebugCode(err.code ?? err.message ?? null);
+      setError(
+        isStorageFailure(err) ? kStorageMessage : humanize(err.code ?? ""),
+      );
     } finally {
       setBusy(false);
     }
