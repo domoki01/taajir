@@ -6,7 +6,7 @@ import {
   signInWithPhoneNumber,
   updateProfile,
   type ConfirmationResult,
-  type UserCredential,
+  type User,
 } from "firebase/auth";
 import { ArrowRight, Phone } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
@@ -36,7 +36,7 @@ const kStorageMessage =
 export function PhoneAuth({
   onDone,
 }: {
-  onDone: (cred: UserCredential) => Promise<void>;
+  onDone: (user: User) => Promise<void>;
 }) {
   const [step, setStep] = useState<Step>("number");
   const [phone, setPhone] = useState("");
@@ -47,7 +47,7 @@ export function PhoneAuth({
 
   const verifier = useRef<RecaptchaVerifier | null>(null);
   const confirmation = useRef<ConfirmationResult | null>(null);
-  const credential = useRef<UserCredential | null>(null);
+  const signedIn = useRef<User | null>(null);
   // Surfaced under the error message while this route is new. "وقع مشكل" alone
   // is unactionable from a phone with no console access — this is what turns a
   // screenshot into a diagnosis instead of another round of guessing.
@@ -148,25 +148,44 @@ export function PhoneAuth({
     }
   }
 
+  /** Signed in. Ask for a name if we do not have one, otherwise hand over. */
+  async function proceed(user: User) {
+    signedIn.current = user;
+    // Someone who signed up here before already has a name; send them straight
+    // through rather than asking again.
+    if (user.displayName) {
+      await onDone(user);
+      return;
+    }
+    setStep("name");
+  }
+
   async function verifyCode() {
     if (!confirmation.current) return;
     setBusy(true);
     setError(null);
     try {
       const cred = await confirmation.current.confirm(code.trim());
-      credential.current = cred;
-
-      // Someone who signed up here before already has a name; send them
-      // straight through rather than asking again.
-      if (cred.user.displayName) {
-        await onDone(cred);
-        return;
-      }
-      setStep("name");
+      await proceed(cred.user);
     } catch (e) {
       const err = e as { code?: string; message?: string };
       console.error("[phone-auth] verifyCode failed:", err);
       setDebugCode(err.code ?? err.message ?? null);
+
+      // The credential is verified with the server *before* Firebase tries to
+      // persist it, so a storage failure can leave a perfectly good signed-in
+      // user behind. Carry on with it rather than telling someone their correct
+      // code was wrong — the session cookie is what the rest of the site reads,
+      // and getting one only needs the user object we already have.
+      if (isStorageFailure(err) && auth.currentUser) {
+        try {
+          await proceed(auth.currentUser);
+          return;
+        } catch (again) {
+          console.error("[phone-auth] salvage failed:", again);
+        }
+      }
+
       setError(
         isStorageFailure(err) ? kStorageMessage : humanize(err.code ?? ""),
       );
@@ -176,8 +195,8 @@ export function PhoneAuth({
   }
 
   async function saveName() {
-    const cred = credential.current;
-    if (!cred) return;
+    const user = signedIn.current;
+    if (!user) return;
     const trimmed = name.trim();
     if (trimmed.length < 2) {
       setError("اكتب اسمك باش الناس تعرف مع من تتعامل");
@@ -187,10 +206,10 @@ export function PhoneAuth({
     setBusy(true);
     setError(null);
     try {
-      await updateProfile(cred.user, { displayName: trimmed });
+      await updateProfile(user, { displayName: trimmed });
       // Force a token refresh so the session cookie carries the new name.
-      await cred.user.getIdToken(true);
-      await onDone(cred);
+      await user.getIdToken(true);
+      await onDone(user);
     } catch {
       setError("ما نجحش تسجيل الاسم. عاود.");
       setBusy(false);

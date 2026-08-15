@@ -25,20 +25,24 @@ import { firebaseConfig, useEmulators } from "./config";
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 /**
- * Auth with an explicit persistence fallback chain.
+ * Auth persisted to localStorage, with IndexedDB deliberately not first.
  *
- * `getAuth()` leads with IndexedDB and does not recover when the browser hands
- * back a handle it then closes — Android Chrome does exactly that in private
- * mode and under storage pressure. It surfaced as "Database is closing/hidden"
- * thrown from `confirm()` *after* the SMS code had already been verified with
- * the server: the sign-in had succeeded and the only thing that failed was
- * writing it to disk. Listing localStorage and sessionStorage behind IndexedDB
- * means that case now degrades instead of failing.
+ * `getAuth()` leads with IndexedDB, and the fallback list below is only
+ * consulted at *initialisation*, when Firebase asks each store "are you
+ * available?". Brave — and Chrome in private mode, and any browser under
+ * storage pressure — answers yes for IndexedDB and then closes the handle
+ * during the actual write. The failure therefore lands at runtime, long past
+ * the point where the fallback chain could have chosen differently: it
+ * surfaced as "Database is closing/hidden" thrown out of `confirm()` *after*
+ * the SMS code had already been verified with the server. The sign-in had
+ * succeeded; only writing it to disk failed.
  *
- * `inMemoryPersistence` is last and is not a disaster here: the ID token is
+ * localStorage first is the fix, and costs nothing here. Firebase Auth used it
+ * by default for years, it syncs across tabs through storage events the same
+ * way, and this app does not lean on the client handle anyway: the ID token is
  * traded for an httpOnly session cookie by /api/auth/session immediately after
- * sign-in, and every page reads that cookie — the client-side handle only has
- * to survive the few milliseconds between the two.
+ * sign-in, and every page reads that cookie. IndexedDB stays in the list for
+ * the rare browser where localStorage is the one that is blocked.
  */
 function createAuth(): Auth {
   // Client components are evaluated on the server during SSR too, where none of
@@ -48,8 +52,8 @@ function createAuth(): Auth {
   try {
     return initializeAuth(app, {
       persistence: [
-        indexedDBLocalPersistence,
         browserLocalPersistence,
+        indexedDBLocalPersistence,
         browserSessionPersistence,
         inMemoryPersistence,
       ],

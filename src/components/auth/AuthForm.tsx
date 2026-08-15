@@ -10,7 +10,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   updateProfile,
-  type UserCredential,
+  type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { PhoneAuth } from "@/components/auth/PhoneAuth";
@@ -65,8 +65,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [showEmail, setShowEmail] = useState(false);
 
   /** Trade the Firebase ID token for a server session before navigating. */
-  async function establishSession(cred: UserCredential) {
-    const idToken = await cred.user.getIdToken();
+  async function establishSession(user: User) {
+    const idToken = await user.getIdToken();
     const res = await fetch("/api/auth/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -95,7 +95,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         // Force a token refresh so the session cookie carries the name.
         await cred.user.getIdToken(true);
       }
-      await establishSession(cred);
+      await establishSession(cred.user);
     } catch (e) {
       const code = (e as { code?: string }).code ?? "";
       setError(humanize(code) || "وقع مشكل. عاود من جديد.");
@@ -108,9 +108,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
     setBusy(true);
     setError(null);
     try {
-      await establishSession(
-        await signInWithPopup(auth, new GoogleAuthProvider()),
-      );
+      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      await establishSession(cred.user);
     } catch (e) {
       const msg = humanize((e as { code?: string }).code ?? "");
       if (msg) setError(msg);
