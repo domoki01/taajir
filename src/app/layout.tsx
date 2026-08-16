@@ -3,7 +3,9 @@ import { Cairo } from "next/font/google";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { MobileTopBar } from "@/components/layout/MobileTopBar";
 import { BrandingProvider } from "@/components/branding/BrandingProvider";
+import { SideMenuProvider } from "@/components/layout/SideMenu";
 import { brandingStyle, getBranding } from "@/server/branding";
+import { getVisibleFilterOptions } from "@/server/filterSettings";
 import { kSiteUrl } from "@/lib/constants";
 import "./globals.css";
 
@@ -52,7 +54,14 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const branding = await getBranding();
+  const [branding, filters] = await Promise.all([
+    getBranding(),
+    getVisibleFilterOptions(),
+  ]);
+  const deals = filters.transactionTypes.map((t) => ({
+    slug: t.slug,
+    label: t.label,
+  }));
   const palette = brandingStyle(branding);
 
   return (
@@ -86,9 +95,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             only place that covers the dashboard and admin sections too. The
             back bar comes first because it is `sticky top-0` and has to sit
             ahead of the content it sticks above. */}
-          <MobileTopBar />
-          {children}
-          <BottomNav />
+          {/* The menu's own destinations are resolved here, once, from the live
+              taxonomy: a hard-coded category list would offer pages an admin
+              had hidden. The provider also renders the panel itself, so the
+              header's trigger and the phone bar's trigger share one dialog. */}
+          <SideMenuProvider deals={deals}>
+            <MobileTopBar />
+            {children}
+            <BottomNav />
+          </SideMenuProvider>
         </BrandingProvider>
       </body>
     </html>

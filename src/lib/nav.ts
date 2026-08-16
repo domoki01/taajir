@@ -47,6 +47,56 @@ export const kNavItems: NavItem[] = [
 
 export const kPublishHref = "/publier";
 
+// ── THE FULL MAP ─────────────────────────────────────────────────────────────
+// The bottom bar seats four destinations and the header shows the same four.
+// Everything else the site has — the browse routes per deal, the five account
+// screens, and the pages that say who we are and what the rules are — had no
+// entrance at all once the footer came off. This is that entrance: one panel
+// listing every page, grouped the way someone would ask for them.
+//
+// Grouped rather than one flat list on purpose. Fifteen links in a column is a
+// wall; three short groups with headings is a map, and the headings are what
+// tell a first-time visitor what kind of site this is.
+
+export type MenuLink = { href: string; label: string };
+export type MenuSection = { title: string; links: MenuLink[] };
+
+/** Screens behind /tableau-de-bord. Listed for everyone: requireUser() sends a
+ *  signed-out visitor to /connexion?next=… by itself, and resolving the session
+ *  here would pull firebase/auth into every page's bundle to hide five links. */
+export const kAccountLinks: MenuLink[] = [
+  { href: "/tableau-de-bord", label: "لوحتي" },
+  { href: "/tableau-de-bord/publications", label: "منشوراتي" },
+  { href: "/tableau-de-bord/annonces", label: "إعلاناتي" },
+  { href: "/tableau-de-bord/alertes", label: "تنبيهاتي" },
+  { href: "/tableau-de-bord/profil", label: "معلوماتي" },
+];
+
+/** The pages the footer used to carry, and nothing else linked to. */
+export const kInfoLinks: MenuLink[] = [
+  { href: "/a-propos", label: "من نحن" },
+  { href: "/aide", label: "المساعدة" },
+  { href: "/securite", label: "نصائح الأمان" },
+  { href: "/cgu", label: "شروط الاستعمال" },
+  { href: "/confidentialite", label: "سياسة الخصوصية" },
+];
+
+/**
+ * Browse destinations, built from the *live* taxonomy rather than the enums.
+ * Categories are admin-editable and hideable, and a menu that offers one an
+ * admin has hidden is a link to a page they deliberately took down.
+ */
+export function browseLinks(
+  deals: Array<{ slug: string; label: string }>,
+): MenuLink[] {
+  return [
+    { href: "/", label: "الرئيسية" },
+    ...deals.map((d) => ({ href: `/${d.slug}`, label: d.label })),
+    { href: "/recherche", label: "بحث متقدّم" },
+    { href: "/demandes", label: "طلبات العقار" },
+  ];
+}
+
 /**
  * Screens that own the bottom of the phone viewport themselves.
  *

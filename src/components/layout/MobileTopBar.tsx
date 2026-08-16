@@ -15,12 +15,13 @@ import { useRouter, usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { isImmersiveRoute } from "@/lib/nav";
 import { useBranding } from "@/components/branding/BrandingProvider";
+import { SideMenuTrigger } from "@/components/layout/SideMenu";
 
 export function MobileTopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const { siteName } = useBranding();
-  if (!isImmersiveRoute(pathname)) return null;
+  const immersive = isImmersiveRoute(pathname);
 
   function goBack() {
     // A listing opened straight from a WhatsApp link has nothing behind it, and
@@ -37,16 +38,23 @@ export function MobileTopBar() {
     else router.push("/");
   }
 
+  // Two jobs, one 48px bar. On a detail screen it is the way out; everywhere
+  // else it is the way *in* — the phone has no header, so without this the menu
+  // would have nowhere to open from and half the site would stay unreachable.
   return (
     <div className="border-border bg-surface/95 sticky top-0 z-40 flex h-12 items-center gap-1 border-b px-2 backdrop-blur-xl md:hidden">
-      <button
-        type="button"
-        onClick={goBack}
-        aria-label="رجوع"
-        className="text-primary grid size-10 place-items-center rounded-full transition-transform active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
-      >
-        <ChevronRight className="size-6" strokeWidth={2.4} />
-      </button>
+      {immersive ? (
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="رجوع"
+          className="text-primary grid size-10 place-items-center rounded-full transition-transform active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
+        >
+          <ChevronRight className="size-6" strokeWidth={2.4} />
+        </button>
+      ) : (
+        <SideMenuTrigger />
+      )}
       <Link href="/" className="text-sm font-extrabold tracking-tight">
         {siteName}
       </Link>

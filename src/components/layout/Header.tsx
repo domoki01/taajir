@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 import { Building2, Plus } from "lucide-react";
 import { isCurrent, kNavItems, kPublishHref } from "@/lib/nav";
 import { useBranding } from "@/components/branding/BrandingProvider";
+import { SideMenuTrigger } from "@/components/layout/SideMenu";
 
 export function Header() {
   const pathname = usePathname();
@@ -20,6 +21,10 @@ export function Header() {
   return (
     <header className="bg-surface/90 border-border sticky top-0 z-40 hidden border-b backdrop-blur md:block">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+        {/* The four links to the right of the logo are the frequent
+            destinations; this is everything else the site has. */}
+        <SideMenuTrigger className="-ms-2" />
+
         <Link href="/" className="flex items-center gap-2">
           <span className="bg-primary grid size-9 place-items-center rounded-[12px] text-white">
             <Building2 className="size-5" strokeWidth={2.4} />
