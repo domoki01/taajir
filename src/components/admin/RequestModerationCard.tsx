@@ -7,14 +7,8 @@ import { AlertTriangle, Check, MapPin, X } from "lucide-react";
 import { approveRequest, rejectRequest } from "@/server/actions/requests";
 import { getWilaya, placeLabel } from "@/lib/geo";
 import { kRequestIntents } from "@/lib/enums";
-import { kPolicyReasons } from "@/lib/policy";
+import { kPolicyFlags, kPolicyReasons } from "@/lib/policy";
 import type { PropertyRequest } from "@/types/request";
-
-/** Why the automatic check was unsure, in the moderator's words rather than a rule id. */
-const kFlagLabels: Record<string, string> = {
-  offtopic: "يبان ماشي على عقار",
-  spam: "تكرار كثير في النصّ",
-};
 
 /**
  * One demand awaiting a human, with the reason it got here.
@@ -53,7 +47,7 @@ export function RequestModerationCard({
     });
   }
 
-  const flag = request.policyRule ? kFlagLabels[request.policyRule] : null;
+  const flag = request.policyRule ? kPolicyFlags[request.policyRule] : null;
 
   return (
     <li className="rounded-card border-border bg-surface border p-4">

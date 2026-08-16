@@ -193,6 +193,21 @@ export const kPolicyReasons = {
 } as const;
 
 /**
+ * The same rules, in the moderator's words rather than the author's.
+ *
+ * Shown on every queued post: the check has already read it and said what
+ * bothered it, and re-reading a paragraph hunting for the problem is the slow
+ * way to do this a hundred times.
+ */
+export const kPolicyFlags: Record<string, string> = {
+  offtopic: "يبان ماشي على عقار",
+  spam: "تكرار كثير في النصّ",
+  links: "فيه رابط",
+  profanity: "فيه ألفاظ نابية",
+  scam: "إشارة لطرق دفع ممنوعة",
+};
+
+/**
  * Judge one post.
  *
  * Title and description are judged together: splitting them lets a violation

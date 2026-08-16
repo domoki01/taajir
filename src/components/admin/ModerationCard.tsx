@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Check, Star, X } from "lucide-react";
+import { AlertTriangle, Check, Star, X } from "lucide-react";
 import {
   approveListing,
   rejectListing,
@@ -13,6 +13,7 @@ import {
 import { formatPriceExact } from "@/lib/price";
 import { placeLabel } from "@/lib/geo";
 import { kPaperwork } from "@/lib/enums";
+import { kPolicyFlags } from "@/lib/policy";
 import type { Listing } from "@/types/listing";
 
 /** Reasons that cover almost every rejection, so the common case is one tap. */
@@ -127,6 +128,16 @@ export function ModerationCard({
           </p>
         </div>
       </div>
+
+      {/* Why this ad is in the queue at all. A clean ad publishes itself now,
+          so anything sitting here was flagged — saying which rule saves the
+          moderator re-reading the description looking for it. */}
+      {listing.policyRule && kPolicyFlags[listing.policyRule] && (
+        <p className="rounded-input bg-warning/10 text-warning mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold">
+          <AlertTriangle className="size-3.5 shrink-0" />
+          {kPolicyFlags[listing.policyRule]}
+        </p>
+      )}
 
       <p className="text-muted mt-3 line-clamp-3 text-sm leading-relaxed">
         {listing.description}
