@@ -44,15 +44,22 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       // Google's script hosts are reCAPTCHA Enterprise, which phone sign-in
       // requires; apis.google.com is the Google sign-in popup.
-      `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""} https://www.google.com https://www.gstatic.com https://apis.google.com`,
+      // Google's script hosts serve reCAPTCHA Enterprise, which both phone
+      // sign-in and App Check attest with; apis.google.com is the Google
+      // sign-in popup. recaptcha.net is Google's own alternate host, used
+      // where www.google.com is unreachable.
+      `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""} https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://apis.google.com`,
       "style-src 'self' 'unsafe-inline'",
       `img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://lh3.googleusercontent.com https://www.gstatic.com${local}`,
       "font-src 'self' data:",
-      // Firebase Auth, Firestore and Storage, and nothing else — an injected
-      // script cannot post what it reads to its own server.
-      `connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com${local}${dev ? " ws://127.0.0.1:* ws://localhost:*" : ""}`,
+      // Firebase Auth, Firestore, Storage and App Check, and nothing else — an
+      // injected script cannot post what it reads to its own server.
+      // www.google.com belongs here as well as in script-src: reCAPTCHA does
+      // not only load a script, it posts its assessment back, and App Check
+      // cannot mint a token without that round trip.
+      `connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com https://www.recaptcha.net${local}${dev ? " ws://127.0.0.1:* ws://localhost:*" : ""}`,
       // The auth handler and the reCAPTCHA challenge both render in an iframe.
-      "frame-src 'self' https://www.google.com https://newmokit.firebaseapp.com",
+      "frame-src 'self' https://www.google.com https://www.recaptcha.net https://newmokit.firebaseapp.com",
       "worker-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",

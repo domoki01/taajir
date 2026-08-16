@@ -17,12 +17,53 @@ import {
   initializeAuth,
   type Auth,
 } from "firebase/auth";
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+} from "firebase/app-check";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectStorageEmulator, getStorage } from "firebase/storage";
-import { firebaseConfig, useEmulators } from "./config";
+import { firebaseConfig, kAppCheckSiteKey, useEmulators } from "./config";
 
 // Next's fast refresh re-runs modules, so guard against a duplicate app.
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+/**
+ * App Check: proves the request came from this site, not from a script holding
+ * the public config.
+ *
+ * In the browser only, and before anything else touches Auth, Firestore or
+ * Storage — the token has to be attachable to the first call, and there is no
+ * browser here during SSR to attest with anyway. That asymmetry is also why
+ * App Check enforcement cannot be turned on for Firestore: this app's public
+ * reads run through the *client* SDK on the server (so security rules apply to
+ * them), and a server has no reCAPTCHA to attest with.
+ *
+ * Failures are swallowed on purpose. While enforcement is off, a failed
+ * attestation costs nothing; turning a misconfigured key into a blank site
+ * would cost everything.
+ */
+function startAppCheck() {
+  if (typeof window === "undefined") return;
+  // The emulators ignore App Check entirely, and attesting against a real
+  // reCAPTCHA key from localhost only produces noise in the console.
+  if (useEmulators) return;
+
+  const w = window as typeof window & { __taajirAppCheck?: boolean };
+  if (w.__taajirAppCheck) return; // Fast refresh runs this module again.
+  w.__taajirAppCheck = true;
+
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(kAppCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (error) {
+    console.error("[app-check] initialisation failed:", error);
+  }
+}
+
+startAppCheck();
 
 /**
  * Auth persisted to localStorage, with IndexedDB deliberately not first.

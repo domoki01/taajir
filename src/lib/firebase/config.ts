@@ -21,10 +21,27 @@ export const firebaseConfig = {
     "newmokit.firebasestorage.app",
   messagingSenderId:
     process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "224868230062",
+  // This must match a web app that actually exists in the project. The value
+  // here was `…c43e0c67d18581aed9de3f`, which does not — the project's only web
+  // app is `…8f2342346aa6ca0bd9de3f` ("Taajir"). Auth and Firestore never
+  // noticed, because they key off apiKey and projectId; App Check does notice,
+  // because a token is minted *per app*, so a wrong id makes every App Check
+  // exchange fail no matter how the provider is configured.
   appId:
     process.env.NEXT_PUBLIC_FIREBASE_APP_ID ??
-    "1:224868230062:web:c43e0c67d18581aed9de3f",
+    "1:224868230062:web:8f2342346aa6ca0bd9de3f",
 } as const;
+
+/**
+ * The reCAPTCHA Enterprise site key App Check attests with.
+ *
+ * Public by design — it ships in the bundle and is bound to the domains listed
+ * on the key itself, which is what stops it being reused elsewhere. The secret
+ * half lives in Google Cloud and never reaches a browser.
+ */
+export const kAppCheckSiteKey =
+  process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_KEY ??
+  "6Lcz3ogtAAAAAOA4Q9Vk5JVY4frkUhJEbiYCecDW";
 
 /** Firestore prefers a region close to the traffic; DZ routes via Europe. */
 export const kFirestoreRegion = "europe-west1";
