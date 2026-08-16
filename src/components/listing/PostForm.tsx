@@ -17,7 +17,10 @@ import {
   kRoomCodes,
   kTransactionTypes,
   kLandPropertyTypes,
+  kBuiltInTransactionUnits,
+  unitIsRental,
   options,
+  type TransactionType,
 } from "@/lib/enums";
 import { getCommunes, kWilayas } from "@/lib/geo";
 
@@ -79,7 +82,11 @@ export function PostForm({
    * client component. Falls back to the code lists when a caller has not been
    * updated, so the form always renders something publishable.
    */
-  transactionOptions?: Array<{ value: string; label: string }>;
+  transactionOptions?: Array<{
+    value: string;
+    label: string;
+    rental?: boolean;
+  }>;
   propertyOptions?: Array<{ value: string; label: string }>;
   /** The deal the visitor picked on the funnel, so it is not asked twice. */
   initialDeal?: string | null;
@@ -93,6 +100,9 @@ export function PostForm({
     : options(kTransactionTypes).map((o) => ({
         value: String(o.value),
         label: o.label,
+        rental: unitIsRental(
+          kBuiltInTransactionUnits[o.value as TransactionType] ?? "total",
+        ),
       }));
   const propertyChoices = propertyOptions?.length
     ? propertyOptions
@@ -137,7 +147,7 @@ export function PostForm({
 
   const isLand = kLandPropertyTypes.includes(propertyType);
   const rental =
-    transactionType === "location" || transactionType === "vacances";
+    deals.find((d) => d.value === transactionType)?.rental === true;
 
   const communes = useMemo(() => {
     const w = kWilayas.find((x) => x.slug === wilayaSlug);
@@ -150,9 +160,11 @@ export function PostForm({
   // the seller has already made on the price screen.
   function chooseDeal(value: string) {
     setTransactionType(value);
-    setPriceUnitInput(
-      value === "location" || value === "vacances" ? "dzd" : "million",
-    );
+    // Rent is quoted in dinars, a sale in ملايين. Which one this deal is comes
+    // from the taxonomy — an admin can add deals, and a pair of hard-coded
+    // slugs here would default a new rental to ملايين: a 10 000× typo.
+    const rental = deals.find((d) => d.value === value)?.rental === true;
+    setPriceUnitInput(rental ? "dzd" : "million");
   }
 
   async function onPickImages(event: React.ChangeEvent<HTMLInputElement>) {

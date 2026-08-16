@@ -8,6 +8,7 @@ import { publicDb } from "@/lib/firebase/public";
 // The public reads above go through the client SDK so security rules apply to
 // them. `listMyListings` at the bottom is the one exception and says why.
 import { adminDb } from "@/lib/firebase/admin";
+import { getTaxonomy } from "@/server/filterSettings";
 import {
   buildListingsQuery,
   type ListingFilters,
@@ -36,7 +37,14 @@ export async function listListings(
   max = 48,
 ): Promise<ListingSummary[]> {
   return safely(async () => {
-    const snap = await getDocs(buildListingsQuery(filters, sort, max));
+    // The deal→unit map decides which price scale a price filter buckets
+    // against. Read here rather than threaded through every caller: getTaxonomy
+    // is request-cached, so this costs nothing, and a caller that forgot to
+    // pass it would silently query a custom rental against sale buckets.
+    const { transactionUnits } = await getTaxonomy();
+    const snap = await getDocs(
+      buildListingsQuery(filters, sort, max, transactionUnits),
+    );
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ListingSummary);
   }, []);
 }

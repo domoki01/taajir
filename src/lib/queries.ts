@@ -19,7 +19,12 @@ import {
 } from "firebase/firestore";
 import { publicDb } from "@/lib/firebase/public";
 import { bucketsInRange } from "@/lib/price";
-import type { RoomCode } from "@/lib/enums";
+import {
+  kBuiltInTransactionUnits,
+  unitIsRental,
+  type PriceUnit,
+  type RoomCode,
+} from "@/lib/enums";
 
 export type ListingFilters = {
   /** Deal slug — renameable from the admin panel, so a plain string. */
@@ -37,9 +42,21 @@ export type ListingFilters = {
 
 export type SortMode = "recent" | "price-asc" | "price-desc" | "area-desc";
 
-/** Rentals price on a different scale, so they bucket separately. */
-export function isRental(t: string | undefined): boolean {
-  return t === "location" || t === "vacances";
+/**
+ * Rentals price on a different scale, so they bucket separately.
+ *
+ * Takes the deal→unit map rather than matching slugs, because deals are
+ * admin-extensible: a custom "كراء أسبوعي" priced per month is rent, and a
+ * hard-coded pair of names would file it against sale buckets and return the
+ * wrong ads for every price filter.
+ */
+export function isRental(
+  t: string | undefined,
+  units: Record<string, PriceUnit> = kBuiltInTransactionUnits,
+): boolean {
+  if (!t) return false;
+  const unit = units[t];
+  return unit ? unitIsRental(unit) : false;
 }
 
 /**
@@ -54,6 +71,8 @@ export function buildListingsQuery(
   filters: ListingFilters,
   sort: SortMode = "recent",
   max = 48,
+  /** slug → price unit for every deal, built-in and custom. */
+  units: Record<string, PriceUnit> = kBuiltInTransactionUnits,
 ): Query {
   const clauses = [where("status", "==", "published")];
 
@@ -79,7 +98,7 @@ export function buildListingsQuery(
     const buckets = bucketsInRange(
       filters.priceMin ?? null,
       filters.priceMax ?? null,
-      isRental(filters.transactionType),
+      isRental(filters.transactionType, units),
     );
     clauses.push(where("priceBucket", "in", buckets));
   }

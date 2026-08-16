@@ -4,6 +4,7 @@ import { getTaxonomy, getVisibleFilterOptions } from "@/server/filterSettings";
 import { getUserDoc } from "@/server/users";
 import { getUser } from "@/server/auth";
 import { kDealParam, readDeal } from "@/lib/funnel";
+import { unitIsRental } from "@/lib/enums";
 
 export const metadata: Metadata = {
   title: "نشر إعلان",
@@ -41,6 +42,9 @@ export default async function PostPage({
       transactionOptions={options.transactionTypes.map((o) => ({
         value: o.slug,
         label: taxonomy.transactionTypes[o.slug] ?? o.label,
+        // Which price unit this deal is quoted in — declared by the deal, so a
+        // custom one an admin added defaults its price field correctly too.
+        rental: unitIsRental(taxonomy.transactionUnits[o.slug] ?? "total"),
       }))}
       propertyOptions={options.propertyTypes.map((o) => ({
         value: o.slug,

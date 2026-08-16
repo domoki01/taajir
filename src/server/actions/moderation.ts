@@ -17,6 +17,8 @@ import {
 } from "@/server/auth";
 import { priceBucket, toDinars } from "@/lib/price";
 import { checkPolicy } from "@/lib/policy";
+import { unitIsRental } from "@/lib/enums";
+import { getTaxonomy } from "@/server/filterSettings";
 import { notifyAuthor, notifyMatchingSearches } from "@/server/push";
 import type { Listing } from "@/types/listing";
 
@@ -226,9 +228,10 @@ export async function editListing(
     return { ok: false, error: "اكتب سعر صحيح" };
   }
 
-  const rental =
-    listing.transactionType === "location" ||
-    listing.transactionType === "vacances";
+  const { transactionUnits } = await getTaxonomy();
+  const rental = unitIsRental(
+    transactionUnits[listing.transactionType] ?? "total",
+  );
 
   const now = Date.now();
   await ref.update({

@@ -15,8 +15,46 @@ import {
   kFilterSettingsPath,
   kSlugPattern,
 } from "@/server/filterSettings";
-import { kPropertyTypes, kTransactionFilterLabels } from "@/lib/enums";
-import type { CustomPropertyType } from "@/types/filterSettings";
+import {
+  kPriceUnits,
+  kPropertyTypes,
+  kTransactionFilterLabels,
+  kTransactionTypes,
+  type PriceUnit,
+} from "@/lib/enums";
+import type {
+  CustomPropertyType,
+  CustomTransactionType,
+} from "@/types/filterSettings";
+
+/**
+ * Top-level paths a deal slug must not take.
+ *
+ * Browse lives at /{deal}, so a deal called "publier" would sit in front of the
+ * publish form — Next resolves the static segment first, but the deal would
+ * then be a page nobody can reach, and the reverse becomes true the moment a
+ * route is renamed. Refusing the collision outright is cheaper than debugging
+ * it later.
+ */
+const kReservedSegments = [
+  "annonce",
+  "demandes",
+  "recherche",
+  "publier",
+  "connexion",
+  "inscription",
+  "admin",
+  "api",
+  "tableau-de-bord",
+  "merci",
+  "bienvenue",
+  "lancement",
+  "aide",
+  "cgu",
+  "confidentialite",
+  "securite",
+  "a-propos",
+];
 
 export type FilterSettingsResult = { ok: true } | { ok: false; error: string };
 
@@ -105,9 +143,26 @@ export async function saveFilterSettings(
     .filter((c) => types.has(c.slug))
     .map((c) => ({ slug: c.slug, label: renamed.get(c.slug) || c.label }));
 
+  // The same for custom deals — and this write is `merge: false`, so a custom
+  // deal missing from the payload is not left alone, it is deleted. The rows
+  // this screen edits carry the *search* wording, so a rename lands on
+  // `filterLabel` and the posting wording is left as it was.
+  const existingDeals = (settings.data()?.customTransactionTypes ??
+    []) as CustomTransactionType[];
+  const renamedDeals = new Map(
+    input.transactionTypes.map((r) => [r.slug, r.label.trim()]),
+  );
+  const customTransactionTypes = existingDeals
+    .filter((c) => deals.has(c.slug))
+    .map((c) => ({
+      ...c,
+      filterLabel: renamedDeals.get(c.slug) || c.filterLabel || c.label,
+    }));
+
   // A custom slug is not a built-in, so its label is its definition, not an
   // override — drop it from the override map or it would be stored twice.
   for (const slug of taxonomy.customSlugs) delete p.labels[slug];
+  for (const slug of taxonomy.customTransactionSlugs) delete t.labels[slug];
 
   await adminDb().doc(kFilterSettingsPath).set(
     {
@@ -118,6 +173,7 @@ export async function saveFilterSettings(
       hiddenPropertyTypes: p.hidden,
       propertyLabels: p.labels,
       customPropertyTypes,
+      customTransactionTypes,
       updatedAt: Date.now(),
       updatedBy: user.uid,
     },
@@ -186,6 +242,142 @@ export async function addPropertyType(
   );
 
   await audit(user.uid, "filter.type-add", clean);
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Add a deal — a third thing to do with a property, beside selling and renting.
+ *
+ * The one field that is not a label is `priceUnit`, and it is the whole reason
+ * this action can exist at all. A deal is the only category the code reasons
+ * about numerically: the unit beside the price, and through `unitIsRental` the
+ * scale the price is bucketed on. Declared here, it is read from the taxonomy
+ * everywhere else, so no other file needs to learn the new deal's name.
+ */
+export async function addTransactionType(
+  slug: string,
+  label: string,
+  filterLabel: string,
+  priceUnit: string,
+): Promise<FilterSettingsResult> {
+  const user = await actorWith("taxonomy.edit");
+  if (!user) return { ok: false, error: kForbidden };
+
+  const clean = slug.trim().toLowerCase();
+  if (!kSlugPattern.test(clean)) {
+    return {
+      ok: false,
+      error: "المعرّف: حروف لاتينية صغيرة وأرقام وشرطات، من 3 حروف",
+    };
+  }
+  if (clean in kTransactionTypes) {
+    return { ok: false, error: "المعرّف محجوز لعملية أساسية" };
+  }
+  // The browse route is /{deal}/{type}/{wilaya}; a deal slug that collides with
+  // a top-level route would shadow that page for good.
+  if (kReservedSegments.includes(clean)) {
+    return { ok: false, error: "المعرّف محجوز لصفحة في الموقع" };
+  }
+
+  const name = label.trim();
+  if (name.length < kLabel.min || name.length > kLabel.max) {
+    return {
+      ok: false,
+      error: `التسمية لازم بين ${kLabel.min} و${kLabel.max} حرف`,
+    };
+  }
+
+  const searchName = filterLabel.trim();
+  if (searchName && searchName.length > kLabel.max) {
+    return { ok: false, error: `تسمية البحث طويلة — أقصى ${kLabel.max} حرف` };
+  }
+
+  if (!(priceUnit in kPriceUnits)) {
+    return { ok: false, error: "وحدة السعر ماشي صحيحة" };
+  }
+
+  const taxonomy = await getTaxonomy();
+  if (clean in taxonomy.transactionTypes) {
+    return { ok: false, error: "العملية موجودة من قبل" };
+  }
+
+  const ref = adminDb().doc(kFilterSettingsPath);
+  const snap = await ref.get();
+  const existing = (snap.data()?.customTransactionTypes ??
+    []) as CustomTransactionType[];
+
+  await ref.set(
+    {
+      customTransactionTypes: [
+        ...existing,
+        {
+          slug: clean,
+          label: name,
+          filterLabel: searchName || name,
+          priceUnit: priceUnit as PriceUnit,
+        },
+      ],
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+    },
+    { merge: true },
+  );
+
+  await audit(user.uid, "filter.deal-add", `${clean}:${priceUnit}`);
+  refresh();
+  return { ok: true };
+}
+
+/** Remove a deal the admin added, on the same terms as a property type. */
+export async function deleteTransactionType(
+  slug: string,
+): Promise<FilterSettingsResult> {
+  const user = await actorWith("taxonomy.edit");
+  if (!user) return { ok: false, error: kForbidden };
+
+  if (slug in kTransactionTypes) {
+    return { ok: false, error: "العمليات الأساسية تتخبّى برك، ما تتمسحش" };
+  }
+
+  const taxonomy = await getTaxonomy();
+  if (!taxonomy.customTransactionSlugs.includes(slug)) return { ok: true };
+
+  let used: number;
+  try {
+    const snap = await adminDb()
+      .collection("listings")
+      .where("transactionType", "==", slug)
+      .count()
+      .get();
+    used = snap.data().count;
+  } catch (error) {
+    console.error("[filter] deal usage count failed:", error);
+    return { ok: false, error: "ما قدرناش نعدّو الإعلانات، عاود من بعد" };
+  }
+
+  if (used > 0) {
+    return {
+      ok: false,
+      error: `فيه ${used} إعلان في هذي العملية — خبّيها بدل ما تمسحها`,
+    };
+  }
+
+  const ref = adminDb().doc(kFilterSettingsPath);
+  const snap = await ref.get();
+  const existing = (snap.data()?.customTransactionTypes ??
+    []) as CustomTransactionType[];
+
+  await ref.set(
+    {
+      customTransactionTypes: existing.filter((c) => c.slug !== slug),
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+    },
+    { merge: true },
+  );
+
+  await audit(user.uid, "filter.deal-delete", slug);
   refresh();
   return { ok: true };
 }

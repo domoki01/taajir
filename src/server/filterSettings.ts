@@ -3,9 +3,12 @@ import "server-only";
 import { cache } from "react";
 import { adminDb } from "@/lib/firebase/admin";
 import {
+  kBuiltInTransactionUnits,
+  kPriceUnits,
   kPropertyTypes,
   kTransactionFilterLabels,
   kTransactionTypes,
+  type PriceUnit,
 } from "@/lib/enums";
 import type { FilterOption, FilterSettings } from "@/types/filterSettings";
 
@@ -50,12 +53,20 @@ export const kSlugPattern = /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/;
 export type Taxonomy = {
   /** slug → label, in code order then custom order. */
   propertyTypes: Record<string, string>;
-  /** Deals, worded for someone posting. Renameable, not extensible. */
+  /** Deals, worded for someone posting. */
   transactionTypes: Record<string, string>;
   /** The same deals, worded for someone searching. */
   transactionFilterLabels: Record<string, string>;
-  /** Slugs the admin added, so the editor knows which rows it may delete. */
+  /**
+   * slug → price unit, for built-in and custom deals alike. The one place the
+   * rest of the code asks "how is this deal priced?", so nothing else has to
+   * carry a list of deal names.
+   */
+  transactionUnits: Record<string, PriceUnit>;
+  /** Property slugs the admin added, so the editor knows which rows it may delete. */
   customSlugs: string[];
+  /** Deal slugs the admin added, same purpose. */
+  customTransactionSlugs: string[];
   version: number;
 };
 
@@ -91,14 +102,45 @@ export const getTaxonomy = cache(async (): Promise<Taxonomy> => {
     customSlugs.push(c.slug);
   }
 
+  // ── DEALS ──────────────────────────────────────────────────────────────────
+  // Same shape as the property types above, plus the one thing a deal carries
+  // that a property type does not: the unit its price is expressed in. Built-in
+  // deals take theirs from the code; a custom deal declares its own, and that
+  // declaration is what lets the rest of the site handle a deal it has never
+  // heard of.
+  const transactionTypes = withLabels(kTransactionTypes, s?.transactionLabels);
+  const transactionFilterLabels = withLabels(
+    kTransactionFilterLabels,
+    s?.transactionLabels,
+  );
+  const transactionUnits: Record<string, PriceUnit> = {
+    ...kBuiltInTransactionUnits,
+  };
+  const customTransactionSlugs: string[] = [];
+
+  for (const c of s?.customTransactionTypes ?? []) {
+    // Built-ins win a collision, exactly as with property types: a custom row
+    // shadowing `vente` would repoint every sale ad on the site.
+    if (!c?.slug || c.slug in kTransactionTypes || !kSlugPattern.test(c.slug)) {
+      continue;
+    }
+    const label = c.label?.trim() || c.slug;
+    transactionTypes[c.slug] = label;
+    transactionFilterLabels[c.slug] = c.filterLabel?.trim() || label;
+    // A unit the code does not know is a price with no scale; fall back rather
+    // than let it through, since `unitIsRental` decides which buckets apply.
+    transactionUnits[c.slug] =
+      c.priceUnit && c.priceUnit in kPriceUnits ? c.priceUnit : "total";
+    customTransactionSlugs.push(c.slug);
+  }
+
   return {
     propertyTypes,
-    transactionTypes: withLabels(kTransactionTypes, s?.transactionLabels),
-    transactionFilterLabels: withLabels(
-      kTransactionFilterLabels,
-      s?.transactionLabels,
-    ),
+    transactionTypes,
+    transactionFilterLabels,
+    transactionUnits,
     customSlugs,
+    customTransactionSlugs,
     version: s?.updatedAt ?? 0,
   };
 });
@@ -159,6 +201,7 @@ export async function getAllFilterOptions(): Promise<ResolvedFilterOptions> {
       taxonomy.transactionFilterLabels,
       s?.transactionTypeOrder,
       s?.hiddenTransactionTypes,
+      taxonomy.customTransactionSlugs,
     ),
     propertyTypes: resolve(
       taxonomy.propertyTypes,

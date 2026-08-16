@@ -12,7 +12,7 @@
 export const firebaseConfig = {
   apiKey:
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY ??
-    "AIzaSyCbOzPZiJu2khbC1HZMpz--nTPeN0NmXjI",
+    "AIzaSyAKonS-qRWyhWOi_sK7chdOf14SiQklTz4",
   authDomain:
     process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "newmokit.firebaseapp.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "newmokit",
@@ -27,6 +27,11 @@ export const firebaseConfig = {
   // noticed, because they key off apiKey and projectId; App Check does notice,
   // because a token is minted *per app*, so a wrong id makes every App Check
   // exchange fail no matter how the provider is configured.
+  // Paired with the appId below: both come from the "Taajir" web app's own
+  // config. The key shipped here before belonged to a different app in the
+  // project — it worked, because a browser key is project-scoped for Auth and
+  // Firestore, but FCM registration and Analytics key off the *pair*, and push
+  // is about to depend on it.
   appId:
     process.env.NEXT_PUBLIC_FIREBASE_APP_ID ??
     "1:224868230062:web:8f2342346aa6ca0bd9de3f",

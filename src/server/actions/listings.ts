@@ -17,7 +17,7 @@ import { checkPolicy } from "@/lib/policy";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { areaBucket, priceBucket, toDinars } from "@/lib/price";
 import {
-  defaultPriceUnit,
+  unitIsRental,
   type PropertyType,
   type TransactionType,
 } from "@/lib/enums";
@@ -116,8 +116,10 @@ export async function createListing(
 
   const transactionType = input.transactionType as TransactionType;
   const propertyType = input.propertyType as PropertyType;
-  const rental =
-    transactionType === "location" || transactionType === "vacances";
+  // From the taxonomy, not the slug: a deal an admin added declares its own
+  // unit, and the code must not need to have heard of its name.
+  const priceUnit = taxonomy.transactionUnits[transactionType] ?? "total";
+  const rental = unitIsRental(priceUnit);
   const area = input.areaBuilt ?? input.areaLand ?? 0;
 
   const id = randomUUID().replace(/-/g, "").slice(0, 12);
@@ -183,7 +185,7 @@ export async function createListing(
         housingProgram: null,
 
         price,
-        priceUnit: defaultPriceUnit(transactionType),
+        priceUnit,
         priceOnRequest: input.priceOnRequest,
         isNegotiable: input.isNegotiable,
         priceBucket: priceBucket(price, rental),

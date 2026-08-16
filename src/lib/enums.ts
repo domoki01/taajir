@@ -174,15 +174,36 @@ export const kPriceUnits = {
 
 export type PriceUnit = keyof typeof kPriceUnits;
 
+/**
+ * The one code-level fact each deal carries: how its price is expressed.
+ *
+ * Everything else about a transaction type is a label. This is not — it decides
+ * the unit shown next to the price, and through `unitIsRental` which bucket
+ * scale the price is filed under. Splitting it out as data is what lets an
+ * admin add a deal at all: a new type declares its unit, and the rest of the
+ * code stops needing to have heard of it.
+ */
+export const kBuiltInTransactionUnits: Record<TransactionType, PriceUnit> = {
+  vente: "total",
+  location: "mois",
+  vacances: "nuit",
+  echange: "total",
+};
+
+/**
+ * Does a price in this unit belong on the rent scale?
+ *
+ * Derived from the unit rather than stored beside it, so "a rental priced as a
+ * total" cannot be expressed. A monthly, yearly or nightly price is rent; a
+ * total or a per-m² price is a sale. Buckets follow: 45 000 DZD is an ordinary
+ * month's rent and an absurd sale price, and the two must not share a scale.
+ */
+export function unitIsRental(unit: PriceUnit): boolean {
+  return unit === "mois" || unit === "annee" || unit === "nuit";
+}
+
 export function defaultPriceUnit(transaction: TransactionType): PriceUnit {
-  switch (transaction) {
-    case "location":
-      return "mois";
-    case "vacances":
-      return "nuit";
-    default:
-      return "total";
-  }
+  return kBuiltInTransactionUnits[transaction] ?? "total";
 }
 
 /** Lifecycle. Only `published` is publicly readable. */

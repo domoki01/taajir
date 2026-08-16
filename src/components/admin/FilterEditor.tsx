@@ -14,10 +14,13 @@ import {
 } from "lucide-react";
 import {
   addPropertyType,
+  addTransactionType,
+  deleteTransactionType,
   deletePropertyType,
   resetFilterSettings,
   saveFilterSettings,
 } from "@/server/actions/filterSettings";
+import { kPriceUnits } from "@/lib/enums";
 import type { FilterOption } from "@/types/filterSettings";
 
 type Row = { slug: string; label: string; hidden: boolean; custom?: boolean };
@@ -45,6 +48,10 @@ export function FilterEditor({
   const [deals, setDeals] = useState<Row[]>(transactionTypes);
   const [types, setTypes] = useState<Row[]>(propertyTypes);
 
+  const [dealSlug, setDealSlug] = useState("");
+  const [dealLabel, setDealLabel] = useState("");
+  const [dealFilterLabel, setDealFilterLabel] = useState("");
+  const [dealUnit, setDealUnit] = useState<string>("total");
   const [newSlug, setNewSlug] = useState("");
   const [newLabel, setNewLabel] = useState("");
 
@@ -96,13 +103,14 @@ export function FilterEditor({
     <div className="mt-6 space-y-8">
       <Section
         title="نوع العملية"
-        note="اللي يبان في أول خانة من الفلتر. التسمية تتبدّل؛ زيادة نوع عملية جديد لا — كل عملية عندها وحدة سعر وقواعد خاصة مكتوبة في الكود."
+        note="اللي يبان في أول خانة من الفلتر. تقدر تبدّل التسمية، تخبّي، وتزيد عملية جديدة من تحت — كل عملية تختار وحدة السعر تاعها."
         rows={deals}
         count={visible(deals)}
         pending={pending}
         onMove={(i, by) => move(deals, setDeals, i, by)}
         onToggle={(i) => toggle(deals, setDeals, i)}
         onRename={(i, label) => rename(deals, setDeals, i, label)}
+        onDelete={(slug) => run(() => deleteTransactionType(slug))}
       />
 
       <Section
@@ -159,6 +167,86 @@ export function FilterEditor({
           رجّع الافتراضي
         </button>
       </div>
+
+      <section className="rounded-card border-border bg-surface border p-4">
+        <h2 className="font-extrabold">عملية جديدة</h2>
+        <p className="text-dim mt-1 text-xs leading-relaxed">
+          حاجة ثالثة تتدار بالعقار، غير البيع والكراء. المعرّف يدخل في الرابط{" "}
+          <span className="ltr-nums">/{"{المعرّف}"}/appartement/alger</span> وما
+          يتبدّلش من بعد. <strong>وحدة السعر</strong> هي الوحيدة اللي ماشي
+          تسمية: هي اللي تقرّر واش يتكتب حذا السعر، وواش الإعلان يتحسب مع
+          الكراءات ولا مع البيوع في فلتر السعر.
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="text-xs font-bold">
+            المعرّف
+            <input
+              value={dealSlug}
+              onChange={(e) => setDealSlug(e.target.value)}
+              placeholder="location-vacances"
+              dir="ltr"
+              className="rounded-input border-border focus:border-primary mt-1 block w-44 border bg-white px-3 py-2 text-sm outline-none"
+            />
+          </label>
+          <label className="text-xs font-bold">
+            التسمية في النشر
+            <input
+              value={dealLabel}
+              onChange={(e) => setDealLabel(e.target.value)}
+              placeholder="كراء موسمي"
+              className="rounded-input border-border focus:border-primary mt-1 block w-40 border bg-white px-3 py-2 text-sm outline-none"
+            />
+          </label>
+          <label className="text-xs font-bold">
+            التسمية في البحث
+            <input
+              value={dealFilterLabel}
+              onChange={(e) => setDealFilterLabel(e.target.value)}
+              placeholder="للكراء الموسمي"
+              className="rounded-input border-border focus:border-primary mt-1 block w-40 border bg-white px-3 py-2 text-sm outline-none"
+            />
+          </label>
+          <label className="text-xs font-bold">
+            وحدة السعر
+            <select
+              value={dealUnit}
+              onChange={(e) => setDealUnit(e.target.value)}
+              className="rounded-input border-border focus:border-primary mt-1 block w-40 border bg-white px-3 py-2 text-sm font-semibold outline-none"
+            >
+              {Object.entries(kPriceUnits).map(([slug, label]) => (
+                <option key={slug} value={slug}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={pending || !dealSlug.trim() || !dealLabel.trim()}
+            onClick={() =>
+              run(async () => {
+                const res = await addTransactionType(
+                  dealSlug,
+                  dealLabel,
+                  dealFilterLabel,
+                  dealUnit,
+                );
+                if (res.ok) {
+                  setDealSlug("");
+                  setDealLabel("");
+                  setDealFilterLabel("");
+                  setDealUnit("total");
+                }
+                return res;
+              })
+            }
+            className="rounded-input border-primary text-primary hover:bg-primary-soft inline-flex items-center gap-1.5 border px-4 py-2 text-sm font-bold transition-colors disabled:opacity-40"
+          >
+            <Plus className="size-4" strokeWidth={3} />
+            زيد العملية
+          </button>
+        </div>
+      </section>
 
       <section className="rounded-card border-border bg-surface border p-4">
         <h2 className="font-extrabold">فئة عقار جديدة</h2>

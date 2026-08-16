@@ -1,10 +1,32 @@
-import type { PropertyType, TransactionType } from "@/lib/enums";
+import type { PriceUnit, PropertyType, TransactionType } from "@/lib/enums";
 
 /** A category an admin added, on top of the ones that ship with the code. */
 export type CustomPropertyType = {
   /** Latin, `^[a-z0-9-]+$`, unique. Lands in URLs and in every listing document. */
   slug: string;
   label: string;
+};
+
+/**
+ * A deal an admin added.
+ *
+ * Carries one thing a property type does not: `priceUnit`. A transaction type
+ * is the only category the code reasons about numerically — the unit printed
+ * beside the price, and the scale the price is bucketed on for filtering — so a
+ * new deal has to say which it is. With that declared, nothing else in the code
+ * needs to know the deal exists.
+ *
+ * Two labels because the site says the same deal differently on the two sides
+ * of it: someone posting picks "بيع", someone searching picks "للبيع / شراء".
+ */
+export type CustomTransactionType = {
+  /** Latin, `^[a-z0-9-]+$`, unique. Lands in URLs and in every listing document. */
+  slug: string;
+  /** Worded for the person posting. */
+  label: string;
+  /** Worded for the person searching. Falls back to `label` when blank. */
+  filterLabel?: string;
+  priceUnit: PriceUnit;
 };
 
 /**
@@ -38,8 +60,9 @@ export type FilterSettings = {
   propertyLabels?: Record<string, string>;
   transactionLabels?: Record<string, string>;
 
-  /** Categories the admin invented. Deals are not extensible — see the editor. */
+  /** Categories the admin invented. */
   customPropertyTypes?: CustomPropertyType[];
+  customTransactionTypes?: CustomTransactionType[];
 
   updatedAt: number;
   updatedBy: string;
