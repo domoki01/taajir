@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { SearchFilters } from "@/components/search/SearchFilters";
@@ -181,8 +180,6 @@ export default async function BrowsePage({
           </section>
         </Container>
       </main>
-
-      <Footer />
     </>
   );
 }

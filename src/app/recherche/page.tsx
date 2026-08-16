@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Search } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { listListings } from "@/server/listings";
@@ -129,8 +128,6 @@ export default async function SearchPage({
           </div>
         </Container>
       </main>
-
-      <Footer />
     </>
   );
 }

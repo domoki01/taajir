@@ -1,5 +1,4 @@
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 
 /** Shared shell for the legal and help pages, which are all prose. */
@@ -18,7 +17,6 @@ export default function StaticLayout({
           </div>
         </Container>
       </main>
-      <Footer />
     </>
   );
 }

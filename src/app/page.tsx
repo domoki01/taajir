@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Building, Home, LandPlot, MapPin, Search, Store } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { getFeaturedWilayas } from "@/lib/geo";
 import { SearchFilters } from "@/components/search/SearchFilters";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
@@ -145,8 +144,6 @@ export default async function HomePage() {
           </ul>
         </section>
       </main>
-
-      <Footer />
     </>
   );
 }

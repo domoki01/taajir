@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { requireUser } from "@/server/auth";
@@ -60,7 +59,6 @@ export default async function DashboardLayout({
           {children}
         </Container>
       </main>
-      <Footer />
     </>
   );
 }

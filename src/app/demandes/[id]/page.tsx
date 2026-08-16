@@ -4,7 +4,6 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ChevronRight, EyeOff, MapPin, UserRound } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import {
   RequestThread,
@@ -148,7 +147,6 @@ export default async function RequestPage({
           />
         </Container>
       </main>
-      <Footer />
     </>
   );
 }

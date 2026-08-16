@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ImageOff, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { getListing, getSimilarListings } from "@/server/listings";
@@ -284,8 +283,6 @@ export default async function ListingPage({ params }: { params: Params }) {
           <ContactButtons listing={listing} className="ms-auto" />
         </Container>
       </div>
-
-      <Footer />
     </>
   );
 }
