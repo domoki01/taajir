@@ -52,6 +52,15 @@ export function PhoneAuth({
   // is unactionable from a phone with no console access — this is what turns a
   // screenshot into a diagnosis instead of another round of guessing.
   const [debugCode, setDebugCode] = useState<string | null>(null);
+  // The whole error, not just its code, for `?debug=1`. `auth/error-code:-39`
+  // is the SDK relaying a number it did not recognise; the message and the
+  // server's own response say which of a dozen unrelated causes it was, and
+  // neither reaches a phone otherwise — Android has no DevTools, and Firebase
+  // Auth does not log failed attempts to Cloud Logging either.
+  const [debugDetail, setDebugDetail] = useState<string | null>(null);
+  const showDebug =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("debug") === "1";
 
   useEffect(() => {
     return () => {
@@ -127,6 +136,7 @@ export function PhoneAuth({
       const err = e as { code?: string; message?: string };
       console.error("[phone-auth] sendCode failed:", err);
       setDebugCode(err.code ?? err.message ?? null);
+      setDebugDetail(describeError(e));
 
       // grecaptcha itself throws this — no `.code`, just this exact message —
       // when a widget is asked to render into a container it already rendered
@@ -171,6 +181,7 @@ export function PhoneAuth({
       const err = e as { code?: string; message?: string };
       console.error("[phone-auth] verifyCode failed:", err);
       setDebugCode(err.code ?? err.message ?? null);
+      setDebugDetail(describeError(e));
 
       // The credential is verified with the server *before* Firebase tries to
       // persist it, so a storage failure can leave a perfectly good signed-in
@@ -244,7 +255,11 @@ export function PhoneAuth({
             className={`${field} ltr-nums text-start`}
           />
           <p className="text-dim text-xs">{kPhoneHint}</p>
-          {error && <Alert code={debugCode}>{error}</Alert>}
+          {error && (
+            <Alert code={debugCode} detail={showDebug ? debugDetail : null}>
+              {error}
+            </Alert>
+          )}
           <button
             type="button"
             onClick={sendCode}
@@ -288,7 +303,11 @@ export function PhoneAuth({
             placeholder="123456"
             className={`${field} ltr-nums text-center text-2xl font-black tracking-[0.4em]`}
           />
-          {error && <Alert code={debugCode}>{error}</Alert>}
+          {error && (
+            <Alert code={debugCode} detail={showDebug ? debugDetail : null}>
+              {error}
+            </Alert>
+          )}
           <button
             type="button"
             onClick={verifyCode}
@@ -315,7 +334,11 @@ export function PhoneAuth({
             className={field}
           />
           <p className="text-dim text-xs">يبان مع إعلاناتك وطلباتك.</p>
-          {error && <Alert code={debugCode}>{error}</Alert>}
+          {error && (
+            <Alert code={debugCode} detail={showDebug ? debugDetail : null}>
+              {error}
+            </Alert>
+          )}
           <button
             type="button"
             onClick={saveName}
@@ -337,12 +360,51 @@ export function PhoneAuth({
   );
 }
 
+/**
+ * Everything the failure carries, flattened into something screenshot-able.
+ *
+ * Firebase wraps the interesting part twice: `customData.serverResponse` holds
+ * what Identity Platform actually replied, and a reCAPTCHA failure may arrive
+ * as a bare value with no `code` at all. Reading only `.code` is how a dozen
+ * different causes all end up looking like one opaque number.
+ */
+function describeError(e: unknown): string {
+  const err = e as {
+    code?: string;
+    message?: string;
+    customData?: { serverResponse?: unknown; _tokenResponse?: unknown };
+  };
+  const parts: string[] = [];
+  if (err?.code) parts.push(`code: ${err.code}`);
+  if (err?.message) parts.push(`message: ${err.message}`);
+
+  const server =
+    err?.customData?.serverResponse ?? err?.customData?._tokenResponse;
+  if (server) {
+    try {
+      parts.push(`server: ${JSON.stringify(server)}`);
+    } catch {
+      parts.push(`server: ${String(server)}`);
+    }
+  }
+  if (parts.length === 0) {
+    try {
+      parts.push(`raw: ${JSON.stringify(e)}`);
+    } catch {
+      parts.push(`raw: ${String(e)}`);
+    }
+  }
+  return parts.join("\n").slice(0, 1200);
+}
+
 function Alert({
   children,
   code,
+  detail,
 }: {
   children: React.ReactNode;
   code?: string | null;
+  detail?: string | null;
 }) {
   return (
     <div
@@ -357,6 +419,16 @@ function Alert({
         >
           {code}
         </p>
+      )}
+      {/* Only under ?debug=1 — this is for reading off a phone screen during a
+          diagnosis, not something to show someone trying to sign up. */}
+      {detail && (
+        <pre
+          dir="ltr"
+          className="text-dim bg-surface-soft rounded-input mt-2 max-h-60 overflow-auto p-2 text-start text-[10px] leading-relaxed font-normal whitespace-pre-wrap"
+        >
+          {detail}
+        </pre>
       )}
     </div>
   );
