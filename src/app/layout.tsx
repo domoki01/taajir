@@ -5,6 +5,7 @@ import { MobileTopBar } from "@/components/layout/MobileTopBar";
 import { BrandingProvider } from "@/components/branding/BrandingProvider";
 import { SideMenuProvider } from "@/components/layout/SideMenu";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { NotifyPrompt } from "@/components/pwa/NotifyPrompt";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
 import { brandingStyle, getBranding } from "@/server/branding";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
@@ -110,6 +111,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 iOS — so these two belong together and on every route. */}
             <RegisterSW />
             <InstallPrompt />
+            <NotifyPrompt />
           </SideMenuProvider>
         </BrandingProvider>
       </body>

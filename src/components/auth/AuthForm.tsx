@@ -15,6 +15,7 @@ import {
 import { auth } from "@/lib/firebase/client";
 import { PhoneAuth } from "@/components/auth/PhoneAuth";
 import { safeNext } from "@/lib/redirect";
+import { markJustSignedUp } from "@/lib/firstRun";
 
 type Mode = "signin" | "signup";
 
@@ -76,6 +77,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
       body: JSON.stringify({ idToken }),
     });
     if (!res.ok) throw new Error("session");
+
+    // A brand-new account has the two timestamps equal — Firebase writes both
+    // at creation. That is the difference between "welcome, may we notify you?"
+    // and asking a returning user the same question every time they sign in.
+    if (user.metadata.creationTime === user.metadata.lastSignInTime) {
+      markJustSignedUp();
+    }
+
     // refresh() so the server re-renders with the new cookie in place.
     router.replace(next);
     router.refresh();
