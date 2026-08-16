@@ -5,7 +5,7 @@ import { ModerationCard } from "@/components/admin/ModerationCard";
 import { HoldApproval } from "@/components/admin/HoldApproval";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getLaunchStatus } from "@/server/launch";
-import { listPendingRequests } from "@/server/requests";
+import { listHeldRequests, listPendingRequests } from "@/server/requests";
 import { RequestModerationCard } from "@/components/admin/RequestModerationCard";
 import { formatRelative } from "@/lib/datetime";
 import { getTaxonomy } from "@/server/filterSettings";
@@ -47,11 +47,12 @@ export default async function ModerationPage() {
     types: taxonomy.propertyTypes,
   };
 
-  const [listings, held, launch, requests] = await Promise.all([
+  const [listings, held, launch, requests, heldRequests] = await Promise.all([
     byStatus("pending"),
     byStatus("pendingLaunch"),
     getLaunchStatus(),
     listPendingRequests(),
+    listHeldRequests(),
   ]);
 
   return (
@@ -93,6 +94,36 @@ export default async function ModerationPage() {
                   approved={listing.approvedForLaunch === true}
                 />
               </ModerationCard>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ── DEMANDS HELD FOR LAUNCH ────────────────────────────────────────
+          Nothing to decide here — they publish themselves when the switch is
+          thrown. The section exists because until it did, a demand posted
+          before launch appeared nowhere in the admin at all, and the only
+          person who could see it was the one who wrote it. */}
+      {heldRequests !== null && heldRequests.length > 0 && (
+        <section className="mt-6">
+          <h2 className="font-extrabold">
+            طلبات محجوزة للإطلاق{" "}
+            <span className="text-dim ltr-nums text-sm">
+              {heldRequests.length}
+            </span>
+          </h2>
+          <p className="text-dim mt-1 text-xs leading-relaxed">
+            {launch.state === "prelaunch"
+              ? "هذي تنشر وحدها كي تضغط «نفّذ الإطلاق» — ما تحتاج حتى قرار."
+              : "الموقع مفتوح لكن هذي بقات محجوزة. نفّذ الإطلاق مرّة أخرى باش تنشر."}
+          </p>
+          <ul className="mt-4 space-y-3">
+            {heldRequests.map((r) => (
+              <RequestModerationCard
+                key={r.id}
+                request={r}
+                createdAtLabel={formatRelative(r.createdAt)}
+              />
             ))}
           </ul>
         </section>

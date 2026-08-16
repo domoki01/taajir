@@ -123,6 +123,34 @@ export async function listPendingRequests(
   }
 }
 
+/**
+ * Demands waiting for the launch, oldest first.
+ *
+ * Separate from the review queue because they are waiting on a different thing:
+ * nobody has to decide anything about these, they are simply held until the
+ * site opens. They had no reader at all until now — the queue asked only for
+ * `pending`, so everything posted before launch was invisible to staff while
+ * its author could see it sitting in «منشوراتي» marked محجوز للإطلاق. Held ads
+ * have had their own section since the launch screen was built; this is the
+ * same thing for demands.
+ */
+export async function listHeldRequests(
+  max = 50,
+): Promise<PropertyRequest[] | null> {
+  try {
+    const snap = await adminDb()
+      .collection("requests")
+      .where("status", "==", "pendingLaunch")
+      .orderBy("createdAt", "asc")
+      .limit(max)
+      .get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as PropertyRequest);
+  } catch (error) {
+    console.error("[requests] held list failed:", error);
+    return null;
+  }
+}
+
 /** Everything one person has posted, whatever state it is in — for «منشوراتي». */
 export async function listMyRequests(
   uid: string,
