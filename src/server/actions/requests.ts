@@ -25,6 +25,7 @@ import { getCommune, getWilaya } from "@/lib/geo";
 import { containsLink, kNoLinksMessage } from "@/lib/text";
 import { checkPolicy } from "@/lib/policy";
 import { notifyAuthor } from "@/server/push";
+import { kTooFast, withinRate } from "@/server/rateLimit";
 import { kMaxOpenRequests } from "@/lib/constants";
 import type { Listing } from "@/types/listing";
 import type { PropertyRequest, ReplyListing } from "@/types/request";
@@ -157,6 +158,12 @@ export async function createRequest(
   const verdict = checkPolicy({ title, description });
   if (verdict.decision === "reject") {
     return { ok: false, error: verdict.reason };
+  }
+
+  // kMaxOpenRequests caps how many demands stand at once; this caps how fast
+  // they arrive. Deleting five and reposting five was otherwise unbounded.
+  if (!(await withinRate(who.uid, "request"))) {
+    return { ok: false, error: kTooFast };
   }
 
   const held = await isPrelaunch();
@@ -347,6 +354,10 @@ export async function addReply(
   const verdict = checkPolicy({ title: "", description: body });
   if (verdict.decision === "reject") {
     return { ok: false, error: verdict.reason };
+  }
+
+  if (!(await withinRate(who.uid, "reply"))) {
+    return { ok: false, error: kTooFast };
   }
 
   const db = adminDb();

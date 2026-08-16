@@ -352,6 +352,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── RATE LIMITS ──────────────────────────────────────────────────────────
+    // One rolling document per account and action, written by the Server Action
+    // that enforces the limit. A client that could read it would know exactly
+    // how much room it had left; one that could write it would have no limit at
+    // all — so neither, including staff.
+
+    match /rateLimits/{id} {
+      allow read, write: if false;
+    }
+
     // ── CATALOGEV (shared project — DO NOT REMOVE) ───────────────────────────
     // The product catalogue lives in the same Firebase project. Its rules were
     // never committed anywhere, so they are restated here: without this block a

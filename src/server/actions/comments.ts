@@ -16,6 +16,7 @@ import {
 } from "@/server/auth";
 import { getAccessSettings, kNeedsApproval } from "@/server/access";
 import { checkPolicy } from "@/lib/policy";
+import { kTooFast, withinRate } from "@/server/rateLimit";
 import type { Listing } from "@/types/listing";
 
 export type CommentResult =
@@ -49,6 +50,10 @@ export async function addComment(
   const verdict = checkPolicy({ title: "", description: body });
   if (verdict.decision === "reject") {
     return { ok: false, error: verdict.reason };
+  }
+
+  if (!(await withinRate(user.uid, "comment"))) {
+    return { ok: false, error: kTooFast };
   }
 
   const db = adminDb();

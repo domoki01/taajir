@@ -858,6 +858,22 @@ describe("users", () => {
 });
 
 describe("abuse surfaces", () => {
+  it("keeps the rate-limit ledger out of every client's reach", async () => {
+    // Readable, it tells an attacker exactly how much room is left; writable,
+    // there is no limit at all. Staff included — nobody needs it.
+    await assertFails(
+      getDoc(doc(authed(kOwner), "rateLimits/" + kOwner + "_comment")),
+    );
+    await assertFails(
+      getDoc(doc(admin(), "rateLimits/" + kOwner + "_comment")),
+    );
+    await assertFails(
+      setDoc(doc(authed(kOwner), "rateLimits/" + kOwner + "_comment"), {
+        hits: [],
+      }),
+    );
+  });
+
   it("takes the unauthenticated write endpoint off reports", async () => {
     // It accepted any shape, from anyone, at any rate — into a billed
     // collection. Nothing in the app writes here; the flag flow will arrive as
