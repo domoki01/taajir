@@ -362,6 +362,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── BROADCASTS ───────────────────────────────────────────────────────────
+    // What the site announced to everyone, when, and by whom. Written by the
+    // Server Action that sends it and read back on the admin screen through the
+    // Admin SDK — no client needs either half.
+
+    match /broadcasts/{id} {
+      allow read, write: if false;
+    }
+
     // ── CATALOGEV (shared project — DO NOT REMOVE) ───────────────────────────
     // The product catalogue lives in the same Firebase project. Its rules were
     // never committed anywhere, so they are restated here: without this block a

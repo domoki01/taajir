@@ -9,17 +9,19 @@
 
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { app } from "./client";
+import { kVapidPublicKey } from "./config";
 import { registerDevice, unregisterDevice } from "@/server/actions/devices";
 
 /**
  * The public half of the Web Push key pair, generated once in
  * Firebase Console → Project settings → Cloud Messaging → Web Push certificates.
  *
- * There is no API that mints it, so it cannot be provisioned by a script. Until
- * it is set, `enablePush` says so in plain Arabic instead of failing with the
- * SDK's "applicationServerKey is not valid".
+ * There is no API that mints it, so it cannot be provisioned by a script. It
+ * now ships with the build; the empty-string path below stays because a fork
+ * pointed at another Firebase project has to be told, in Arabic, that push is
+ * off rather than failing with the SDK's "applicationServerKey is not valid".
  */
-const kVapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ?? "";
+const kVapidKey = kVapidPublicKey;
 
 export const isPushConfigured = kVapidKey.length > 0;
 

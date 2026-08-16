@@ -14,6 +14,10 @@ export const kPermissions = {
   "taxonomy.edit": "الفئات والفلتر",
   "branding.edit": "الهوية والثيم",
   "launch.control": "الإطلاق",
+  // Its own permission, not part of users.manage: sending a notification to
+  // every phone that installed the site is a different kind of power from
+  // editing one account, and it should be grantable on its own.
+  "push.broadcast": "إشعار عام لكل المستخدمين",
   "audit.view": "السجلّ",
 } as const;
 

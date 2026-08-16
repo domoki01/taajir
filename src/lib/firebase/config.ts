@@ -52,3 +52,15 @@ export const kAppCheckSiteKey =
 export const kFirestoreRegion = "europe-west1";
 
 export const useEmulators = process.env.NEXT_PUBLIC_USE_EMULATORS === "true";
+
+/**
+ * The public half of the Web Push key pair.
+ *
+ * Public by definition: the browser hands it to the push service on every
+ * subscription, so it ships in the bundle like the rest of this file. The
+ * private half never leaves Google. There is no API that mints these — it is
+ * generated once in Firebase Console → Project settings → Cloud Messaging.
+ */
+export const kVapidPublicKey =
+  process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ??
+  "BOqNOe2WiEjFxLpRAueeyj25gIqKo0ggdc1TjOtOjHs27IKGcPbchP-L000L-ZXKzjhPWRYXf0JoqYA2jAlLcw4";

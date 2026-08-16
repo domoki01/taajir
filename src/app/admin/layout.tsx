@@ -39,6 +39,11 @@ const kAdminNav: Array<{
   { href: "/admin/filtre", label: "الفئات والفلتر", need: ["taxonomy.edit"] },
   { href: "/admin/identite", label: "الهوية", need: ["branding.edit"] },
   { href: "/admin/lancement", label: "الإطلاق", need: ["launch.control"] },
+  {
+    href: "/admin/notifications",
+    label: "إشعار عام",
+    need: ["push.broadcast"],
+  },
   { href: "/admin/journal", label: "السجلّ", need: ["audit.view"] },
 ];
 
