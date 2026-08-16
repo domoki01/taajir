@@ -225,7 +225,7 @@ export function PostForm({
     });
 
     if (result.ok) {
-      router.push("/merci?type=annonce");
+      router.push(`/merci?type=annonce&state=${result.state}`);
       router.refresh();
     } else {
       setError(result.error);

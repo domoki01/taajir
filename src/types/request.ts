@@ -33,9 +33,22 @@ export type PropertyRequest = {
    * Hidden stays readable to its author and to admins, as with comments.
    * `pendingLaunch` is a demand posted while the site was held behind the
    * countdown — invisible until the launch publishes it.
+   *
+   * `pending` and `rejected` come from the automatic policy check at
+   * submission: clean demands go straight to `visible`, a certain violation is
+   * `rejected` with a reason its author can read, and anything uncertain waits
+   * as `pending` for a human. All three of the non-visible states stay readable
+   * to the author, so nobody is left wondering where their post went.
    */
-  status: "visible" | "hidden" | "pendingLaunch";
+  status: "visible" | "hidden" | "pending" | "rejected" | "pendingLaunch";
   hiddenReason: string | null;
+
+  /** Why it was refused — shown to the author on «منشوراتي». */
+  rejectionReason: string | null;
+  /** The policy rule that decided it, or "" when a human did. For the audit. */
+  policyRule: string | null;
+  moderatedBy: string | null;
+  moderatedAt: number | null;
 
   /** derived — kept on the document so a feed card needs no subcollection read */
   replyCount: number;

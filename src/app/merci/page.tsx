@@ -30,13 +30,21 @@ export default async function ThanksPage({
   await requireUser("/merci");
 
   const sp = await searchParams;
-  const raw = sp.type;
-  const type = (Array.isArray(raw) ? raw[0] : raw) ?? "annonce";
-  const isRequest = type === "demande";
+  const one = (key: string) => {
+    const raw = sp[key];
+    return Array.isArray(raw) ? raw[0] : raw;
+  };
+  const isRequest = (one("type") ?? "annonce") === "demande";
   const what = isRequest ? "طلبك" : "إعلانك";
 
   const { state } = await getLaunchStatus();
-  const held = state === "prelaunch";
+  // The action says what it did with this particular post; the launch state is
+  // only the fallback for someone who reaches this page without one. A clean
+  // post is live the moment it is written, and saying otherwise sends its
+  // author looking for an approval that already happened.
+  const outcome = one("state");
+  const held = outcome ? outcome === "held" : state === "prelaunch";
+  const live = outcome === "live";
 
   return (
     <main className="from-primary-soft to-bg flex flex-1 items-center bg-gradient-to-b py-10">
@@ -55,6 +63,11 @@ export default async function ThanksPage({
                 <strong>قيد المصادقة عليه</strong>، ويتنشر أوّل يوم من فتح
                 المنصّة — ويوصلك تنبيه فور نشره.
               </>
+            ) : live ? (
+              <>
+                تنشر {what} بنجاح وراه <strong>ظاهر للناس دروك</strong>. إذا
+                لقينا فيه شي ما يمشيش مع السياسة، نحيّدوه ونعلموك بالسبب.
+              </>
             ) : (
               <>
                 تسجّل {what} بنجاح. راه <strong>قيد المصادقة عليه</strong>،
@@ -64,10 +77,13 @@ export default async function ThanksPage({
           </p>
 
           {/* The natural moment to ask: we have just promised a notification,
-              and this is the one screen where that promise is fresh. */}
-          <div className="mt-6">
-            <NotifyOptIn />
-          </div>
+              and this is the one screen where that promise is fresh. A post
+              that is already live promised nothing, so it is not asked. */}
+          {!live && (
+            <div className="mt-6">
+              <NotifyOptIn />
+            </div>
+          )}
 
           <div className="mt-6 grid gap-2">
             <Link
@@ -76,10 +92,11 @@ export default async function ThanksPage({
             >
               زيد إعلان ولا طلب آخر
             </Link>
+            {/* One page for both, because the answer to "where is it?" is now
+                the same for an ad and a demand: the state, and the reason when
+                there is one. */}
             <Link
-              href={
-                isRequest ? "/tableau-de-bord" : "/tableau-de-bord/annonces"
-              }
+              href="/tableau-de-bord/publications"
               className="text-muted hover:text-primary block py-2 text-sm font-bold transition-colors"
             >
               شوف {what}

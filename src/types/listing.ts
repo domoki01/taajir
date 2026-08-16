@@ -87,6 +87,14 @@ export type Listing = {
   /** Shown to the owner on their dashboard when a moderator rejects an ad. */
   rejectionReason: string | null;
   /**
+   * Which policy rule sent this to the queue, or null when nothing did.
+   *
+   * Written by the automatic check at submission and read by the moderation
+   * queue, so a moderator opens an ad already knowing what was flagged instead
+   * of re-reading it looking for the problem.
+   */
+  policyRule?: string | null;
+  /**
    * Cleared for the launch batch while `status` is still `pendingLaunch`.
    *
    * Separate from the status on purpose: an ad approved during the hold has to

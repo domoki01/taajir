@@ -98,3 +98,50 @@ export async function listMyPublishedListings(
       .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
   }, []);
 }
+
+/**
+ * Demands waiting on a human, oldest first.
+ *
+ * Oldest first for the same reason the listing queue is: a newest-first queue
+ * starves its tail, and the tail here is somebody whose post has been invisible
+ * the longest.
+ */
+export async function listPendingRequests(
+  max = 50,
+): Promise<PropertyRequest[] | null> {
+  try {
+    const snap = await adminDb()
+      .collection("requests")
+      .where("status", "==", "pending")
+      .orderBy("createdAt", "asc")
+      .limit(max)
+      .get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as PropertyRequest);
+  } catch (error) {
+    console.error("[requests] pending list failed:", error);
+    return null;
+  }
+}
+
+/** Everything one person has posted, whatever state it is in — for «منشوراتي». */
+export async function listMyRequests(
+  uid: string,
+  max = 50,
+): Promise<PropertyRequest[] | null> {
+  try {
+    const snap = await adminDb()
+      .collection("requests")
+      .where("ownerUid", "==", uid)
+      .limit(max)
+      .get();
+    // Sorted in memory rather than by the query: ownerUid + createdAt would
+    // need its own composite index for a list that is never more than a
+    // handful of rows.
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as PropertyRequest)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    console.error("[requests] mine list failed:", error);
+    return null;
+  }
+}

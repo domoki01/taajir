@@ -23,12 +23,24 @@ import { isPrelaunch } from "@/server/launch";
 import { getAccessSettings, kNeedsApproval } from "@/server/access";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { containsLink, kNoLinksMessage } from "@/lib/text";
+import { checkPolicy } from "@/lib/policy";
+import { notifyAuthor } from "@/server/push";
 import { kMaxOpenRequests } from "@/lib/constants";
 import type { Listing } from "@/types/listing";
 import type { PropertyRequest, ReplyListing } from "@/types/request";
 
+/**
+ * What happened to a post, in the words the author needs to hear:
+ * `live` is on the site now, `review` is waiting for a human, `held` is waiting
+ * for the launch. The thank-you page cannot tell these apart on its own, and
+ * telling someone their demand is "قيد المصادقة" when it is already published
+ * is the sort of small lie that makes people repost.
+ */
+export type PostState = "live" | "review" | "held";
+
 export type RequestResult =
-  { ok: true; id?: string } | { ok: false; error: string; needsAuth?: boolean };
+  | { ok: true; id?: string; state?: PostState }
+  | { ok: false; error: string; needsAuth?: boolean };
 
 const kTitle = { min: 6, max: 90 };
 const kBody = { min: 10, max: 600 };
@@ -135,8 +147,31 @@ export async function createRequest(
     };
   }
 
+  // The automatic check, before anything is written.
+  //
+  // A certain violation is refused here and no document is created: the author
+  // is looking at the form, so they get the reason immediately and can fix it,
+  // and nothing accumulates. Writing a `rejected` row per attempt would let one
+  // spammer fill the collection, and `kMaxOpenRequests` counts only visible
+  // demands so it would not stop them.
+  const verdict = checkPolicy({ title, description });
+  if (verdict.decision === "reject") {
+    return { ok: false, error: verdict.reason };
+  }
+
   const held = await isPrelaunch();
 
+  // Clean publishes itself; uncertain waits for a human. Held demands keep
+  // their verdict either way — the launch batch should not be the first time
+  // anyone looks at them.
+  const status =
+    verdict.decision === "review"
+      ? "pending"
+      : held
+        ? "pendingLaunch"
+        : "visible";
+
+  const now = Date.now();
   const ref = await db.collection("requests").add({
     ownerUid: who.uid,
     ownerName: who.name,
@@ -149,14 +184,27 @@ export async function createRequest(
     // Held demands are invisible until the launch publishes them, the same as
     // held listings — a feed with three posts in it on opening day is worse
     // than a feed that opens full.
-    status: held ? "pendingLaunch" : "visible",
+    status,
     hiddenReason: null,
+    rejectionReason: null,
+    // Why it is waiting, when it is. Read by the moderation queue so a human
+    // knows what the system flagged rather than re-reading the whole post.
+    policyRule: verdict.rule || null,
+    // The decision was the system's, so no moderator is named. A human who
+    // later rules on it stamps their own uid here.
+    moderatedBy: null,
+    moderatedAt: null,
     replyCount: 0,
-    createdAt: Date.now(),
+    createdAt: now,
   } satisfies Omit<PropertyRequest, "id">);
 
   revalidatePath("/demandes");
-  return { ok: true, id: ref.id };
+  return {
+    ok: true,
+    id: ref.id,
+    state:
+      status === "visible" ? "live" : status === "pending" ? "review" : "held",
+  };
 }
 
 /** The author may remove their own; staff may remove any. */
@@ -199,6 +247,81 @@ export async function hideRequest(
 
   revalidatePath("/demandes");
   revalidatePath(`/demandes/${id}`);
+  return { ok: true };
+}
+
+/**
+ * Publish a demand the automatic check was unsure about.
+ *
+ * The mirror of `approveListing`. A demand that has been sitting in the queue
+ * is one its author has heard nothing about, so the decision is announced
+ * either way.
+ */
+export async function approveRequest(id: string): Promise<RequestResult> {
+  const user = await actorWith("requests.moderate");
+  if (!user) return { ok: false, error: kForbidden };
+
+  const ref = adminDb().collection("requests").doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) return { ok: false, error: "الطلب ما كاينش" };
+  const request = snap.data() as PropertyRequest;
+
+  await ref.update({
+    status: "visible",
+    rejectionReason: null,
+    moderatedBy: user.uid,
+    moderatedAt: Date.now(),
+  });
+
+  await notifyAuthor(request.ownerUid, {
+    title: "طلبك تنشر ✅",
+    body: request.title,
+    url: `/demandes/${id}`,
+  });
+
+  revalidatePath("/demandes");
+  revalidatePath(`/demandes/${id}`);
+  revalidatePath("/admin/moderation");
+  return { ok: true };
+}
+
+/** Refuse a demand, with a reason its author can read and act on. */
+export async function rejectRequest(
+  id: string,
+  reason: string,
+): Promise<RequestResult> {
+  const user = await actorWith("requests.moderate");
+  if (!user) return { ok: false, error: kForbidden };
+
+  const trimmed = reason.trim();
+  if (trimmed.length < 5) {
+    // Same rule as listings: a refusal with no reason is indistinguishable from
+    // the post vanishing, and the author has no way to fix what they were not
+    // told about.
+    return { ok: false, error: "اكتب سبب الرفض باش يفهم صاحب الطلب" };
+  }
+
+  const ref = adminDb().collection("requests").doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) return { ok: false, error: "الطلب ما كاينش" };
+  const request = snap.data() as PropertyRequest;
+
+  await ref.update({
+    status: "rejected",
+    rejectionReason: trimmed,
+    moderatedBy: user.uid,
+    moderatedAt: Date.now(),
+  });
+
+  await notifyAuthor(request.ownerUid, {
+    title: "طلبك ما تنشرش",
+    body: trimmed,
+    url: "/tableau-de-bord/publications",
+  });
+
+  revalidatePath("/demandes");
+  revalidatePath(`/demandes/${id}`);
+  revalidatePath("/admin/moderation");
   return { ok: true };
 }
 

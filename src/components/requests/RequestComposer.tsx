@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Send, X } from "lucide-react";
+import { Clock, Plus, Send, X } from "lucide-react";
 import { createRequest } from "@/server/actions/requests";
 import { getCommunes, kWilayas } from "@/lib/geo";
 import { kRequestIntents } from "@/lib/enums";
@@ -20,6 +20,9 @@ export function RequestComposer({ signedIn }: { signedIn: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // A demand that went to review is not in the feed this form just refreshed.
+  // Without a word here, posting it looks exactly like losing it.
+  const [notice, setNotice] = useState<string | null>(null);
   // Collapsed by default. Most people arrive here to read other people's
   // demands, not to write one, and a five-field form at the top pushes the
   // whole list below the fold on a phone.
@@ -54,6 +57,13 @@ export function RequestComposer({ signedIn }: { signedIn: boolean }) {
         setDescription("");
         setCommuneSlug("");
         setOpen(false);
+        setNotice(
+          res.state === "live"
+            ? null
+            : res.state === "held"
+              ? "تسجّل طلبك، ويتنشر أوّل يوم من فتح المنصّة — يوصلك تنبيه."
+              : "تسجّل طلبك وراه قيد المراجعة. يوصلك تنبيه كي يتقرّر، وتلقاه في «منشوراتي».",
+        );
         router.refresh();
       } else {
         setError(res.error);
@@ -91,21 +101,35 @@ export function RequestComposer({ signedIn }: { signedIn: boolean }) {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-card border-border bg-surface hover:border-primary flex w-full items-center gap-3 border border-dashed p-4 text-start transition-colors"
-      >
-        <span className="bg-accent grid size-9 shrink-0 place-items-center rounded-full text-white">
-          <Plus className="size-5" strokeWidth={3} />
-        </span>
-        <span>
-          <span className="block text-sm font-extrabold">انشر طلب</span>
-          <span className="text-dim block text-xs">
-            قول واش تحوّس عليه ووين، والناس تجاوبك.
+      <div>
+        {notice && (
+          <p
+            role="status"
+            className="rounded-card bg-primary-soft text-primary mb-2 flex items-start gap-2 px-4 py-3 text-sm leading-relaxed font-semibold"
+          >
+            <Clock className="mt-0.5 size-4 shrink-0" />
+            {notice}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setNotice(null);
+            setOpen(true);
+          }}
+          className="rounded-card border-border bg-surface hover:border-primary flex w-full items-center gap-3 border border-dashed p-4 text-start transition-colors"
+        >
+          <span className="bg-accent grid size-9 shrink-0 place-items-center rounded-full text-white">
+            <Plus className="size-5" strokeWidth={3} />
           </span>
-        </span>
-      </button>
+          <span>
+            <span className="block text-sm font-extrabold">انشر طلب</span>
+            <span className="text-dim block text-xs">
+              قول واش تحوّس عليه ووين، والناس تجاوبك.
+            </span>
+          </span>
+        </button>
+      </div>
     );
   }
 

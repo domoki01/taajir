@@ -13,6 +13,7 @@ import { requireUser } from "@/server/auth";
 import { isPrelaunch } from "@/server/launch";
 import { getAccessSettings, kNeedsApproval } from "@/server/access";
 import { getTaxonomy } from "@/server/filterSettings";
+import { checkPolicy } from "@/lib/policy";
 import { getCommune, getWilaya } from "@/lib/geo";
 import { areaBucket, priceBucket, toDinars } from "@/lib/price";
 import {
@@ -22,9 +23,11 @@ import {
 } from "@/lib/enums";
 import { kMaxImages } from "@/lib/constants";
 import { buildListingSlug } from "@/lib/slug";
+import type { PostState } from "@/server/actions/requests";
 
 export type CreateListingResult =
-  { ok: true; id: string; slug: string } | { ok: false; error: string };
+  | { ok: true; id: string; slug: string; state: PostState }
+  | { ok: false; error: string };
 
 function tokenize(text: string): string[] {
   return [
@@ -126,6 +129,14 @@ export async function createListing(
     wilayaSlug: wilaya.slug,
   });
   const now = Date.now();
+  // The automatic check, before the transaction and before anything is written.
+  // Same reasoning as demands: the author is on the form, so a certain
+  // violation is answered inline instead of becoming a row nobody asked for.
+  const verdict = checkPolicy({ title, description });
+  if (verdict.decision === "reject") {
+    return { ok: false, error: verdict.reason };
+  }
+
   // Read once, outside the transaction: the launch state is site configuration
   // that changes a handful of times ever, and a transaction that also had to
   // watch it would contend on one document for every ad posted.
@@ -209,14 +220,23 @@ export async function createListing(
         // lever a scammer has on a classifieds site in its first year. While
         // the site is held, it waits for the launch as well — same invisibility,
         // a different queue.
-        status: held ? "pendingLaunch" : "pending",
+        //
+        // A clean ad now publishes itself. What still reaches a human is what
+        // the policy check was unsure about, which is the only sort of ad a
+        // moderator can usefully add anything to.
+        status: held
+          ? "pendingLaunch"
+          : verdict.decision === "review"
+            ? "pending"
+            : "published",
+        publishedAt: !held && verdict.decision === "clean" ? now : null,
+        policyRule: verdict.rule || null,
         approvedForLaunch: false,
         rejectionReason: null,
         isFeatured: false,
         pinnedUntil: null,
         createdAt: now,
         updatedAt: now,
-        publishedAt: null,
         viewCount: 0,
       });
 
@@ -237,5 +257,10 @@ export async function createListing(
   }
 
   revalidatePath("/tableau-de-bord/annonces");
-  return { ok: true, id, slug };
+  return {
+    ok: true,
+    id,
+    slug,
+    state: held ? "held" : verdict.decision === "review" ? "review" : "live",
+  };
 }

@@ -32,6 +32,12 @@ export default async function DashboardLayout({
               نظرة عامة
             </Link>
             <Link
+              href="/tableau-de-bord/publications"
+              className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
+            >
+              منشوراتي
+            </Link>
+            <Link
               href="/tableau-de-bord/annonces"
               className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
             >

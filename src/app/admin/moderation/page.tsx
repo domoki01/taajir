@@ -5,6 +5,9 @@ import { ModerationCard } from "@/components/admin/ModerationCard";
 import { HoldApproval } from "@/components/admin/HoldApproval";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getLaunchStatus } from "@/server/launch";
+import { listPendingRequests } from "@/server/requests";
+import { RequestModerationCard } from "@/components/admin/RequestModerationCard";
+import { formatRelative } from "@/lib/datetime";
 import { getTaxonomy } from "@/server/filterSettings";
 import type { Listing } from "@/types/listing";
 
@@ -44,10 +47,11 @@ export default async function ModerationPage() {
     types: taxonomy.propertyTypes,
   };
 
-  const [listings, held, launch] = await Promise.all([
+  const [listings, held, launch, requests] = await Promise.all([
     byStatus("pending"),
     byStatus("pendingLaunch"),
     getLaunchStatus(),
+    listPendingRequests(),
   ]);
 
   return (
@@ -89,6 +93,28 @@ export default async function ModerationPage() {
                   approved={listing.approvedForLaunch === true}
                 />
               </ModerationCard>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {requests !== null && requests.length > 0 && (
+        <section className="mt-6">
+          <h2 className="font-extrabold">
+            طلبات تستنّى{" "}
+            <span className="text-dim ltr-nums text-sm">{requests.length}</span>
+          </h2>
+          <p className="text-dim mt-1 text-xs leading-relaxed">
+            هذي الطلبات اللي الفحص التلقائي ما تأكّدش منها. الطلب النظيف ينشر
+            وحدو، والمخالف يترفض وحدو — هذي اللي تحتاج عين.
+          </p>
+          <ul className="mt-4 space-y-3">
+            {requests.map((r) => (
+              <RequestModerationCard
+                key={r.id}
+                request={r}
+                createdAtLabel={formatRelative(r.createdAt)}
+              />
             ))}
           </ul>
         </section>

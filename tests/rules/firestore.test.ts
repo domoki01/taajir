@@ -171,6 +171,40 @@ beforeEach(async () => {
       updatedAt: 1,
       updatedBy: "admin-uid",
     });
+    await setDoc(doc(db, "requests/req-pending"), {
+      ownerUid: kOwner,
+      ownerName: "صاحب الطلب",
+      intent: "vente",
+      title: "طلب عند المراجعة",
+      description: "نحوّس على دار",
+      wilayaSlug: "alger",
+      communeSlug: null,
+      status: "pending",
+      hiddenReason: null,
+      rejectionReason: null,
+      policyRule: "offtopic",
+      moderatedBy: null,
+      moderatedAt: null,
+      replyCount: 0,
+      createdAt: 5,
+    });
+    await setDoc(doc(db, "requests/req-rejected"), {
+      ownerUid: kOwner,
+      ownerName: "صاحب الطلب",
+      intent: "vente",
+      title: "طلب مرفوض",
+      description: "نحوّس على دار",
+      wilayaSlug: "alger",
+      communeSlug: null,
+      status: "rejected",
+      hiddenReason: null,
+      rejectionReason: "المنشور فيه رابط.",
+      policyRule: "links",
+      moderatedBy: "admin-uid",
+      moderatedAt: 6,
+      replyCount: 0,
+      createdAt: 6,
+    });
     await setDoc(doc(db, "settings/branding"), {
       siteName: "تأجير",
       tagline: "عقارات الجزائر",
@@ -592,6 +626,41 @@ describe("request replies", () => {
     );
     await assertFails(
       deleteDoc(doc(authed(kOther), "requests/req-1/replies/rep-1")),
+    );
+  });
+});
+
+describe("moderated demands", () => {
+  // The whole point of the moderation notice is that the author can go and read
+  // why. If the rules hid a rejected demand from its own author, the reason
+  // would exist and be unreachable.
+  it("lets an author read their own pending and rejected demands", async () => {
+    await assertSucceeds(getDoc(doc(authed(kOwner), "requests/req-pending")));
+    await assertSucceeds(getDoc(doc(authed(kOwner), "requests/req-rejected")));
+  });
+
+  it("hides them from everyone else", async () => {
+    await assertFails(getDoc(doc(anon(), "requests/req-pending")));
+    await assertFails(getDoc(doc(anon(), "requests/req-rejected")));
+    await assertFails(getDoc(doc(authed(kOther), "requests/req-pending")));
+    await assertFails(getDoc(doc(authed(kOther), "requests/req-rejected")));
+  });
+
+  it("lets staff read them", async () => {
+    await assertSucceeds(getDoc(doc(admin(), "requests/req-pending")));
+    await assertSucceeds(getDoc(doc(admin(), "requests/req-rejected")));
+  });
+
+  it("still refuses every client write, author included", async () => {
+    // A client that could flip its own status to "visible" would make the whole
+    // moderation system decorative.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "requests/req-rejected"), {
+        status: "visible",
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(admin(), "requests/req-pending"), { status: "visible" }),
     );
   });
 });

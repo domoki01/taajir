@@ -105,6 +105,31 @@ function matchesSearch(search: SavedSearch, listing: Listing): boolean {
   return true;
 }
 
+/**
+ * Tell someone what happened to their own post.
+ *
+ * Deliberately not subject to `notifyOnSavedSearch`: that switch is consent for
+ * marketing-shaped alerts about *other people's* new listings. "Your ad was
+ * refused, here is why" is transactional — it is the outcome of something they
+ * did, it is the only place the reason is announced, and silencing it would
+ * leave a seller staring at a post that never appeared.
+ *
+ * Swallows its own failures. A moderation decision has already been written to
+ * Firestore by the time this runs, and a push that did not go out must never
+ * turn a completed decision into an error.
+ */
+export async function notifyAuthor(
+  uid: string,
+  message: { title: string; body: string; url: string },
+): Promise<number> {
+  try {
+    return await deliver(uid, message, "taajir-moderation");
+  } catch (error) {
+    console.error("[push] author notice failed:", error);
+    return 0;
+  }
+}
+
 async function pushToUser(
   uid: string,
   message: { title: string; body: string; url: string },
@@ -120,6 +145,18 @@ async function pushToUser(
   const profile = await userRef.get();
   if (profile.data()?.notifyOnSavedSearch === false) return 0;
 
+  return deliver(uid, message, "taajir-alert");
+}
+
+/** The actual send, shared by both callers. Consent is decided above it. */
+async function deliver(
+  uid: string,
+  message: { title: string; body: string; url: string },
+  tag: string,
+): Promise<number> {
+  const db = adminDb();
+  const userRef = db.collection("users").doc(uid);
+
   const devices = await userRef.collection("devices").get();
   if (devices.empty) return 0;
 
@@ -132,7 +169,7 @@ async function pushToUser(
     // service worker reads it from there, not from `notification`.
     data: { url: message.url },
     webpush: {
-      notification: { icon: "/icon-192.png", tag: "taajir-alert" },
+      notification: { icon: "/icon-192.png", tag },
       fcmOptions: { link: message.url },
     },
   });

@@ -16,7 +16,7 @@ import {
   requireUser,
 } from "@/server/auth";
 import { priceBucket, toDinars } from "@/lib/price";
-import { notifyMatchingSearches } from "@/server/push";
+import { notifyAuthor, notifyMatchingSearches } from "@/server/push";
 import type { Listing } from "@/types/listing";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -64,6 +64,13 @@ export async function approveListing(id: string): Promise<ActionResult> {
   await writeAudit(admin.uid, "approve", id, null);
   revalidateListing({ ...listing, id });
 
+  // The owner has been waiting on a decision they cannot see the progress of.
+  await notifyAuthor(listing.ownerUid, {
+    title: "إعلانك تنشر ✅",
+    body: listing.title,
+    url: `/annonce/${id}/${listing.slug}`,
+  });
+
   // Approval is the moment the ad becomes visible, so it is the only honest
   // moment to announce it: on submission the content is unmoderated, and a
   // rejected ad would have been announced and then vanished. Awaited so the
@@ -103,6 +110,14 @@ export async function rejectListing(
   });
 
   await writeAudit(admin.uid, "reject", id, trimmed);
+
+  // The reason travels with the notice. "Your ad was refused" on its own sends
+  // someone back to the form to make the same mistake again.
+  await notifyAuthor(listing.ownerUid, {
+    title: "إعلانك ما تنشرش",
+    body: trimmed,
+    url: "/tableau-de-bord/publications",
+  });
   revalidateListing({ ...listing, id });
   return { ok: true };
 }

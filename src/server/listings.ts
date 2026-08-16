@@ -5,6 +5,9 @@
 
 import { doc, getDoc, getDocs } from "firebase/firestore";
 import { publicDb } from "@/lib/firebase/public";
+// The public reads above go through the client SDK so security rules apply to
+// them. `listMyListings` at the bottom is the one exception and says why.
+import { adminDb } from "@/lib/firebase/admin";
 import {
   buildListingsQuery,
   type ListingFilters,
@@ -63,4 +66,36 @@ export async function getSimilarListings(
     max + 1,
   );
   return results.filter((l) => l.id !== listing.id).slice(0, max);
+}
+
+/**
+ * Everything one person has posted, whatever state it is in.
+ *
+ * Wrapped because a Firestore read can fail for reasons that have nothing to do
+ * with this user: a missing composite index, a cold database, a transient
+ * network fault. Letting that throw turns "here are your ads" into a blank 500
+ * right after someone has posted, which reads as having lost their work.
+ *
+ * Uses the Admin SDK rather than the public client: a pending or rejected ad is
+ * invisible to security rules by design, and its own author still has to be
+ * able to see it and read why.
+ */
+export async function listMyListings(
+  uid: string,
+  max = 50,
+): Promise<Listing[] | null> {
+  try {
+    const snap = await adminDb()
+      .collection("listings")
+      .where("ownerUid", "==", uid)
+      .orderBy("updatedAt", "desc")
+      .limit(max)
+      .get();
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as Listing)
+      .filter((l) => l.status !== "archived");
+  } catch (error) {
+    console.error("[my-listings] read failed:", error);
+    return null;
+  }
 }

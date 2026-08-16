@@ -51,7 +51,7 @@ export function RequestWizard({ initialIntent }: { initialIntent: string }) {
         communeSlug,
       });
       if (res.ok) {
-        router.push("/merci?type=demande");
+        router.push(`/merci?type=demande&state=${res.state ?? "review"}`);
         router.refresh();
       } else {
         setError(res.error);
