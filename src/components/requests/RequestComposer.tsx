@@ -65,28 +65,27 @@ export function RequestComposer({ signedIn }: { signedIn: boolean }) {
     "rounded-input border-border focus:border-primary w-full border bg-white px-4 py-3 text-base outline-none";
   const select = `${field} appearance-none font-semibold`;
 
+  // One row, not a panel. This sits between the reader and the feed they came
+  // for, and the previous three-line version with two stacked buttons took 168px
+  // of a 844px phone screen — a sign-up pitch taller than the posts it was
+  // interrupting. The prompt still reads as the way in; "حساب جديد" is one tap
+  // further for the few who need it.
   if (!signedIn) {
     return (
-      <div className="rounded-card border-border bg-surface border p-5 text-center">
-        <p className="font-bold">حاب تنشر طلب؟</p>
-        <p className="text-muted mt-1 text-sm">
-          سجّل الدخول وقول واش تحوّس عليه — الناس اللي عندها العقار تجاوبك.
-        </p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <Link
-            href="/connexion?next=%2Fdemandes"
-            className="bg-accent rounded-input px-5 py-2.5 text-sm font-bold text-white"
-          >
-            دخول
-          </Link>
-          <Link
-            href="/inscription?next=%2Fdemandes"
-            className="rounded-input border-border border bg-white px-5 py-2.5 text-sm font-bold"
-          >
-            حساب جديد
-          </Link>
-        </div>
-      </div>
+      <Link
+        href="/inscription?next=%2Fdemandes"
+        className="rounded-card border-border bg-surface hover:border-primary flex w-full items-center gap-3 border border-dashed p-3 text-start transition-colors"
+      >
+        <span className="bg-accent grid size-8 shrink-0 place-items-center rounded-full text-white">
+          <Plus className="size-4" strokeWidth={3} />
+        </span>
+        <span className="min-w-0 text-sm font-bold">
+          حاب تنشر طلب؟
+          <span className="text-dim block text-xs font-semibold">
+            سجّل ودخل — الناس اللي عندها العقار تجاوبك.
+          </span>
+        </span>
+      </Link>
     );
   }
 

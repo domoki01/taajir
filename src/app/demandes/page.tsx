@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Megaphone } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/layout/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { RequestComposer } from "@/components/requests/RequestComposer";
@@ -11,7 +10,7 @@ import { listRequests } from "@/server/requests";
 import { getUser } from "@/server/auth";
 import { guardPrelaunch } from "@/server/launch";
 import { getCommune, getWilaya } from "@/lib/geo";
-import { formatFullDateTime } from "@/lib/datetime";
+import { formatRelative } from "@/lib/datetime";
 
 // The composer depends on who is asking, and reading the session opts the route
 // out of caching anyway — so it is stated rather than discovered.
@@ -58,29 +57,28 @@ export default async function RequestsPage({
       <Header />
       <main className="flex-1 py-6 md:py-8">
         <Container>
-          <h1 className="flex items-center gap-2 text-2xl font-extrabold">
-            <Megaphone className="text-primary size-6" />
+          <h1 className="flex items-center gap-2 text-xl font-extrabold md:text-2xl">
+            <Megaphone className="text-primary size-5 md:size-6" />
             طلبات العقار
           </h1>
-          <p className="text-muted mt-2 text-sm">
-            صفّي حسب الولاية والبلدية وشوف واش يحوّسو عليه الناس — وإذا عندك
-            عقار يناسبهم، علّق عليه.
+          <p className="text-muted mt-1 text-xs md:text-sm">
+            شوف واش يحوّسو عليه الناس — وإذا عندك عقار يناسبهم، علّق عليه.
           </p>
 
           {/* The filter leads, before the composer: most people arrive to read
               demands, not to write one. */}
-          <div className="mt-5">
+          <div className="mt-3">
             <RequestFilter
               wilayaSlug={wilaya?.slug ?? ""}
               communeSlug={commune?.slug ?? ""}
             />
           </div>
 
-          <div className="mt-4">
+          <div className="mt-2.5">
             <RequestComposer signedIn={user !== null} />
           </div>
 
-          <div className="mt-6 flex items-baseline gap-2">
+          <div className="mt-4 flex items-baseline gap-2">
             <h2 className="font-extrabold">
               {where ? `طلبات ${where}` : "كل الطلبات"}
             </h2>
@@ -103,7 +101,7 @@ export default async function RequestsPage({
               />
             </div>
           ) : (
-            <ul className="mt-4 space-y-4">
+            <ul className="mt-3 space-y-2.5">
               {requests.map((r) => (
                 <RequestCard
                   key={r.id}
@@ -111,14 +109,13 @@ export default async function RequestsPage({
                   // Formatted here, in Africa/Algiers: doing it in the client
                   // component renders UTC on the server and local time in the
                   // browser, which React reports as a hydration mismatch.
-                  createdAtLabel={formatFullDateTime(r.createdAt)}
+                  createdAtLabel={formatRelative(r.createdAt)}
                 />
               ))}
             </ul>
           )}
         </Container>
       </main>
-      <Footer />
     </>
   );
 }
