@@ -28,6 +28,14 @@ service firebase.storage {
       return request.resource.size < mb * 1024 * 1024;
     }
 
+    // Storage rules can read Firestore, which is the only place the owner of an
+    // agency is recorded. One lookup per write, on a path written rarely.
+    function ownsAgency(agencyId) {
+      return signedIn()
+             && firestore.get(/databases/(default)/documents/agencies/$(agencyId))
+                  .data.ownerUid == request.auth.uid;
+    }
+
     // ── LISTING PHOTOS ───────────────────────────────────────────────────────
     // Written straight from the browser after the server has checked the user's
     // quota and issued the path. Uploads are pinned under the uploader's own
@@ -52,10 +60,14 @@ service firebase.storage {
     }
 
     // ── AGENCY BRANDING ──────────────────────────────────────────────────────
+    // Pinned to the agency's own owner. `signedIn()` alone meant any account on
+    // the site could overwrite any agency's logo and cover — the images that
+    // appear on that agency's public page — which is defacement of somebody
+    // else's business by anyone who can register.
 
     match /agencies/{agencyId}/public/{fileName} {
       allow read: if true;
-      allow write: if signedIn() && isImage() && underMb(4);
+      allow write: if ownsAgency(agencyId) && isImage() && underMb(4);
     }
 
     // ── PRIVATE DOCUMENTS ────────────────────────────────────────────────────
@@ -70,9 +82,18 @@ service firebase.storage {
                    && underMb(6);
     }
 
+    // The agrément scan. Same ownership check, and — unlike before — a type:
+    // `signedIn() && underMb(6)` accepted **any** content type from **any**
+    // account into **any** agency's folder, which is an arbitrary file host
+    // inside the project's own bucket, and an HTML file there is a page served
+    // from a Google domain that an admin is invited to open.
+
     match /agencies/{agencyId}/legal/{fileName} {
-      allow read: if isAdmin();
-      allow write: if signedIn() && underMb(6);
+      allow read: if isAdmin() || ownsAgency(agencyId);
+      allow write: if ownsAgency(agencyId)
+                   && (isImage()
+                       || request.resource.contentType == 'application/pdf')
+                   && underMb(6);
     }
 
     // ── DEFAULT DENY ─────────────────────────────────────────────────────────

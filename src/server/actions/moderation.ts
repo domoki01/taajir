@@ -16,6 +16,7 @@ import {
   requireUser,
 } from "@/server/auth";
 import { priceBucket, toDinars } from "@/lib/price";
+import { checkPolicy } from "@/lib/policy";
 import { notifyAuthor, notifyMatchingSearches } from "@/server/push";
 import type { Listing } from "@/types/listing";
 
@@ -204,6 +205,15 @@ export async function editListing(
   const description = input.description.trim();
   if (description.length < 20 || description.length > 3000) {
     return { ok: false, error: "الوصف لازم بين 20 و3000 حرف" };
+  }
+
+  // The same check the create path runs. Without it, editing is the way around
+  // it: publish something clean, then rewrite it into whatever was refused at
+  // creation. The edit does send a published ad back for review, but a demand
+  // feed reader and a search crawler both see the new text meanwhile.
+  const verdict = checkPolicy({ title, description });
+  if (verdict.decision === "reject") {
+    return { ok: false, error: verdict.reason };
   }
   if (!/^\+?[0-9\s]{9,15}$/.test(input.contactPhone.trim())) {
     return { ok: false, error: "رقم الهاتف ماشي صحيح" };

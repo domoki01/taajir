@@ -342,6 +342,13 @@ export async function addReply(
   }
   if (containsLink(body)) return { ok: false, error: kNoLinksMessage };
 
+  // Refusals only, as in comments: a reply is published immediately or not at
+  // all, so there is nothing for a "review" verdict to mean here.
+  const verdict = checkPolicy({ title: "", description: body });
+  if (verdict.decision === "reject") {
+    return { ok: false, error: verdict.reason };
+  }
+
   const db = adminDb();
   const requestRef = db.collection("requests").doc(requestId);
   const requestSnap = await requestRef.get();

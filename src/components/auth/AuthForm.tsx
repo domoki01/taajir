@@ -14,6 +14,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { PhoneAuth } from "@/components/auth/PhoneAuth";
+import { safeNext } from "@/lib/redirect";
 
 type Mode = "signin" | "signup";
 
@@ -47,7 +48,9 @@ function humanize(code: string): string {
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/tableau-de-bord";
+  // Sanitised, not just defaulted: this value is handed to the router the
+  // instant the session exists, and it comes from the link that was clicked.
+  const next = safeNext(params.get("next"));
   // The other page must keep the destination, or someone who taps "عندك حساب؟"
   // mid-funnel signs in and lands on their dashboard instead of the form they
   // came for.

@@ -821,7 +821,11 @@ describe("users", () => {
     );
   });
 
-  it("refuses a self-registration that claims a role", async () => {
+  it("refuses a self-registration, however well-shaped", async () => {
+    // The profile document is created by the server during the session
+    // exchange. A client can sign in with the JS SDK before it posts its token,
+    // and the old rule accepted any document that pinned role, isBanned and
+    // activeListingCount — leaving the two fields that actually matter free.
     await assertFails(
       setDoc(doc(authed(kOther), "users/" + kOther), {
         role: "admin",
@@ -829,11 +833,45 @@ describe("users", () => {
         activeListingCount: 0,
       }),
     );
-    await assertSucceeds(
+    await assertFails(
       setDoc(doc(authed(kOther), "users/" + kOther), {
         role: "user",
         isBanned: false,
         activeListingCount: 0,
+      }),
+    );
+  });
+
+  it("refuses the quota and approval self-grant the old create rule allowed", async () => {
+    await assertFails(
+      setDoc(doc(authed(kOther), "users/" + kOther), {
+        role: "user",
+        isBanned: false,
+        activeListingCount: 0,
+        // Both would have passed: neither field was constrained, and
+        // ensureUserDoc leaves an existing document's fields alone.
+        listingQuota: 10000,
+        approved: true,
+      }),
+    );
+  });
+});
+
+describe("abuse surfaces", () => {
+  it("takes the unauthenticated write endpoint off reports", async () => {
+    // It accepted any shape, from anyone, at any rate — into a billed
+    // collection. Nothing in the app writes here; the flag flow will arrive as
+    // a Server Action like every other write.
+    await assertFails(
+      setDoc(doc(anon(), "reports/r-1"), {
+        status: "open",
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      setDoc(doc(authed(kOther), "reports/r-2"), {
+        status: "open",
+        createdAt: serverTimestamp(),
       }),
     );
   });

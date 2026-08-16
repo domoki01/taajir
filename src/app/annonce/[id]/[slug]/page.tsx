@@ -17,6 +17,7 @@ import { formatPrice, formatPriceExact } from "@/lib/price";
 import { kAmenities, kConditions, kPaperwork } from "@/lib/enums";
 import { getTaxonomy, labelOf } from "@/server/filterSettings";
 import { kSiteUrl } from "@/lib/constants";
+import { jsonLdScript } from "@/lib/jsonld";
 
 export const revalidate = 300;
 
@@ -125,9 +126,11 @@ export default async function ListingPage({ params }: { params: Params }) {
     <>
       <Header />
 
+      {/* jsonLdScript, not JSON.stringify: the title and description in here
+          are written by whoever posted the ad. */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
 
       {/* Extra bottom padding so the sticky contact bar never covers content. */}

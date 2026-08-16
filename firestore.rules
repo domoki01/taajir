@@ -95,10 +95,15 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
 
-      allow create: if isOwner(userId)
-                    && request.resource.data.role == 'user'
-                    && request.resource.data.isBanned == false
-                    && request.resource.data.activeListingCount == 0;
+      // No client create. The document is written by ensureUserDoc on the
+      // Admin SDK during the session exchange, and the previous rule — which
+      // only pinned role, isBanned and activeListingCount — left `listingQuota`
+      // and `approved` free. A client signs in with the JS SDK *before* it
+      // posts its token here, so in that window it could write its own document
+      // with a quota of ten thousand and approved: true, and ensureUserDoc,
+      // finding a document already there, would leave both alone. The paid tier
+      // and the registration gate are that field and that flag.
+      allow create: if false;
 
       allow update: if isAdmin()
                     || (isOwner(userId) && notBanned() && onlyChanged([
@@ -315,13 +320,15 @@ service cloud.firestore {
     }
 
     // ── REPORTS ──────────────────────────────────────────────────────────────
-    // Anyone can flag a listing, including signed-out visitors — fake ads are
-    // the standard failure mode of a classifieds site and friction here costs
-    // more than it saves.
+    // Flagging a fake ad should stay easy — it is the standard failure mode of
+    // a classifieds site — but the rule that allowed it was an unauthenticated
+    // write endpoint with no shape at all: anything could POST documents of any
+    // size, as fast as it liked, into a billed collection. Nothing in the app
+    // writes here yet, so the flow will arrive the way every other write does,
+    // through a Server Action that can also rate-limit and deduplicate.
 
     match /reports/{id} {
-      allow create: if request.resource.data.status == 'open'
-                    && request.resource.data.createdAt == request.time;
+      allow create: if false;
       allow read, update, delete: if isAdmin();
     }
 

@@ -15,6 +15,7 @@ import {
   requireUser,
 } from "@/server/auth";
 import { getAccessSettings, kNeedsApproval } from "@/server/access";
+import { checkPolicy } from "@/lib/policy";
 import type { Listing } from "@/types/listing";
 
 export type CommentResult =
@@ -39,6 +40,15 @@ export async function addComment(
   if (body.length < kMinLength) return { ok: false, error: "اكتب تعليق" };
   if (body.length > kMaxLength) {
     return { ok: false, error: `التعليق طويل — أقصى ${kMaxLength} حرف` };
+  }
+
+  // Comments were the one public, indexable surface the policy check did not
+  // read: links, insults and payment-scam wording were refused in an ad and in
+  // a reply, and waved through underneath the ad. Only the refusing half is
+  // applied — a comment has no queue to wait in, so "unsure" means publish.
+  const verdict = checkPolicy({ title: "", description: body });
+  if (verdict.decision === "reject") {
+    return { ok: false, error: verdict.reason };
   }
 
   const db = adminDb();
