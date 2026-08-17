@@ -16,13 +16,26 @@ import {
 } from "@/lib/referral";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ code: string }> },
 ) {
   const { code } = await params;
   const clean = code.trim().toUpperCase();
 
-  const response = NextResponse.redirect(new URL(kFunnelHome, request.url));
+  // A **relative** Location, built by hand rather than through
+  // NextResponse.redirect(new URL(…, request.url)).
+  //
+  // That form worked locally and shipped a broken link: App Hosting runs the
+  // app on Cloud Run behind a proxy, so `request.url` is the container's own
+  // address and the absolute URL came out as `https://localhost:8080/bienvenue`
+  // — every invited visitor sent to a dead address. Deriving the public origin
+  // from x-forwarded-host would work, but a relative Location needs no host at
+  // all: RFC 7231 allows it and every browser resolves it against the address
+  // the visitor actually typed, which is the correct one by definition.
+  const response = new NextResponse(null, {
+    status: 307,
+    headers: { location: kFunnelHome },
+  });
 
   // Validated by shape alone, with no database read. This URL is public and
   // unauthenticated, so resolving every code that arrives here would hand a
