@@ -807,6 +807,34 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "entrants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "points",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "lastPointAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "prizeClaims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "requestedAt",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [

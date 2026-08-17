@@ -63,6 +63,9 @@ const db = adminDb();
 
 const kSettings = {
   perReferral: 100,
+  pointsPerPublish: 20,
+  dailyPublishCap: 2,
+  dailyLinkPoints: 100,
   bonusEvery: 10,
   bonusPoints: 200,
   pointsPerListingSlot: 100,
@@ -159,6 +162,41 @@ describe("createRequest", () => {
 
     expect(res).toMatchObject({ ok: true, state: "review" });
     expect(await points(kReferrer)).toBe(0);
+  });
+});
+
+describe("rewardPublish, through createRequest", () => {
+  it("pays the author for their own post, and counts it", async () => {
+    await createRequest(kDemand);
+
+    // The author is paid separately from their referrer: the site wants ads,
+    // so the site pays for ads.
+    expect(await points(kInvitee)).toBe(20);
+    const doc = (await db.collection("users").doc(kInvitee).get()).data();
+    expect(doc?.publishCount).toBe(1);
+  });
+
+  it("stops paying at the daily cap but keeps counting the posts", async () => {
+    await createRequest(kDemand);
+    await createRequest({ ...kDemand, title: "نشري فيلا في حيدرة" });
+    await createRequest({ ...kDemand, title: "نشري محلّ في وهران" });
+
+    // dailyPublishCap is 2, so the third pays nothing…
+    expect(await points(kInvitee)).toBe(40);
+    // …but still counts towards publishCount, which is what opens the
+    // mission gate. Contributing counts even when it does not pay twice.
+    const doc = (await db.collection("users").doc(kInvitee).get()).data();
+    expect(doc?.publishCount).toBe(3);
+  });
+
+  it("pays the author nothing for a post that is not public", async () => {
+    await db.doc("settings/launch").set({ state: "prelaunch", launchAt: null });
+
+    await createRequest(kDemand);
+
+    expect(await points(kInvitee)).toBe(0);
+    const doc = (await db.collection("users").doc(kInvitee).get()).data();
+    expect(doc?.publishCount ?? 0).toBe(0);
   });
 });
 

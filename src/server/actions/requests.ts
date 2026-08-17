@@ -25,7 +25,7 @@ import { getCommune, getWilaya } from "@/lib/geo";
 import { containsLink, kNoLinksMessage } from "@/lib/text";
 import { checkPolicy } from "@/lib/policy";
 import { notifyAuthor } from "@/server/push";
-import { qualifyReferral } from "@/server/affiliate";
+import { qualifyReferral, rewardPublish } from "@/server/affiliate";
 import { kTooFast, withinRate } from "@/server/rateLimit";
 import { kMaxOpenRequests } from "@/lib/constants";
 import type { Listing } from "@/types/listing";
@@ -207,7 +207,10 @@ export async function createRequest(
   } satisfies Omit<PropertyRequest, "id">);
 
   // Same rule as an ad: only a post the public can see counts a referral.
-  if (status === "visible") await qualifyReferral(who.uid);
+  if (status === "visible") {
+    await qualifyReferral(who.uid);
+    await rewardPublish(who.uid);
+  }
 
   revalidatePath("/demandes");
   return {
@@ -291,6 +294,7 @@ export async function approveRequest(id: string): Promise<RequestResult> {
   });
 
   await qualifyReferral(request.ownerUid);
+  await rewardPublish(request.ownerUid);
 
   revalidatePath("/demandes");
   revalidatePath(`/demandes/${id}`);

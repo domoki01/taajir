@@ -405,6 +405,22 @@ service cloud.firestore {
       match /entrants/{uid} {
         allow read, write: if false;
       }
+
+      // One row per account per mission link, and the row *is* the "once".
+      // Readable, it would hand out the campaign's secret words — the visit
+      // document is written with the link's own id, and a client that could
+      // list them could map which links carry a question. Writable, the whole
+      // mission system is a button that pays.
+      match /visits/{visitId} {
+        allow read, write: if false;
+      }
+    }
+
+    // Prize requests carry a Binance id, a Google account or a phone number,
+    // and the same reasoning as payouts applies: the screens that show them are
+    // Server Components on the Admin SDK, so no client needs this at all.
+    match /prizeClaims/{id} {
+      allow read, write: if false;
     }
 
     match /referralCodes/{code} {

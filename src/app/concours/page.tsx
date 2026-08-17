@@ -5,31 +5,34 @@ import { Header } from "@/components/layout/Header";
 import { Container } from "@/components/layout/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getUser } from "@/server/auth";
-import { liveCampaign, myStanding, standings } from "@/server/affiliate";
+import { adminDb } from "@/lib/firebase/admin";
+import {
+  liveCampaign,
+  myEntry,
+  myStanding,
+  myVisits,
+  serverNow,
+  standings,
+} from "@/server/affiliate";
+import {
+  ContestBoard,
+  type PublicMission,
+} from "@/components/affiliate/ContestBoard";
 
 export const metadata: Metadata = {
   title: "المسابقة",
-  description: "ترتيب أكثر واحد دعا ناس للمنصّة، والجائزة.",
+  description: "اجمع النقاط، افتح جائزتك، وشوف ترتيبك بين المشاركين.",
 };
 
 // The leaderboard is the page people refresh, so it is never served stale.
 export const dynamic = "force-dynamic";
 
-function remaining(endsAt: number): string {
-  const ms = endsAt - Date.now();
-  if (ms <= 0) return "سالات";
-  const days = Math.floor(ms / 86400000);
-  if (days >= 1) return `باقي ${days} يوم`;
-  const hours = Math.max(1, Math.floor(ms / 3600000));
-  return `باقي ${hours} ساعة`;
-}
-
 /**
  * The race.
  *
- * Public and unauthenticated on purpose: the leaderboard is the advertisement.
- * Someone who lands on it from a WhatsApp forward should see the prize and the
- * names before being asked to sign in for anything.
+ * Public and unauthenticated on purpose: the leaderboard and the prize shelf
+ * are the advertisement. Someone who lands here from a WhatsApp forward should
+ * see what is on offer and who is winning before being asked to sign in.
  */
 export default async function ContestPage() {
   const campaign = await liveCampaign();
@@ -57,10 +60,35 @@ export default async function ContestPage() {
     );
   }
 
-  const board = await standings(campaign.id);
-  const mine = user ? await myStanding(campaign.id, user.uid) : null;
-  // Shown only when the visitor is not already on the visible board — repeating
-  // their row under a list they are in reads as a bug, not as encouragement.
+  const [board, entry, visits, mine] = await Promise.all([
+    standings(campaign.id),
+    user ? myEntry(campaign.id, user.uid) : null,
+    user
+      ? myVisits(campaign.id, user.uid)
+      : ({} as Awaited<ReturnType<typeof myVisits>>),
+    user ? myStanding(campaign.id, user.uid) : null,
+  ]);
+
+  // The publish gate on missions, read once here so the board can explain it
+  // rather than only refusing.
+  const account = user
+    ? (await adminDb().collection("users").doc(user.uid).get()).data()
+    : null;
+
+  // `answer` never leaves the server. It is the only thing on the campaign
+  // document that is a secret, and props ship inside the RSC payload where
+  // "view source" reads them.
+  const missions: PublicMission[] = (campaign.links ?? [])
+    .filter((link) => link.active)
+    .map((link) => ({
+      id: link.id,
+      label: link.label,
+      points: link.points,
+      dwellSeconds: link.dwellSeconds,
+      hasAnswer: !!link.answer,
+      done: !!visits[link.id]?.claimedAt,
+    }));
+
   const onBoard = board.some((e) => e.uid === user?.uid);
 
   return (
@@ -77,24 +105,45 @@ export default async function ContestPage() {
               {campaign.prize}
             </p>
             <p className="text-muted ltr-nums mt-1 text-sm font-semibold">
-              {remaining(campaign.endsAt)} —{" "}
-              {campaign.winners === 1
-                ? "الأوّل يربح"
-                : `الأوائل ${campaign.winners} يربحو`}
+              اجمع {campaign.prizeThreshold} نقطة وافتح جائزتك
             </p>
           </div>
 
-          <p className="text-muted mt-4 text-center text-sm leading-relaxed font-semibold">
-            الدعوة تتحسب كي يسجّل صاحبك برابطك وينشر إعلان ولا طلب ويتقبل. كي
-            يتعادلو زوج، الأسبق يفوز.
-          </p>
+          <ContestBoard
+            campaignName={campaign.name}
+            endsAt={campaign.endsAt}
+            serverNow={serverNow()}
+            threshold={campaign.prizeThreshold}
+            winners={campaign.winners}
+            prizes={campaign.prizes ?? []}
+            missions={missions}
+            entry={entry}
+            publishCount={(account?.publishCount as number) ?? 0}
+            signedIn={!!user}
+          />
 
+          {/* ── HOW POINTS ARRIVE ──────────────────────────────────────────── */}
+          <div className="rounded-card border-border bg-surface mt-4 border p-4">
+            <p className="text-sm font-extrabold">كيفاش تجمع النقاط</p>
+            <ul className="text-muted mt-2 space-y-1.5 text-sm leading-relaxed font-semibold">
+              <li>• انشر إعلان ولا طلب ويتقبل</li>
+              <li>• ادعُ صاحبك برابطك، وكي ينشر تربح</li>
+              <li>• كمّل المهامّ السريعة فوق</li>
+            </ul>
+            <p className="text-dim mt-3 text-xs leading-relaxed">
+              كل نقطة عندها سبب مكتوب في «حركة النقاط» في صفحتك. الحسابات
+              الوهمية تتشطب من السباق وترجع نقاطها.
+            </p>
+          </div>
+
+          {/* ── THE BOARD ──────────────────────────────────────────────────── */}
+          <p className="mt-6 text-sm font-extrabold">الترتيب</p>
           {board.length === 0 ? (
-            <p className="rounded-card border-border bg-surface text-muted mt-5 border p-6 text-center text-sm leading-relaxed font-semibold">
-              ما زال حتى واحد ما بدا. أوّل دعوة تحطّك في راس القائمة.
+            <p className="rounded-card border-border bg-surface text-muted mt-2 border p-6 text-center text-sm leading-relaxed font-semibold">
+              ما زال حتى واحد ما بدا. أوّل نقطة تحطّك في راس القائمة.
             </p>
           ) : (
-            <ol className="rounded-card border-border bg-surface mt-5 divide-y divide-[var(--color-border)] border">
+            <ol className="rounded-card border-border bg-surface mt-2 divide-y divide-[var(--color-border)] border">
               {board.map((entrant, index) => (
                 <li
                   key={entrant.uid}
@@ -104,18 +153,27 @@ export default async function ContestPage() {
                 >
                   <span
                     className={`ltr-nums grid size-8 shrink-0 place-items-center rounded-full text-sm font-black ${
-                      index < campaign.winners
-                        ? "bg-primary text-white"
-                        : "bg-surface-soft text-dim"
+                      entrant.unlockedAt
+                        ? "bg-success text-white"
+                        : index < 3
+                          ? "bg-primary text-white"
+                          : "bg-surface-soft text-dim"
                     }`}
                   >
                     {index + 1}
                   </span>
-                  <span className="truncate text-sm font-bold">
-                    {entrant.displayName}
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold">
+                      {entrant.displayName}
+                    </span>
+                    {entrant.unlockedAt && (
+                      <span className="text-success block text-xs font-bold">
+                        فتح جائزتو
+                      </span>
+                    )}
                   </span>
                   <span className="text-primary ltr-nums ms-auto shrink-0 text-sm font-black">
-                    {entrant.count}
+                    {entrant.points ?? 0}
                   </span>
                 </li>
               ))}
@@ -124,13 +182,13 @@ export default async function ContestPage() {
 
           {mine && mine.rank !== null && !onBoard && (
             <p className="rounded-card border-primary bg-surface ltr-nums mt-3 border p-3.5 text-center text-sm font-black">
-              ترتيبك {mine.rank} بـ{mine.count} دعوة
+              ترتيبك {mine.rank} بـ{mine.points} نقطة
             </p>
           )}
 
           <Link
             href="/tableau-de-bord/parrainage"
-            className="bg-accent rounded-input mt-5 block py-3.5 text-center text-sm font-bold text-white transition-opacity hover:opacity-90"
+            className="rounded-input border-primary text-primary hover:bg-primary-soft mt-5 block border py-3.5 text-center text-sm font-bold transition-colors"
           >
             جيب رابط الدعوة تاعك
           </Link>

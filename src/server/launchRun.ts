@@ -3,7 +3,7 @@ import "server-only";
 import { adminDb } from "@/lib/firebase/admin";
 import { kLaunchSettingsPath } from "@/server/launch";
 import { notifyLaunch } from "@/server/launchNotify";
-import { qualifyReferral } from "@/server/affiliate";
+import { qualifyReferral, rewardPublish } from "@/server/affiliate";
 import type { LaunchState } from "@/types/launch";
 
 // ── THE LAUNCH ITSELF ────────────────────────────────────────────────────────
@@ -94,7 +94,10 @@ export async function runLaunch(actorUid: string): Promise<LaunchOutcome> {
   //     after the writes: qualifyReferral swallows its own failures, and none of
   //     this may hold up opening the site. Cheap when the programme is off — the
   //     first line of it is a settings read that returns immediately.
-  for (const uid of authors) await qualifyReferral(uid);
+  for (const uid of authors) {
+    await qualifyReferral(uid);
+    await rewardPublish(uid);
+  }
 
   // 3. Open the doors.
   await db.doc(kLaunchSettingsPath).set(

@@ -14,7 +14,10 @@ import {
   type Campaign,
   type Entrant,
   type LedgerEntry,
+  type LedgerReason,
+  type LinkVisit,
   type Payout,
+  type PrizeClaim,
 } from "@/types/affiliate";
 
 export const kAffiliateSettingsPath = "settings/affiliate";
@@ -266,10 +269,81 @@ export async function qualifyReferral(newUserUid: string): Promise<void> {
       });
     }
 
-    await countTowardsLiveCampaign(award.referrer, award.name, now);
+    await countTowardsLiveCampaign(award.referrer, {
+      points: award.points,
+      referrals: 1,
+      at: now,
+    });
   } catch (error) {
     // Swallowed on purpose: the post is already public by the time this runs.
     console.error("[affiliate] qualify failed:", error);
+  }
+}
+
+/**
+ * Pay somebody for their own post going public.
+ *
+ * Called from the same four places as qualifyReferral, and for the same reason:
+ * what is being paid for is a post the public can see, which has cost its
+ * author a real phone number, real content and — when the check was unsure — a
+ * moderator's yes.
+ *
+ * It also keeps `publishCount`, which is the gate on link missions. That number
+ * is the cheapest honest proof that an account is a person using the site
+ * rather than a row in somebody's spreadsheet, and it is incremented even when
+ * the daily cap pays nothing: contributing still counts towards being allowed
+ * to earn, it just does not pay twice.
+ *
+ * Never throws, for the same reason as its sibling.
+ */
+export async function rewardPublish(uid: string): Promise<void> {
+  try {
+    const settings = await getAffiliateSettings();
+    if (!settings.enabled) return;
+
+    const db = adminDb();
+    const ref = db.collection("users").doc(uid);
+    const now = Date.now();
+
+    const award = await db.runTransaction(async (tx) => {
+      const data = (await tx.get(ref)).data();
+      if (!data || data.isBanned === true) return null;
+
+      const dayStart = new Date().setHours(0, 0, 0, 0);
+      const capDay = (data.publishDay as number) ?? 0;
+      const paidToday =
+        capDay === dayStart ? ((data.publishPaidCount as number) ?? 0) : 0;
+      const capped = paidToday >= settings.dailyPublishCap;
+
+      tx.update(ref, {
+        publishCount: FieldValue.increment(1),
+        ...(capped
+          ? {}
+          : {
+              points: FieldValue.increment(settings.pointsPerPublish),
+              publishDay: dayStart,
+              publishPaidCount: paidToday + 1,
+            }),
+      });
+
+      return capped ? null : settings.pointsPerPublish;
+    });
+
+    if (!award) return;
+
+    await db.collection("pointsLedger").add({
+      uid,
+      delta: award,
+      reason: "publish",
+      at: now,
+    });
+    await countTowardsLiveCampaign(uid, {
+      points: award,
+      referrals: 0,
+      at: now,
+    });
+  } catch (error) {
+    console.error("[affiliate] publish reward failed:", error);
   }
 }
 
@@ -316,11 +390,38 @@ export async function clawbackReferral(bannedUid: string): Promise<void> {
         .doc(live.id)
         .collection("entrants")
         .doc(referrer)
-        .update({ count: FieldValue.increment(-1) })
+        .update({
+          points: FieldValue.increment(-settings.perReferral),
+          referrals: FieldValue.increment(-1),
+        })
         .catch(() => {});
     }
   } catch (error) {
     console.error("[affiliate] clawback failed:", error);
+  }
+}
+
+/**
+ * Take a banned account out of the race entirely.
+ *
+ * Separate from clawbackReferral, which undoes what a banned account earned
+ * *for somebody else*. This one is about what the banned account earned for
+ * itself — the leaderboard place. Left alone, a farm caught mid-campaign keeps
+ * the top row and the prize it was heading for, which is the one outcome that
+ * would tell everyone honest that the race is not worth entering.
+ */
+export async function disqualifyFromLiveCampaign(uid: string): Promise<void> {
+  try {
+    const live = await liveCampaign();
+    if (!live) return;
+    await adminDb()
+      .collection("campaigns")
+      .doc(live.id)
+      .collection("entrants")
+      .doc(uid)
+      .set({ disqualified: true }, { merge: true });
+  } catch (error) {
+    console.error("[affiliate] campaign disqualify failed:", error);
   }
 }
 
@@ -345,29 +446,148 @@ export async function liveCampaign(): Promise<Campaign | null> {
   }
 }
 
+/**
+ * Move somebody up the board.
+ *
+ * Only counts for an entrant who **joined** — an entry is an act, not a
+ * side-effect of publishing an ad. Someone who never chose a prize is not in
+ * the race, and putting them on the leaderboard anyway would be both confusing
+ * and, once a prize is at stake, wrong.
+ *
+ * The unlock is checked here rather than on read, so the moment somebody
+ * crosses the line is recorded with a timestamp. That timestamp is what
+ * decides the order of claims when there are fewer prizes than winners.
+ */
 async function countTowardsLiveCampaign(
   uid: string,
-  displayName: string,
-  at: number,
+  gain: { points: number; referrals: number; at: number },
 ) {
-  const live = await liveCampaign();
-  if (!live) return;
+  try {
+    const live = await liveCampaign();
+    if (!live || gain.points <= 0) return;
 
+    const ref = adminDb()
+      .collection("campaigns")
+      .doc(live.id)
+      .collection("entrants")
+      .doc(uid);
+
+    await adminDb().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const entrant = snap.data() as Entrant | undefined;
+      if (!entrant || entrant.disqualified) return;
+
+      const points = (entrant.points ?? 0) + gain.points;
+      tx.update(ref, {
+        points,
+        referrals: FieldValue.increment(gain.referrals),
+        lastPointAt: gain.at,
+        ...(entrant.unlockedAt == null && points >= live.prizeThreshold
+          ? { unlockedAt: gain.at }
+          : {}),
+      });
+    });
+  } catch (error) {
+    console.error("[affiliate] entrant bump failed:", error);
+  }
+}
+
+// ── ENTERING, AND THE MISSIONS ───────────────────────────────────────────────
+
+/** One entrant's row, or null when they have not joined. */
+export async function myEntry(
+  campaignId: string,
+  uid: string,
+): Promise<Entrant | null> {
+  try {
+    const snap = await adminDb()
+      .collection("campaigns")
+      .doc(campaignId)
+      .collection("entrants")
+      .doc(uid)
+      .get();
+    return snap.exists ? (snap.data() as Entrant) : null;
+  } catch (error) {
+    console.error("[affiliate] entry read failed:", error);
+    return null;
+  }
+}
+
+/** Which links this account has already been paid for, and which are pending. */
+export async function myVisits(
+  campaignId: string,
+  uid: string,
+): Promise<Record<string, LinkVisit>> {
+  try {
+    const snap = await adminDb()
+      .collection("campaigns")
+      .doc(campaignId)
+      .collection("visits")
+      .where("uid", "==", uid)
+      .limit(60)
+      .get();
+    const out: Record<string, LinkVisit> = {};
+    for (const doc of snap.docs) {
+      const visit = doc.data() as LinkVisit;
+      out[visit.linkId] = visit;
+    }
+    return out;
+  } catch (error) {
+    console.error("[affiliate] visits read failed:", error);
+    return {};
+  }
+}
+
+/** Points already earned from links today, for the daily cap. */
+export async function linkPointsToday(uid: string): Promise<number> {
+  try {
+    const dayStart = new Date().setHours(0, 0, 0, 0);
+    const snap = await adminDb()
+      .collection("pointsLedger")
+      .where("uid", "==", uid)
+      .where("at", ">=", dayStart)
+      .orderBy("at", "desc")
+      .limit(100)
+      .get();
+    return snap.docs
+      .map((d) => d.data())
+      .filter((row) => row.reason === "link-visit")
+      .reduce((sum, row) => sum + ((row.delta as number) ?? 0), 0);
+  } catch (error) {
+    console.error("[affiliate] link cap read failed:", error);
+    // Fails closed: an unreadable cap must not read as "no cap".
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+/**
+ * Record the points a mission paid.
+ *
+ * Split out because both the referral path and this one need the same three
+ * writes — balance, ledger, board — and the board bump has to happen after the
+ * balance, never instead of it.
+ */
+export async function grantPoints(
+  uid: string,
+  delta: number,
+  reason: LedgerReason,
+  note?: string,
+): Promise<void> {
+  const now = Date.now();
   await adminDb()
-    .collection("campaigns")
-    .doc(live.id)
-    .collection("entrants")
+    .collection("users")
     .doc(uid)
-    .set(
-      {
-        uid,
-        displayName,
-        count: FieldValue.increment(1),
-        lastQualifiedAt: at,
-      },
-      { merge: true },
-    )
-    .catch((error) => console.error("[affiliate] entrant bump failed:", error));
+    .update({ points: FieldValue.increment(delta) });
+  await adminDb()
+    .collection("pointsLedger")
+    .add({
+      uid,
+      delta,
+      reason,
+      note: note ?? null,
+      at: now,
+    });
+  await countTowardsLiveCampaign(uid, { points: delta, referrals: 0, at: now });
 }
 
 /**
@@ -377,6 +597,11 @@ async function countTowardsLiveCampaign(
  * render-time value — React's purity rule is right about that, and the fix is
  * to read it where the rest of the screen's data is read, not to hide the call.
  */
+/** The server's clock, for a client component that ticks from it. */
+export function serverNow(): number {
+  return Date.now();
+}
+
 export function defaultCampaignWindow(): { startsAt: number; endsAt: number } {
   const now = Date.now();
   return { startsAt: now, endsAt: now + 14 * 24 * 60 * 60 * 1000 };
@@ -413,11 +638,27 @@ export async function pendingPayouts(max = 50): Promise<Payout[]> {
   }
 }
 
+/** Prize claims still waiting on a human. */
+export async function pendingPrizeClaims(max = 50): Promise<PrizeClaim[]> {
+  try {
+    const snap = await adminDb()
+      .collection("prizeClaims")
+      .where("status", "==", "requested")
+      .orderBy("requestedAt", "asc")
+      .limit(max)
+      .get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as PrizeClaim);
+  } catch (error) {
+    console.error("[affiliate] prize claims read failed:", error);
+    return [];
+  }
+}
+
 /**
  * The standings.
  *
- * Ordered by count, then by who reached it first — the tie-break is ascending
- * `lastQualifiedAt`, which is both fair and decidable without a human.
+ * Ordered by points, then by who reached the number first — the tie-break is
+ * ascending `lastPointAt`, which is both fair and decidable without a human.
  */
 export async function standings(
   campaignId: string,
@@ -428,8 +669,8 @@ export async function standings(
       .collection("campaigns")
       .doc(campaignId)
       .collection("entrants")
-      .orderBy("count", "desc")
-      .orderBy("lastQualifiedAt", "asc")
+      .orderBy("points", "desc")
+      .orderBy("lastPointAt", "asc")
       .limit(max)
       .get();
     return snap.docs
@@ -445,7 +686,7 @@ export async function standings(
 export async function myStanding(
   campaignId: string,
   uid: string,
-): Promise<{ count: number; rank: number | null }> {
+): Promise<{ points: number; rank: number | null }> {
   try {
     const db = adminDb();
     const mine = await db
@@ -454,21 +695,21 @@ export async function myStanding(
       .collection("entrants")
       .doc(uid)
       .get();
-    if (!mine.exists) return { count: 0, rank: null };
+    if (!mine.exists) return { points: 0, rank: null };
 
-    const count = (mine.data()?.count as number) ?? 0;
+    const points = (mine.data()?.points as number) ?? 0;
     // Rank by counting those strictly ahead — one aggregation query rather than
     // reading a leaderboard that may be thousands long.
     const ahead = await db
       .collection("campaigns")
       .doc(campaignId)
       .collection("entrants")
-      .where("count", ">", count)
+      .where("points", ">", points)
       .count()
       .get();
-    return { count, rank: ahead.data().count + 1 };
+    return { points, rank: ahead.data().count + 1 };
   } catch (error) {
     console.error("[affiliate] standing read failed:", error);
-    return { count: 0, rank: null };
+    return { points: 0, rank: null };
   }
 }

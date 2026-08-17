@@ -23,38 +23,13 @@ import {
   type TransactionType,
 } from "@/lib/enums";
 import { getCommunes, kWilayas } from "@/lib/geo";
+import { shrinkImage } from "@/lib/image";
 
 type Img = { url: string; w: number; h: number };
 
 const field =
   "rounded-input border-border w-full border bg-white px-4 py-3.5 text-base outline-none focus:border-primary";
 const label = "mb-1.5 block text-sm font-bold";
-
-/**
- * Downscale in the browser before upload. A phone photo is 4-8 MB; at 1600px
- * WebP it lands around 200 KB. On an Algerian mobile connection that is the
- * difference between an ad that posts and one that times out.
- */
-async function shrink(
-  file: File,
-): Promise<{ blob: Blob; w: number; h: number }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close();
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/webp", 0.82),
-  );
-  if (!blob) throw new Error("encode failed");
-  return { blob, w, h };
-}
 
 const kSteps = 5;
 
@@ -187,7 +162,7 @@ export function PostForm({
     try {
       const uploaded: Img[] = [];
       for (const file of files) {
-        const { blob, w, h } = await shrink(file);
+        const { blob, w, h } = await shrinkImage(file, { quality: 0.82 });
         // The path is pinned under the uploader's own uid; storage.rules
         // rejects a write anywhere else.
         const path = `listings/${user.uid}/draft/${crypto.randomUUID()}.webp`;

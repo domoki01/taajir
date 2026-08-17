@@ -6,6 +6,7 @@ import {
   getAffiliateSettings,
   liveCampaign,
   pendingPayouts,
+  pendingPrizeClaims,
   standings,
 } from "@/server/affiliate";
 import { AffiliatePanel } from "@/components/admin/AffiliatePanel";
@@ -20,9 +21,10 @@ export const dynamic = "force-dynamic";
 export default async function AffiliateAdminPage() {
   await requirePermission("affiliate.manage", "/admin/affiliation");
 
-  const [settings, payouts, campaigns, live] = await Promise.all([
+  const [settings, payouts, prizeClaims, campaigns, live] = await Promise.all([
     getAffiliateSettings(),
     pendingPayouts(),
+    pendingPrizeClaims(),
     allCampaigns(),
     liveCampaign(),
   ]);
@@ -38,6 +40,7 @@ export default async function AffiliateAdminPage() {
         <AffiliatePanel
           settings={settings}
           payouts={payouts}
+          prizeClaims={prizeClaims}
           campaigns={campaigns}
           live={live}
           board={board}

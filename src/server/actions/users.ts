@@ -11,7 +11,10 @@ import { actorWith, hasPermission, kForbidden } from "@/server/auth";
 import { getRoles } from "@/server/permissions";
 import { kSuperAdminRole } from "@/lib/permissions";
 import { approveEveryone, kAccessSettingsPath } from "@/server/access";
-import { clawbackReferral } from "@/server/affiliate";
+import {
+  clawbackReferral,
+  disqualifyFromLiveCampaign,
+} from "@/server/affiliate";
 
 export type UserResult = { ok: true } | { ok: false; error: string };
 
@@ -183,7 +186,12 @@ export async function setUserBanned(
   // refuse, and a leaderboard keeps a cheat at the top of it while the evidence
   // sits in the ban reason. Unbanning does not re-award: a reversed decision is
   // rare, and paying twice for one account is worse than paying once too few.
-  if (isBanned) await clawbackReferral(uid);
+  if (isBanned) {
+    await clawbackReferral(uid);
+    // And out of the race: a farm caught mid-campaign that keeps the top row
+    // and the prize it was heading for tells everyone honest not to bother.
+    await disqualifyFromLiveCampaign(uid);
+  }
 
   await audit(
     admin.uid,

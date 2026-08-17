@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "@/lib/firebase/client";
+import { shrinkImage } from "@/lib/image";
 import {
   createPromo,
   deletePromo,
@@ -21,32 +22,6 @@ import {
   updatePromo,
 } from "@/server/actions/promos";
 import type { Promo } from "@/types/promo";
-
-/**
- * Same downscale the listing form uses. A banner is a wide image an agency
- * exports at whatever their designer had open, and a 5 MB PNG in the first
- * viewport is the single easiest way to make the home page feel slow.
- */
-async function shrink(
-  file: File,
-): Promise<{ blob: Blob; w: number; h: number }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close();
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/webp", 0.85),
-  );
-  if (!blob) throw new Error("encode failed");
-  return { blob, w, h };
-}
 
 type Upload = { url: string; path: string; w: number; h: number };
 
@@ -82,7 +57,7 @@ export function PromoManager({ promos }: { promos: Promo[] }) {
     setUploading(true);
     setError(null);
     try {
-      const { blob, w, h } = await shrink(file);
+      const { blob, w, h } = await shrinkImage(file);
       const path = `promos/${crypto.randomUUID()}.webp`;
       const snap = await uploadBytes(ref(storage, path), blob, {
         contentType: "image/webp",

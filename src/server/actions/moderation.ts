@@ -20,7 +20,7 @@ import { checkPolicy } from "@/lib/policy";
 import { unitIsRental } from "@/lib/enums";
 import { getTaxonomy } from "@/server/filterSettings";
 import { notifyAuthor, notifyMatchingSearches } from "@/server/push";
-import { qualifyReferral } from "@/server/affiliate";
+import { qualifyReferral, rewardPublish } from "@/server/affiliate";
 import type { Listing } from "@/types/listing";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -87,6 +87,7 @@ export async function approveListing(id: string): Promise<ActionResult> {
   // the first: it is the invited account's own `referralQualifiedAt` that makes
   // it idempotent, and that check belongs in one place.
   await qualifyReferral(listing.ownerUid);
+  await rewardPublish(listing.ownerUid);
 
   return { ok: true };
 }

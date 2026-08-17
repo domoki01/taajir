@@ -39,6 +39,9 @@ const kSecond = "second-invitee-uid";
 /** The defaults, with the programme switched on and a small cap to test it. */
 const kSettings = {
   perReferral: 100,
+  pointsPerPublish: 20,
+  dailyPublishCap: 3,
+  dailyLinkPoints: 100,
   bonusEvery: 2,
   bonusPoints: 50,
   pointsPerListingSlot: 100,
@@ -87,6 +90,26 @@ async function user(uid: string, extra: Record<string, unknown> = {}) {
       referralQualifiedAt: null,
       createdAt: 1,
       ...extra,
+    });
+}
+
+/** Join a campaign the way joinCampaign does, without the session it needs. */
+async function enter(campaignId: string, uid: string) {
+  await db
+    .collection("campaigns")
+    .doc(campaignId)
+    .collection("entrants")
+    .doc(uid)
+    .set({
+      uid,
+      displayName: uid,
+      prizeId: "prize-1",
+      points: 0,
+      referrals: 0,
+      lastPointAt: 1,
+      joinedAt: 1,
+      unlockedAt: null,
+      claimedAt: null,
     });
 }
 
@@ -222,6 +245,33 @@ describe("qualifyReferral", () => {
     expect(stamp?.referralQualifiedAt ?? null).toBe(null);
   });
 
+  it("leaves somebody who never entered off the board", async () => {
+    await user(kReferrer);
+    await user(kInvitee, { referredBy: kReferrer });
+    await db
+      .collection("campaigns")
+      .doc("live-1")
+      .set({
+        name: "سباق",
+        prize: "هاتف",
+        status: "live",
+        startsAt: 0,
+        endsAt: Date.now() + 86_400_000,
+        prizeThreshold: 1000,
+        winners: 1,
+        prizes: [],
+        links: [],
+        createdAt: 1,
+      });
+
+    await qualifyReferral(kInvitee);
+
+    // Paid in the balance — the referral programme does not need an entry.
+    expect(await points(kReferrer)).toBe(100);
+    // But not on the leaderboard.
+    expect(await standings("live-1")).toHaveLength(0);
+  });
+
   it("counts towards the live campaign, and only the live one", async () => {
     await user(kReferrer);
     await user(kInvitee, { referredBy: kReferrer });
@@ -234,7 +284,10 @@ describe("qualifyReferral", () => {
         status: "live",
         startsAt: 0,
         endsAt: Date.now() + 86_400_000,
+        prizeThreshold: 1000,
         winners: 1,
+        prizes: [],
+        links: [],
         createdAt: 1,
       });
     await db
@@ -246,15 +299,28 @@ describe("qualifyReferral", () => {
         status: "draft",
         startsAt: 0,
         endsAt: Date.now() + 86_400_000,
+        prizeThreshold: 1000,
         winners: 1,
+        prizes: [],
+        links: [],
         createdAt: 1,
       });
+
+    // Entering is an act now: points land on the board only for somebody who
+    // joined and chose a prize. A publisher who never entered is not a
+    // contestant, and putting them on a leaderboard with a prize at the end of
+    // it would be both confusing and wrong.
+    await enter("live-1", kReferrer);
 
     await qualifyReferral(kInvitee);
 
     const board = await standings("live-1");
     expect(board).toHaveLength(1);
-    expect(board[0]).toMatchObject({ uid: kReferrer, count: 1 });
+    expect(board[0]).toMatchObject({
+      uid: kReferrer,
+      points: 100,
+      referrals: 1,
+    });
     expect(await standings("draft-1")).toHaveLength(0);
   });
 });
@@ -296,14 +362,18 @@ describe("clawbackReferral", () => {
         status: "live",
         startsAt: 0,
         endsAt: Date.now() + 86_400_000,
+        prizeThreshold: 1000,
         winners: 1,
+        prizes: [],
+        links: [],
         createdAt: 1,
       });
 
+    await enter("live-1", kReferrer);
     await qualifyReferral(kInvitee);
     await clawbackReferral(kInvitee);
 
     const board = await standings("live-1");
-    expect(board[0]?.count).toBe(0);
+    expect(board[0]?.points).toBe(0);
   });
 });

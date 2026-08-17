@@ -130,8 +130,31 @@ beforeEach(async () => {
     await setDoc(doc(db, "campaigns/camp-1/entrants/" + kOwner), {
       uid: kOwner,
       displayName: "صاحب الإعلان",
-      count: 3,
-      lastQualifiedAt: 1,
+      points: 30,
+      referrals: 1,
+      lastPointAt: 1,
+      prizeId: "binance-20",
+      unlockedAt: null,
+      claimedAt: null,
+    });
+    await setDoc(doc(db, `campaigns/camp-1/visits/${kOwner}__fb`), {
+      uid: kOwner,
+      linkId: "fb",
+      startedAt: 1,
+      claimedAt: 2,
+      points: 10,
+      tries: 0,
+    });
+    await setDoc(doc(db, "prizeClaims/claim-1"), {
+      campaignId: "camp-1",
+      uid: kOwner,
+      ownerName: "صاحب الإعلان",
+      prizeId: "binance-20",
+      prizeLabel: "بطاقة Binance",
+      destination: "binance-id-9911",
+      points: 40,
+      status: "requested",
+      requestedAt: 1,
     });
     await setDoc(doc(db, "promos/promo-1"), {
       title: "وكالة الأمل",
@@ -1039,7 +1062,14 @@ describe("referrals", () => {
   it("refuses a client bumping its own place in the race", async () => {
     await assertFails(
       updateDoc(doc(authed(kOwner), `campaigns/camp-1/entrants/${kOwner}`), {
-        count: 9999,
+        points: 9999,
+      }),
+    );
+    // Nor unlocking the prize by hand, which is the same write with a nicer
+    // name on it.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), `campaigns/camp-1/entrants/${kOwner}`), {
+        unlockedAt: 1,
       }),
     );
     await assertFails(getDocs(collection(anon(), "campaigns/camp-1/entrants")));
@@ -1050,6 +1080,52 @@ describe("referrals", () => {
       updateDoc(doc(authed(kOwner), "campaigns/camp-1"), { winners: 50 }),
     );
     await assertFails(getDoc(doc(anon(), "campaigns/camp-1")));
+  });
+
+  it("refuses a client marking a mission complete", async () => {
+    // The visit document *is* the "once" — writable, every mission pays as
+    // often as somebody clicks.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), `campaigns/camp-1/visits/${kOwner}__fb`), {
+        claimedAt: 999,
+      }),
+    );
+    await assertFails(
+      setDoc(doc(authed(kOwner), `campaigns/camp-1/visits/${kOwner}__quiz`), {
+        uid: kOwner,
+        linkId: "quiz",
+        startedAt: 1,
+        claimedAt: 2,
+        points: 999,
+        tries: 0,
+      }),
+    );
+  });
+
+  it("keeps the campaign's secret words unreadable", async () => {
+    // A link's `answer` lives on the campaign document. Readable, the question
+    // that proves somebody visited a page is answerable without visiting it.
+    await assertFails(getDoc(doc(anon(), "campaigns/camp-1")));
+    await assertFails(getDoc(doc(authed(kOwner), "campaigns/camp-1")));
+    await assertFails(
+      getDocs(collection(authed(kOwner), "campaigns/camp-1/visits")),
+    );
+  });
+
+  it("keeps a prize destination private and unforgeable", async () => {
+    await assertFails(getDoc(doc(authed(kOwner), "prizeClaims/claim-1")));
+    await assertFails(getDoc(doc(admin(), "prizeClaims/claim-1")));
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "prizeClaims/claim-1"), { status: "sent" }),
+    );
+    await assertFails(
+      setDoc(doc(authed(kOwner), "prizeClaims/forged"), {
+        uid: kOwner,
+        prizeId: "binance-20",
+        status: "sent",
+        requestedAt: 1,
+      }),
+    );
   });
 
   it("still refuses a user raising its own balance", async () => {
@@ -1067,6 +1143,10 @@ describe("referrals", () => {
       updateDoc(doc(authed(kOwner), "users/" + kOwner), {
         referredBy: kOther,
       }),
+    );
+    // publishCount is the gate on every mission, so it is server-owned too.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "users/" + kOwner), { publishCount: 99 }),
     );
   });
 });

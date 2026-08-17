@@ -27,6 +27,8 @@ export const dynamic = "force-dynamic";
 const kReasonLabels: Record<LedgerReason, string> = {
   referral: "دعوة نجحت",
   bonus: "مكافأة",
+  publish: "نشرت إعلان",
+  "link-visit": "مهمّة رابط",
   "campaign-prize": "جائزة مسابقة",
   "redeem-listing": "بدّلتها بإعلان",
   "redeem-featured": "بدّلتها بتمييز",
@@ -166,7 +168,7 @@ export default async function ReferralPage() {
               </p>
               {standing && standing.rank !== null && (
                 <p className="text-primary ltr-nums mt-2 text-sm font-black">
-                  ترتيبك {standing.rank} بـ{standing.count} دعوة
+                  ترتيبك {standing.rank} بـ{standing.points} نقطة
                 </p>
               )}
             </Link>

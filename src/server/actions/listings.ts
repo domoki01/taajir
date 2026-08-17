@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/server/auth";
-import { qualifyReferral } from "@/server/affiliate";
+import { qualifyReferral, rewardPublish } from "@/server/affiliate";
 import { isPrelaunch } from "@/server/launch";
 import { getAccessSettings, kNeedsApproval } from "@/server/access";
 import { getTaxonomy } from "@/server/filterSettings";
@@ -269,7 +269,10 @@ export async function createListing(
   // here and not one line earlier: an ad waiting for a moderator or for the
   // launch has not yet brought the marketplace anything. The held and pending
   // cases are paid later, on approval and at the launch respectively.
-  if (state === "live") await qualifyReferral(user.uid);
+  if (state === "live") {
+    await qualifyReferral(user.uid);
+    await rewardPublish(user.uid);
+  }
 
   revalidatePath("/tableau-de-bord/annonces");
   return { ok: true, id, slug, state };

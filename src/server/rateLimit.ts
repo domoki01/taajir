@@ -26,6 +26,10 @@ export const kRates = {
   comment: { max: 8, seconds: 60 },
   reply: { max: 8, seconds: 60 },
   request: { max: 4, seconds: 300 },
+  // Mission claims. An honest visitor claims one link, waits out its dwell, and
+  // claims the next — nowhere near this. A script sweeping every link on the
+  // campaign in one pass is exactly this shape, and hits the wall.
+  mission: { max: 10, seconds: 300 },
 } as const satisfies Record<string, RateWindow>;
 
 export type RateKind = keyof typeof kRates;
