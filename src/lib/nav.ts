@@ -75,6 +75,7 @@ export const kAccountLinks: MenuLink[] = [
 
 /** The pages the footer used to carry, and nothing else linked to. */
 export const kInfoLinks: MenuLink[] = [
+  { href: "/articles", label: "المقالات" },
   { href: "/a-propos", label: "من نحن" },
   { href: "/aide", label: "المساعدة" },
   { href: "/securite", label: "نصائح الأمان" },

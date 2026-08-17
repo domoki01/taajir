@@ -156,6 +156,42 @@ beforeEach(async () => {
       status: "requested",
       requestedAt: 1,
     });
+    await setDoc(doc(db, "articles/art-1"), {
+      slug: "guide-kira",
+      title: "كيفاش تكري دار في الجزائر",
+      excerpt: "دليل عملي",
+      body: [{ type: "p", text: "نصّ" }],
+      status: "published",
+      publishedAt: 10,
+      updatedAt: 10,
+      commentCount: 1,
+    });
+    await setDoc(doc(db, "articles/art-draft"), {
+      slug: "brouillon",
+      title: "مسوّدة ما زالت ما تنشرتش",
+      excerpt: "…",
+      body: [],
+      status: "draft",
+      publishedAt: null,
+      updatedAt: 11,
+      commentCount: 0,
+    });
+    await setDoc(doc(db, "articles/art-1/articleComments/ac-1"), {
+      articleId: "art-1",
+      authorUid: kOther,
+      authorName: "قارئ",
+      text: "مقال مفيد",
+      status: "visible",
+      createdAt: 1,
+    });
+    await setDoc(doc(db, "articles/art-1/articleComments/ac-hidden"), {
+      articleId: "art-1",
+      authorUid: kOther,
+      authorName: "سبام",
+      text: "سبام",
+      status: "hidden",
+      createdAt: 2,
+    });
     await setDoc(doc(db, "promos/promo-1"), {
       title: "وكالة الأمل",
       imageUrl: "https://example.com/a.webp",
@@ -1147,6 +1183,94 @@ describe("referrals", () => {
     // publishCount is the gate on every mission, so it is server-owned too.
     await assertFails(
       updateDoc(doc(authed(kOwner), "users/" + kOwner), { publishCount: 99 }),
+    );
+  });
+});
+
+describe("articles", () => {
+  // These pages exist to be crawled, so a published one is readable by anybody
+  // — including a crawler with no session at all. Everything else is shut.
+
+  it("lets anyone read a published article", async () => {
+    await assertSucceeds(getDoc(doc(anon(), "articles/art-1")));
+    // A *filtered* query is allowed, because Firestore can prove up front that
+    // it only matches documents the rule permits.
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(anon(), "articles"),
+          where("status", "==", "published"),
+        ),
+      ),
+    );
+  });
+
+  it("refuses an unfiltered list, which would sweep up the drafts", async () => {
+    // The rule is evaluated per candidate document, so one draft in the
+    // collection denies the whole query rather than filtering itself out. That
+    // is the behaviour we want: the index page reads through the Admin SDK.
+    await assertFails(getDocs(collection(anon(), "articles")));
+  });
+
+  it("keeps a draft to staff", async () => {
+    await assertFails(getDoc(doc(anon(), "articles/art-draft")));
+    await assertFails(getDoc(doc(authed(kOwner), "articles/art-draft")));
+    await assertSucceeds(getDoc(doc(admin(), "articles/art-draft")));
+  });
+
+  it("refuses every client write, staff included", async () => {
+    // The body renders on a public page. An article an unprivileged client
+    // could edit is a defacement of the site's own masthead — and one an admin
+    // could edit *from a browser* skips the validation in the Server Action.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "articles/art-1"), { title: "مخترق" }),
+    );
+    await assertFails(
+      updateDoc(doc(admin(), "articles/art-1"), { title: "مخترق" }),
+    );
+    await assertFails(
+      setDoc(doc(authed(kOwner), "articles/forged"), {
+        slug: "forged",
+        status: "published",
+        body: [],
+      }),
+    );
+    await assertFails(deleteDoc(doc(authed(kOwner), "articles/art-1")));
+  });
+
+  it("lets anyone read a visible comment and nobody write one", async () => {
+    await assertSucceeds(
+      getDoc(doc(anon(), "articles/art-1/articleComments/ac-1")),
+    );
+    // The author name and photo are denormalized from the session, so a client
+    // that could write here could post as anybody.
+    await assertFails(
+      setDoc(doc(authed(kOwner), "articles/art-1/articleComments/forged"), {
+        articleId: "art-1",
+        authorUid: kOther,
+        authorName: "وكالة موثّقة",
+        text: "اتصل بيا",
+        status: "visible",
+        createdAt: 1,
+      }),
+    );
+  });
+
+  it("hides a hidden comment from everyone but its author and staff", async () => {
+    await assertFails(
+      getDoc(doc(anon(), "articles/art-1/articleComments/ac-hidden")),
+    );
+    await assertSucceeds(
+      getDoc(doc(authed(kOther), "articles/art-1/articleComments/ac-hidden")),
+    );
+    await assertSucceeds(
+      getDoc(doc(admin(), "articles/art-1/articleComments/ac-hidden")),
+    );
+  });
+
+  it("refuses a client bumping an article's comment count", async () => {
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "articles/art-1"), { commentCount: 999 }),
     );
   });
 });

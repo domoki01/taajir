@@ -37,6 +37,7 @@ const kAdminNav: Array<{
   { href: "/admin/roles", label: "الأدوار", need: ["roles.manage"] },
   { href: "/admin/publicites", label: "الإشهارات", need: ["promos.manage"] },
   { href: "/admin/filtre", label: "الفئات والفلتر", need: ["taxonomy.edit"] },
+  { href: "/admin/articles", label: "المقالات", need: ["articles.manage"] },
   { href: "/admin/identite", label: "الهوية", need: ["branding.edit"] },
   { href: "/admin/lancement", label: "الإطلاق", need: ["launch.control"] },
   {

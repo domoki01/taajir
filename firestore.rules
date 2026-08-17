@@ -167,6 +167,38 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // ── ARTICLES ─────────────────────────────────────────────────────────────
+    // The site's own writing, and the thread underneath it. Public read of the
+    // published ones so they are indexable — that is the whole reason they
+    // exist — while drafts stay staff-only.
+    //
+    // Writes are denied like everywhere else content is denormalized: a comment
+    // carries its author's name and photo, taken from the verified session, so
+    // a client that could write one could post as anybody. The body is denied
+    // for a sharper reason still — it renders on every article page, and an
+    // article an unprivileged client could edit is a defacement of the site's
+    // masthead.
+
+    match /articles/{articleId} {
+      // .get() with a default, as everywhere else: the index page *queries*
+      // this collection, and one document missing `status` would raise
+      // "property is undefined" and deny the whole query rather than hide one
+      // article.
+      allow read: if resource.data.get('status', '') == 'published' || isAdmin();
+      allow create, update, delete: if false;
+
+      // Named `articleComments`, not `comments`: the moderation screen runs a
+      // collection-group query over `comments`, and a second collection by that
+      // name would pour these into a list whose every link points at a listing
+      // that does not exist.
+      match /articleComments/{commentId} {
+        allow read: if resource.data.get('status', '') == 'visible'
+                    || isOwner(resource.data.get('authorUid', ''))
+                    || isAdmin();
+        allow create, update, delete: if false;
+      }
+    }
+
     // ── PROPERTY REQUESTS ────────────────────────────────────────────────────
     // The demand feed. Public read of visible posts so the feed is indexable;
     // all writes denied, as everywhere else content is denormalized.

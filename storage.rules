@@ -59,6 +59,17 @@ service firebase.storage {
       allow write: if isAdmin() && isImage() && underMb(4);
     }
 
+    // ── ARTICLE COVERS ───────────────────────────────────────────────────────
+    // Uploaded from the article editor, then recorded in Firestore by a Server
+    // Action. Staff-only for the same reason as the banners: this image is the
+    // one a shared link previews with, so write access here is write access to
+    // what the site looks like on somebody else's WhatsApp.
+
+    match /articles/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && underMb(4);
+    }
+
     // ── AGENCY BRANDING ──────────────────────────────────────────────────────
     // Pinned to the agency's own owner. `signedIn()` alone meant any account on
     // the site could overwrite any agency's logo and cover — the images that

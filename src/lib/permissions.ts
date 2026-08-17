@@ -22,6 +22,11 @@ export const kPermissions = {
   // users.manage because it is the one screen where a setting turns into money:
   // whoever holds it decides what a referral is worth and who gets paid.
   "affiliate.manage": "برنامج الدعوة",
+  // Writing on the site's own masthead. Separate from listings.moderate — a
+  // moderator judges other people's ads, an editor publishes in the site's
+  // name — but granted to both built-in staff roles, because the point of the
+  // articles is that somebody actually writes them.
+  "articles.manage": "المقالات",
   "audit.view": "السجلّ",
 } as const;
 
@@ -52,6 +57,7 @@ export const kDefaultRoles: Record<string, RoleDefinition> = {
       "comments.moderate",
       "requests.moderate",
       "promos.manage",
+      "articles.manage",
     ],
     builtin: true,
   },
