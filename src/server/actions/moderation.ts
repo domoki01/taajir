@@ -20,6 +20,7 @@ import { checkPolicy } from "@/lib/policy";
 import { unitIsRental } from "@/lib/enums";
 import { getTaxonomy } from "@/server/filterSettings";
 import { notifyAuthor, notifyMatchingSearches } from "@/server/push";
+import { qualifyReferral } from "@/server/affiliate";
 import type { Listing } from "@/types/listing";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -80,6 +81,12 @@ export async function approveListing(id: string): Promise<ActionResult> {
   // moderator's click covers the send, but it swallows its own failures — a
   // push that did not go out must never look like an approval that did not.
   await notifyMatchingSearches({ ...listing, id, status: "published" });
+
+  // Approval is what makes an invited account's first ad real, so it is the
+  // moment their referrer is paid. Called on every approval rather than only
+  // the first: it is the invited account's own `referralQualifiedAt` that makes
+  // it idempotent, and that check belongs in one place.
+  await qualifyReferral(listing.ownerUid);
 
   return { ok: true };
 }

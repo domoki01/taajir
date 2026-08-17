@@ -11,6 +11,7 @@ import { actorWith, hasPermission, kForbidden } from "@/server/auth";
 import { getRoles } from "@/server/permissions";
 import { kSuperAdminRole } from "@/lib/permissions";
 import { approveEveryone, kAccessSettingsPath } from "@/server/access";
+import { clawbackReferral } from "@/server/affiliate";
 
 export type UserResult = { ok: true } | { ok: false; error: string };
 
@@ -176,6 +177,13 @@ export async function setUserBanned(
       },
       { merge: true },
     );
+
+  // Banning an account takes back the points it earned whoever invited it.
+  // Without this the programme pays best for exactly the accounts it exists to
+  // refuse, and a leaderboard keeps a cheat at the top of it while the evidence
+  // sits in the ban reason. Unbanning does not re-award: a reversed decision is
+  // rare, and paying twice for one account is worse than paying once too few.
+  if (isBanned) await clawbackReferral(uid);
 
   await audit(
     admin.uid,

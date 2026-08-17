@@ -40,6 +40,11 @@ const kAdminNav: Array<{
   { href: "/admin/identite", label: "الهوية", need: ["branding.edit"] },
   { href: "/admin/lancement", label: "الإطلاق", need: ["launch.control"] },
   {
+    href: "/admin/affiliation",
+    label: "برنامج الدعوة",
+    need: ["affiliate.manage"],
+  },
+  {
     href: "/admin/notifications",
     label: "إشعار عام",
     need: ["push.broadcast"],

@@ -101,6 +101,38 @@ beforeEach(async () => {
       status: "hidden",
       createdAt: 2,
     });
+    await setDoc(doc(db, "referralCodes/K7M2QX"), { uid: kOwner, at: 1 });
+    await setDoc(doc(db, "pointsLedger/led-1"), {
+      uid: kOwner,
+      delta: 100,
+      reason: "referral",
+      at: 1,
+    });
+    await setDoc(doc(db, "payouts/pay-out-1"), {
+      uid: kOwner,
+      ownerName: "صاحب الإعلان",
+      channel: "ccp",
+      points: 2000,
+      amountDzd: 1000,
+      destination: "00799999000123456789",
+      status: "requested",
+      requestedAt: 1,
+    });
+    await setDoc(doc(db, "campaigns/camp-1"), {
+      name: "سباق الصيف",
+      prize: "هاتف",
+      status: "live",
+      startsAt: 0,
+      endsAt: 9_999_999_999_999,
+      winners: 1,
+      createdAt: 1,
+    });
+    await setDoc(doc(db, "campaigns/camp-1/entrants/" + kOwner), {
+      uid: kOwner,
+      displayName: "صاحب الإعلان",
+      count: 3,
+      lastQualifiedAt: 1,
+    });
     await setDoc(doc(db, "promos/promo-1"), {
       title: "وكالة الأمل",
       imageUrl: "https://example.com/a.webp",
@@ -950,6 +982,92 @@ describe("plans", () => {
       updateDoc(doc(authed(kOwner), "plans/basic"), { priceDzd: 1 }),
     );
     await assertFails(updateDoc(doc(admin(), "plans/basic"), { priceDzd: 1 }));
+  });
+});
+
+describe("referrals", () => {
+  // Every one of these is a field that turns into money or into a bank account
+  // number, and every screen that shows one is a Server Component reading
+  // through the Admin SDK. So no client — owner, stranger or admin — touches
+  // any of it directly.
+
+  it("keeps a code's owner unenumerable", async () => {
+    // Readable, the six-character space is a directory of every account: 500m
+    // guesses is nothing to a script, and each hit names a uid.
+    await assertFails(getDoc(doc(anon(), "referralCodes/K7M2QX")));
+    await assertFails(getDoc(doc(authed(kOther), "referralCodes/K7M2QX")));
+    await assertFails(getDoc(doc(admin(), "referralCodes/K7M2QX")));
+  });
+
+  it("refuses a client claiming a code", async () => {
+    await assertFails(
+      setDoc(doc(authed(kOther), "referralCodes/NEWONE"), {
+        uid: kOther,
+        at: 1,
+      }),
+    );
+    // Including stealing one that is already taken.
+    await assertFails(
+      updateDoc(doc(authed(kOther), "referralCodes/K7M2QX"), { uid: kOther }),
+    );
+  });
+
+  it("refuses a client writing its own ledger row", async () => {
+    await assertFails(
+      setDoc(doc(authed(kOwner), "pointsLedger/forged"), {
+        uid: kOwner,
+        delta: 999_999,
+        reason: "referral",
+        at: 1,
+      }),
+    );
+    await assertFails(getDoc(doc(authed(kOwner), "pointsLedger/led-1")));
+  });
+
+  it("keeps a RIP number out of every client's reach", async () => {
+    await assertFails(getDoc(doc(authed(kOwner), "payouts/pay-out-1")));
+    await assertFails(getDoc(doc(authed(kOther), "payouts/pay-out-1")));
+    await assertFails(getDoc(doc(admin(), "payouts/pay-out-1")));
+  });
+
+  it("refuses a client marking its own payout paid", async () => {
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "payouts/pay-out-1"), { status: "paid" }),
+    );
+  });
+
+  it("refuses a client bumping its own place in the race", async () => {
+    await assertFails(
+      updateDoc(doc(authed(kOwner), `campaigns/camp-1/entrants/${kOwner}`), {
+        count: 9999,
+      }),
+    );
+    await assertFails(getDocs(collection(anon(), "campaigns/camp-1/entrants")));
+  });
+
+  it("refuses a client editing a campaign's prize or dates", async () => {
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "campaigns/camp-1"), { winners: 50 }),
+    );
+    await assertFails(getDoc(doc(anon(), "campaigns/camp-1")));
+  });
+
+  it("still refuses a user raising its own balance", async () => {
+    // points lives on the user document beside listingQuota, and the update
+    // whitelist there is the only thing keeping both server-owned.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "users/" + kOwner), { points: 100_000 }),
+    );
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "users/" + kOwner), {
+        referralCount: 500,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "users/" + kOwner), {
+        referredBy: kOther,
+      }),
+    );
   });
 });
 

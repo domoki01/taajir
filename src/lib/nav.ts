@@ -69,6 +69,7 @@ export const kAccountLinks: MenuLink[] = [
   { href: "/tableau-de-bord/publications", label: "منشوراتي" },
   { href: "/tableau-de-bord/annonces", label: "إعلاناتي" },
   { href: "/tableau-de-bord/alertes", label: "تنبيهاتي" },
+  { href: "/tableau-de-bord/parrainage", label: "ادعُ أصحابك" },
   { href: "/tableau-de-bord/profil", label: "معلوماتي" },
 ];
 

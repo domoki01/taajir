@@ -3,6 +3,7 @@ import "server-only";
 import { adminDb } from "@/lib/firebase/admin";
 import { kLaunchSettingsPath } from "@/server/launch";
 import { notifyLaunch } from "@/server/launchNotify";
+import { qualifyReferral } from "@/server/affiliate";
 import type { LaunchState } from "@/types/launch";
 
 // ── THE LAUNCH ITSELF ────────────────────────────────────────────────────────
@@ -48,10 +49,17 @@ export async function runLaunch(actorUid: string): Promise<LaunchOutcome> {
     .limit(2000)
     .get();
 
+  // Every author whose post the launch makes public. Their referrers have been
+  // waiting for exactly this — a held post never counted — so the batch is
+  // followed by one qualification sweep rather than a transaction per document,
+  // which would turn a 2000-row batch into 2000 round trips.
+  const authors = new Set<string>();
+
   let published = 0;
   let requeued = 0;
   for (const doc of held.docs) {
     const approved = doc.data().approvedForLaunch === true;
+    if (approved) authors.add(doc.data().ownerUid as string);
     batch.update(doc.ref, {
       status: approved ? "published" : "pending",
       publishedAt: approved ? (doc.data().publishedAt ?? now) : null,
@@ -74,12 +82,19 @@ export async function runLaunch(actorUid: string): Promise<LaunchOutcome> {
 
   let requests = 0;
   for (const doc of requestDocs.docs) {
+    authors.add(doc.data().ownerUid as string);
     batch.update(doc.ref, { status: "visible" });
     requests++;
     ops++;
     if (ops >= 400) await flush();
   }
   await flush();
+
+  // 2b. Pay the referrers of everyone the launch just published. Sequential and
+  //     after the writes: qualifyReferral swallows its own failures, and none of
+  //     this may hold up opening the site. Cheap when the programme is off — the
+  //     first line of it is a settings read that returns immediately.
+  for (const uid of authors) await qualifyReferral(uid);
 
   // 3. Open the doors.
   await db.doc(kLaunchSettingsPath).set(

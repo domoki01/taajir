@@ -137,6 +137,8 @@ export async function ensureUserDoc(
     name: string;
     photoURL: string | null;
     phone?: string | null;
+    /** The uid behind the invite link this visitor arrived through, if any. */
+    referredBy?: string | null;
   },
 ) {
   const ref = adminDb().collection("users").doc(uid);
@@ -162,6 +164,17 @@ export async function ensureUserDoc(
     displayName: data.name || "مستخدم",
     photoURL: data.photoURL,
     phone: data.phone ?? null,
+    // Attribution is written exactly once, at creation, and never afterwards.
+    // Anything else lets an account be re-attributed by clicking a second
+    // invite link — which is a referral programme paying twice for one user.
+    // Self-referral is impossible here: the referrer's uid existed before this
+    // document did.
+    referredBy:
+      data.referredBy && data.referredBy !== uid ? data.referredBy : null,
+    referralCode: null,
+    referralQualifiedAt: null,
+    referralCount: 0,
+    points: 0,
     role: "user",
     agencyId: null,
     wilayaCode: null,

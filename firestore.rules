@@ -371,6 +371,46 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── REFERRALS ────────────────────────────────────────────────────────────
+    // The whole programme is server territory, and this is the collection set
+    // where a writable field would be worth actual money.
+    //
+    // `pointsLedger` is the record of every point granted and spent — the user
+    // document's balance is a cache of it. A client that could append a row
+    // could not move its own balance, but it could make a dispute unanswerable,
+    // which is what the ledger exists to prevent.
+    //
+    // `payouts` carries a RIP number and a RedotPay id. Nobody but the owner
+    // and the admin has business reading a bank account number, and the pages
+    // that show them are Server Components on the Admin SDK.
+    //
+    // `campaigns/entrants` is a leaderboard; a client that could bump a counter
+    // would simply win. It is rendered server-side for the same reason.
+    //
+    // `referralCodes` maps a code to the uid behind it. Readable, it turns the
+    // six-character space into an enumerable directory of every account on the
+    // site; writable, it lets anyone claim someone else's code.
+
+    match /pointsLedger/{id} {
+      allow read, write: if false;
+    }
+
+    match /payouts/{id} {
+      allow read, write: if false;
+    }
+
+    match /campaigns/{id} {
+      allow read, write: if false;
+
+      match /entrants/{uid} {
+        allow read, write: if false;
+      }
+    }
+
+    match /referralCodes/{code} {
+      allow read, write: if false;
+    }
+
     // ── CATALOGEV (shared project — DO NOT REMOVE) ───────────────────────────
     // The product catalogue lives in the same Firebase project. Its rules were
     // never committed anywhere, so they are restated here: without this block a

@@ -4,11 +4,13 @@
 // every subsequent request. The ID token itself is never stored in a cookie —
 // it is short-lived and not revocable server-side.
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { adminAuth } from "@/lib/firebase/admin";
 import { ensureUserDoc, kSessionCookie, kSessionMaxAgeMs } from "@/server/auth";
+import { referrerFor } from "@/server/affiliate";
+import { kReferralCookie } from "@/lib/referral";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let idToken: string | undefined;
   try {
     ({ idToken } = await request.json());
@@ -22,6 +24,12 @@ export async function POST(request: Request) {
   try {
     const decoded = await adminAuth().verifyIdToken(idToken, true);
 
+    // Settled here rather than at the click, because this is the first moment
+    // an account exists to attach it to. The code is only resolved when the
+    // cookie is present, so an ordinary sign-in costs no extra read.
+    const invite = request.cookies.get(kReferralCookie)?.value;
+    const referredBy = invite ? await referrerFor(invite) : null;
+
     await ensureUserDoc(decoded.uid, {
       email: decoded.email ?? null,
       name: (decoded.name as string) ?? "",
@@ -30,6 +38,7 @@ export async function POST(request: Request) {
       // way to reach those users, and the publish form prefills the contact
       // field from it rather than asking for a number they just typed.
       phone: (decoded.phone_number as string) ?? null,
+      referredBy,
     });
 
     const cookie = await adminAuth().createSessionCookie(idToken, {
@@ -44,6 +53,10 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: kSessionMaxAgeMs / 1000,
     });
+    // Spent. Leaving it would re-offer the same code to whoever signs in on
+    // this device next — a shared phone in a cybercafé is not unusual here.
+    if (invite)
+      response.cookies.set(kReferralCookie, "", { path: "/", maxAge: 0 });
     return response;
   } catch (error) {
     // Never echo the underlying error to the caller: it can carry project ids,

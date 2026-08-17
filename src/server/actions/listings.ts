@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/server/auth";
+import { qualifyReferral } from "@/server/affiliate";
 import { isPrelaunch } from "@/server/launch";
 import { getAccessSettings, kNeedsApproval } from "@/server/access";
 import { getTaxonomy } from "@/server/filterSettings";
@@ -258,11 +259,18 @@ export async function createListing(
     return { ok: false, error: "ما نجحش النشر. عاود من جديد." };
   }
 
+  const state = held
+    ? "held"
+    : verdict.decision === "review"
+      ? "review"
+      : "live";
+
+  // The referral is earned by a post that is actually public, so it is counted
+  // here and not one line earlier: an ad waiting for a moderator or for the
+  // launch has not yet brought the marketplace anything. The held and pending
+  // cases are paid later, on approval and at the launch respectively.
+  if (state === "live") await qualifyReferral(user.uid);
+
   revalidatePath("/tableau-de-bord/annonces");
-  return {
-    ok: true,
-    id,
-    slug,
-    state: held ? "held" : verdict.decision === "review" ? "review" : "live",
-  };
+  return { ok: true, id, slug, state };
 }

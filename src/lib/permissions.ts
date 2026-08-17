@@ -18,6 +18,10 @@ export const kPermissions = {
   // every phone that installed the site is a different kind of power from
   // editing one account, and it should be grantable on its own.
   "push.broadcast": "إشعار عام لكل المستخدمين",
+  // Point values, redemption channels and the prize campaigns. Kept apart from
+  // users.manage because it is the one screen where a setting turns into money:
+  // whoever holds it decides what a referral is worth and who gets paid.
+  "affiliate.manage": "برنامج الدعوة",
   "audit.view": "السجلّ",
 } as const;
 

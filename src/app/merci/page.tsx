@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Gift } from "lucide-react";
 import { Container } from "@/components/layout/Container";
 import { NotifyOptIn } from "@/components/launch/NotifyOptIn";
 import { requireUser } from "@/server/auth";
 import { getLaunchStatus } from "@/server/launch";
+import { getAffiliateSettings } from "@/server/affiliate";
 import { kFunnelHome } from "@/lib/funnel";
 
 export const metadata: Metadata = {
@@ -37,7 +38,10 @@ export default async function ThanksPage({
   const isRequest = (one("type") ?? "annonce") === "demande";
   const what = isRequest ? "طلبك" : "إعلانك";
 
-  const { state } = await getLaunchStatus();
+  const [{ state }, affiliate] = await Promise.all([
+    getLaunchStatus(),
+    getAffiliateSettings(),
+  ]);
   // The action says what it did with this particular post; the launch state is
   // only the fallback for someone who reaches this page without one. A clean
   // post is live the moment it is written, and saying otherwise sends its
@@ -83,6 +87,31 @@ export default async function ThanksPage({
             <div className="mt-6">
               <NotifyOptIn />
             </div>
+          )}
+
+          {/* ── AND WHILE YOU WAIT ─────────────────────────────────────────
+              The one screen where somebody has just finished giving the site
+              something and has nothing left to do. Offered only when the
+              programme is switched on: a balance nobody can spend is not an
+              invitation, it is a debt. */}
+          {affiliate.enabled && (
+            <Link
+              href="/tableau-de-bord/parrainage"
+              className="rounded-card border-primary bg-primary-soft mt-6 flex items-center gap-3 border p-4 text-start transition-shadow hover:shadow-sm"
+            >
+              <span className="text-primary grid size-10 shrink-0 place-items-center rounded-full bg-white">
+                <Gift className="size-5" />
+              </span>
+              <span>
+                <span className="block text-sm font-extrabold">
+                  ادعُ أصحابك واربح
+                </span>
+                <span className="text-muted block text-xs leading-relaxed">
+                  كل ما سجّل الناس برابطك ونشرو، كل ما زاد رصيدك — وتبدّلو
+                  بإعلانات وتمييز.
+                </span>
+              </span>
+            </Link>
           )}
 
           <div className="mt-6 grid gap-2">
