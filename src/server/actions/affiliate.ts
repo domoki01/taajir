@@ -20,6 +20,7 @@ import {
   myEntry,
 } from "@/server/affiliate";
 import { kTooFast, withinRate } from "@/server/rateLimit";
+import { encryptField, fieldEncryptionReady } from "@/server/crypto";
 import type {
   AffiliateSettings,
   Campaign,
@@ -88,6 +89,15 @@ export async function redeem(
     }
   }
 
+  // Refused before any points move. A cash request whose destination could not
+  // be encrypted must not be recorded at all — half-completing it would deduct
+  // a balance and store a bank account in the clear.
+  const needsSecret = channel === "redotpay" || channel === "ccp";
+  if (needsSecret && !fieldEncryptionReady()) {
+    console.error("[affiliate] payout refused: FIELD_ENCRYPTION_KEY missing");
+    return { ok: false, error: "السحب معطّل مؤقّتاً. راسل المشرف." };
+  }
+
   const db = adminDb();
   const userRef = db.collection("users").doc(user.uid);
   const now = Date.now();
@@ -141,7 +151,10 @@ export async function redeem(
         channel === "redotpay" || channel === "ccp"
           ? Math.round(price * settings.dinarsPerPoint)
           : null,
-      destination: target || null,
+      // The one field here worth stealing. Encrypted with a key that lives in
+      // the environment, not in the database, so a dump of this collection is a
+      // list of amounts rather than a list of bank accounts.
+      destination: target ? encryptField(target) : null,
       status:
         channel === "listingSlot" || channel === "featured"
           ? "paid"
@@ -420,6 +433,14 @@ export async function claimPrize(
   if (target.length < 4 || target.length > 60) {
     return { ok: false, error: "اكتب وين نبعثولك الجائزة" };
   }
+  // Checked before the prize is taken off the shelf: a claim that cannot store
+  // its destination safely would consume stock and lose the address.
+  if (!fieldEncryptionReady()) {
+    console.error(
+      "[affiliate] prize claim refused: FIELD_ENCRYPTION_KEY missing",
+    );
+    return { ok: false, error: "طلب الجائزة معطّل مؤقّتاً. راسل المشرف." };
+  }
 
   const db = adminDb();
   const campaignRef = db.collection("campaigns").doc(campaign.id);
@@ -484,7 +505,7 @@ export async function claimPrize(
     ownerName: user.name || "مستخدم",
     prizeId: (await entrantRef.get()).data()?.prizeId ?? null,
     prizeLabel: awarded.label,
-    destination: target,
+    destination: encryptField(target),
     points: awarded.points,
     status: "requested",
     note: null,

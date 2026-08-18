@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
+import { decryptField } from "@/server/crypto";
 import {
   kCodeAlphabet,
   kCodeLength,
@@ -631,7 +632,12 @@ export async function pendingPayouts(max = 50): Promise<Payout[]> {
       .orderBy("requestedAt", "asc")
       .limit(max)
       .get();
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Payout);
+    // Decrypted here, at the only screen that needs to read it, rather than
+    // anywhere the value merely passes through.
+    return snap.docs.map((d) => {
+      const row = { id: d.id, ...d.data() } as Payout;
+      return { ...row, destination: decryptField(row.destination) };
+    });
   } catch (error) {
     console.error("[affiliate] payouts read failed:", error);
     return [];
@@ -647,7 +653,10 @@ export async function pendingPrizeClaims(max = 50): Promise<PrizeClaim[]> {
       .orderBy("requestedAt", "asc")
       .limit(max)
       .get();
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as PrizeClaim);
+    return snap.docs.map((d) => {
+      const row = { id: d.id, ...d.data() } as PrizeClaim;
+      return { ...row, destination: decryptField(row.destination) };
+    });
   } catch (error) {
     console.error("[affiliate] prize claims read failed:", error);
     return [];

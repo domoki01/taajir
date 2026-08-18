@@ -38,6 +38,27 @@ env:
       - BUILD
       - RUNTIME
 
+  # The key that encrypts the few fields identifying a bank account: the RIP
+  # number on a payout request and the Binance / BaridiMob handle on a prize
+  # claim. It lives in Secret Manager, never in the repository and never in the
+  # database it protects — a dump of `payouts` without this is a list of
+  # amounts.
+  #
+  # Create it once, then grant the backend access:
+  #
+  #   firebase apphosting:secrets:set FIELD_ENCRYPTION_KEY
+  #   firebase apphosting:secrets:grantaccess FIELD_ENCRYPTION_KEY --backend taajir
+  #
+  # The value must be 32 random bytes, base64:
+  #   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+  #
+  # RUNTIME only. The build has no business decrypting anything, and a secret
+  # available at build time is a secret in the build logs.
+  - variable: FIELD_ENCRYPTION_KEY
+    secret: FIELD_ENCRYPTION_KEY
+    availability:
+      - RUNTIME
+
 # No service-account secret is declared, and that is deliberate. App Hosting
 # runs this app on Cloud Run with a service account already attached, so
 # firebase-admin authenticates through Application Default Credentials. Shipping

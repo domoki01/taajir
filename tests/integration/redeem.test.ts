@@ -4,7 +4,13 @@
 // the cache — are stubbed, and everything else is the real code against the
 // emulator.
 
+import { randomBytes } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Set before the modules below are imported: the actions refuse a cash payout
+// outright when no key is configured, which is the behaviour a later test
+// asserts by removing it again.
+process.env.FIELD_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 
 process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = "demo-taajir";
 process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
@@ -27,6 +33,7 @@ vi.mock("@/server/auth", () => ({
 const { adminDb } = await import("@/lib/firebase/admin");
 const { kAffiliateSettingsPath } = await import("@/server/affiliate");
 const { redeem } = await import("@/server/actions/affiliate");
+const { decryptField } = await import("@/server/crypto");
 
 const db = adminDb();
 
@@ -119,8 +126,12 @@ describe("redeem", () => {
       status: "requested",
       points: 2000,
       amountDzd: 1000,
-      destination: "00799999000123456789",
     });
+    // The RIP number is not in the document. A dump of this collection is a
+    // list of amounts, not a list of bank accounts.
+    expect(payout.destination).not.toContain("00799999000123456789");
+    expect(payout.destination.startsWith("enc.v1.")).toBe(true);
+    expect(decryptField(payout.destination)).toBe("00799999000123456789");
   });
 
   it("refuses a cash request with no destination", async () => {
@@ -150,6 +161,33 @@ describe("redeem", () => {
 
     expect(await redeem("listingSlot")).toMatchObject({ ok: false });
     expect((await doc()).points).toBe(250);
+  });
+
+  it("refuses a cash payout outright when no encryption key is set", async () => {
+    const saved = process.env.FIELD_ENCRYPTION_KEY;
+    delete process.env.FIELD_ENCRYPTION_KEY;
+    await spender(2500);
+
+    // Refused before the transaction: half-completing this would deduct the
+    // balance and write the bank account in the clear.
+    const res = await redeem("ccp", "00799999000123456789");
+
+    expect(res).toMatchObject({ ok: false });
+    expect((await doc()).points).toBe(2500);
+    expect((await db.collection("payouts").get()).size).toBe(0);
+    process.env.FIELD_ENCRYPTION_KEY = saved;
+  });
+
+  it("still settles an in-kind redemption without a key", async () => {
+    // An ad slot has no destination to protect, so it must not be held hostage
+    // to a secret it does not use.
+    const saved = process.env.FIELD_ENCRYPTION_KEY;
+    delete process.env.FIELD_ENCRYPTION_KEY;
+    await spender(250);
+
+    expect((await redeem("listingSlot")).ok).toBe(true);
+    expect((await doc()).listingQuota).toBe(4);
+    process.env.FIELD_ENCRYPTION_KEY = saved;
   });
 
   it("refuses a suspended account", async () => {

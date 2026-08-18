@@ -11,7 +11,12 @@
 // Each of those is a way somebody would take money out of the campaign, so each
 // gets a test rather than a comment.
 
+import { randomBytes } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// A prize claim stores a Binance handle or a BaridiMob number, so the action
+// refuses to run without a key. Set before the imports below.
+process.env.FIELD_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 
 process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = "demo-taajir";
 process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
@@ -36,6 +41,7 @@ const { adminDb } = await import("@/lib/firebase/admin");
 const { kAffiliateSettingsPath } = await import("@/server/affiliate");
 const { claimMission, claimPrize, joinCampaign, startMission } =
   await import("@/server/actions/affiliate");
+const { decryptField } = await import("@/server/crypto");
 
 const db = adminDb();
 
@@ -375,9 +381,11 @@ describe("the threshold and the prize", () => {
     expect(claim).toMatchObject({
       uid: kUid,
       prizeId: "binance-20",
-      destination: "binance-id-123",
       status: "requested",
     });
+    // The handle we would send money to is not readable in the document.
+    expect(claim.destination).not.toContain("binance-id-123");
+    expect(decryptField(claim.destination)).toBe("binance-id-123");
   });
 
   it("cannot be claimed twice by two requests racing", async () => {
@@ -439,6 +447,27 @@ describe("the threshold and the prize", () => {
     expect(await claimPrize("someone@example.com")).toMatchObject({
       ok: false,
     });
+  });
+
+  it("refuses a claim outright when no encryption key is set", async () => {
+    const saved = process.env.FIELD_ENCRYPTION_KEY;
+    delete process.env.FIELD_ENCRYPTION_KEY;
+    await joinCampaign("binance-20");
+    await db
+      .collection("campaigns")
+      .doc(kCampaign)
+      .collection("entrants")
+      .doc(kUid)
+      .update({ points: 100, unlockedAt: Date.now() });
+
+    // Refused before the prize leaves the shelf: a claim that cannot store its
+    // destination safely must not consume stock and lose the address.
+    expect(await claimPrize("binance-id-123")).toMatchObject({ ok: false });
+    const campaign = (
+      await db.collection("campaigns").doc(kCampaign).get()
+    ).data()!;
+    expect(campaign.prizes[0].claimed).toBe(0);
+    process.env.FIELD_ENCRYPTION_KEY = saved;
   });
 
   it("refuses a disqualified entrant", async () => {
