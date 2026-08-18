@@ -1184,6 +1184,20 @@ describe("referrals", () => {
     await assertFails(
       updateDoc(doc(authed(kOwner), "users/" + kOwner), { publishCount: 99 }),
     );
+    // emailVerified decides who the launch mail-out will write to. A user who
+    // could set it would be handing themselves the inbox of whatever address
+    // they typed — which is the whole reason the password provider is gone.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "users/" + kOwner), {
+        emailVerified: true,
+      }),
+    );
+    // And the address itself, which is what emailVerified would be vouching for.
+    await assertFails(
+      updateDoc(doc(authed(kOwner), "users/" + kOwner), {
+        email: "victim@example.com",
+      }),
+    );
   });
 });
 

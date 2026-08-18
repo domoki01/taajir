@@ -28,6 +28,7 @@ import {
   normaliseSlug,
   parseBody,
   readingMinutes,
+  safeCoverUrl,
 } from "@/lib/article";
 import { kSiteName } from "@/lib/constants";
 import type { ArticleStatus } from "@/types/article";
@@ -111,7 +112,7 @@ export async function saveArticle(input: ArticleInput): Promise<ArticleResult> {
       title,
       excerpt,
       body,
-      coverUrl: input.coverUrl || null,
+      coverUrl: safeCoverUrl(input.coverUrl),
       coverAlt: input.coverAlt.trim().slice(0, 140) || title,
       // The first publisher keeps the byline. An editor fixing a typo three
       // months later does not become the author of the piece.

@@ -92,6 +92,29 @@ export function normaliseSlug(raw: string): string {
 }
 
 /**
+ * A cover URL the page may actually render.
+ *
+ * Accepts a same-origin path or an https URL, and nothing else. The value ends
+ * up in three places with different rules: an `<img src>`, where a `javascript:`
+ * URL is inert but a `data:` one is a way to smuggle content past review; the
+ * `og:image` tag, which is fetched by *other people's servers* on every shared
+ * link, so a hostile host there is a beacon we point at our own readers; and
+ * the JSON-LD, which search engines fetch. `articles.manage` is a staff
+ * permission, not a promise — the field is validated, not trusted.
+ */
+export function safeCoverUrl(raw: string | null): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  // Same-origin path. `//evil.com` is protocol-relative, not a path.
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    return new URL(value).protocol === "https:" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Segments the article routes must never hand to a slug.
  *
  * `/articles/nouveau` is the editor. A published article claiming that slug

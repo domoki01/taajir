@@ -6,6 +6,7 @@ import {
   parseBody,
   readingMinutes,
   richRuns,
+  safeCoverUrl,
   toRaw,
 } from "@/lib/article";
 
@@ -92,5 +93,35 @@ describe("normaliseSlug", () => {
       const slug = normaliseSlug(raw);
       if (slug) expect(kSlugPattern.test(slug)).toBe(true);
     }
+  });
+});
+
+describe("safeCoverUrl", () => {
+  it("accepts a same-origin path and an https URL", () => {
+    expect(safeCoverUrl("/articles/cover.svg")).toBe("/articles/cover.svg");
+    expect(safeCoverUrl("https://firebasestorage.googleapis.com/x.webp")).toBe(
+      "https://firebasestorage.googleapis.com/x.webp",
+    );
+  });
+
+  it("refuses a protocol-relative URL posing as a path", () => {
+    // `//evil.com/x.png` looks like a path and is not one — the browser reads
+    // it as a URL on the current scheme, pointing at somebody else's host.
+    expect(safeCoverUrl("//evil.com/x.png")).toBe(null);
+  });
+
+  it("refuses javascript:, data: and plain http", () => {
+    for (const bad of [
+      "javascript:alert(1)",
+      "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=",
+      "http://insecure.example/x.png",
+    ]) {
+      expect(safeCoverUrl(bad)).toBe(null);
+    }
+  });
+
+  it("treats blank as absent", () => {
+    expect(safeCoverUrl("   ")).toBe(null);
+    expect(safeCoverUrl(null)).toBe(null);
   });
 });
