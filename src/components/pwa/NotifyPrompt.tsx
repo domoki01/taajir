@@ -12,7 +12,12 @@
 
 import { useEffect, useState } from "react";
 import { BellRing, Check } from "lucide-react";
-import { claimFirstRunDialog, takeJustSignedUp } from "@/lib/firstRun";
+import {
+  claimFirstRunDialog,
+  justSignedUpPending,
+  kFirstRunReleased,
+  takeJustSignedUp,
+} from "@/lib/firstRun";
 import { Modal } from "@/components/pwa/Modal";
 
 /**
@@ -46,16 +51,39 @@ export function NotifyPrompt() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    // The claim is taken before the flag is consumed, and that order matters
+    // now that the contest dialog decides asynchronously: it holds the claim
+    // while it asks the server whether there is a race on. Consuming first
+    // would spend the sign-up flag on a turn this dialog is not going to get,
+    // and the contest dialog's release would find nothing left to hand back.
+    function offer() {
+      if (!worthAsking() || !justSignedUpPending()) return;
+      if (!claimFirstRunDialog()) return;
+      takeJustSignedUp();
+      setOpen(true);
+    }
+
     // On a timer rather than straight away, for two reasons: signing up ends in
     // a redirect, and a dialog that opens mid-navigation is a dialog nobody
     // reads; and the flag must not be consumed by a mount that is about to be
     // thrown away by that same redirect.
-    const timer = window.setTimeout(() => {
-      if (takeJustSignedUp() && worthAsking() && claimFirstRunDialog()) {
-        setOpen(true);
-      }
-    }, 900);
-    return () => window.clearTimeout(timer);
+    let timer = window.setTimeout(offer, 900);
+
+    // A second chance: the claim comes back when somebody signs up while
+    // another dialog holds it, and when the contest dialog asks the server and
+    // finds no campaign. The delay is armed again rather than the offer being
+    // made on the spot — a sign-up releases the claim in the same breath as the
+    // redirect, and the whole point of the timer is not to open on a page that
+    // is already navigating away.
+    function rearm() {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(offer, 900);
+    }
+    window.addEventListener(kFirstRunReleased, rearm);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(kFirstRunReleased, rearm);
+    };
   }, []);
 
   async function allow() {

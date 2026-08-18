@@ -9,7 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
-import { actorWith, kForbidden, requireUser } from "@/server/auth";
+import { actorWith, getUser, kForbidden, requireUser } from "@/server/auth";
 import {
   ensureReferralCode,
   getAffiliateSettings,
@@ -26,6 +26,7 @@ import type {
   Campaign,
   CampaignLink,
   CampaignPrize,
+  ContestInvite,
   Entrant,
   LinkVisit,
   PayoutChannel,
@@ -185,6 +186,57 @@ export async function redeem(
 }
 
 // ── THE RACE ─────────────────────────────────────────────────────────────────
+
+/**
+ * Is there a race to offer someone who has just signed up, and have they
+ * already entered it?
+ *
+ * Asked from the browser, on the one page load that follows a sign-up, instead
+ * of from the layout on every render. A layout that answered this would put two
+ * Firestore reads in front of every page on the site to serve a dialog that
+ * appears once per account — and would make every one of those pages dynamic.
+ * The cost of asking late is a dialog that opens a beat after the page; the
+ * cost of asking early is paid by every visitor forever.
+ *
+ * Null is the answer to every "no": no session, programme off, popup switched
+ * off, no live campaign, nothing left on the shelf, or already an entrant.
+ * The caller does not need to know which — there is simply nothing to show.
+ */
+export async function contestInvite(): Promise<ContestInvite | null> {
+  const user = await getUser();
+  if (!user) return null;
+
+  const settings = await getAffiliateSettings();
+  if (!settings.enabled || !settings.contestPopup) return null;
+
+  const campaign = await liveCampaign();
+  if (!campaign) return null;
+
+  const prizes = (campaign.prizes ?? []).map((p) => ({
+    id: p.id,
+    kind: p.kind,
+    label: p.label,
+    detail: p.detail,
+    imageUrl: p.imageUrl,
+    soldOut: p.stock <= p.claimed,
+  }));
+  // A shelf with nothing on it is not an invitation. Sold-out prizes still ship
+  // so the dialog can show them struck through — scarcity is the honest part of
+  // the offer — but if every one is gone there is no race left to join.
+  if (!prizes.some((p) => !p.soldOut)) return null;
+
+  const entry = await myEntry(campaign.id, user.uid);
+  if (entry) return null;
+
+  return {
+    campaignId: campaign.id,
+    name: campaign.name,
+    prize: campaign.prize,
+    threshold: campaign.prizeThreshold,
+    endsAt: campaign.endsAt,
+    prizes,
+  };
+}
 
 /**
  * Enter, and pick what you are racing for.
@@ -602,6 +654,7 @@ export async function saveAffiliateSettings(
           redotpay: input.channels?.redotpay === true,
           ccp: input.channels?.ccp === true,
         },
+        contestPopup: input.contestPopup !== false,
         enabled: input.enabled === true,
         updatedAt: Date.now(),
         updatedBy: admin.uid,

@@ -60,6 +60,16 @@ export type AffiliateSettings = {
     ccp: boolean;
   };
 
+  /**
+   * Offer the live campaign in a dialog the moment somebody finishes signing up.
+   *
+   * The best moment the site has to ask for anything: they have just chosen to
+   * be here, and the race is the one thing on offer that is more interesting
+   * than an empty dashboard. It shows only when a campaign is actually running,
+   * so leaving it on costs nothing between campaigns.
+   */
+  contestPopup: boolean;
+
   /** The whole programme, off by default until an admin turns it on. */
   enabled: boolean;
 
@@ -88,6 +98,7 @@ export const kDefaultAffiliateSettings: AffiliateSettings = {
     redotpay: false,
     ccp: false,
   },
+  contestPopup: true,
   enabled: false,
   updatedAt: 0,
   updatedBy: "",
@@ -282,4 +293,28 @@ export type Entrant = {
   claimedAt: number | null;
   /** Set by an admin when an entry is disqualified; kept for the record. */
   disqualified?: boolean;
+};
+
+/**
+ * What the sign-up dialog needs to make an offer worth reading.
+ *
+ * A flattened, read-only view of a live campaign rather than the campaign
+ * itself: the dialog shows three cards and a number, and shipping the whole
+ * document — every link, every answer to every mission — to a browser that only
+ * needs the shelf would hand an entrant the questions before the race starts.
+ */
+export type ContestInvite = {
+  campaignId: string;
+  name: string;
+  prize: string;
+  threshold: number;
+  endsAt: number;
+  prizes: {
+    id: string;
+    kind: PrizeKind;
+    label: string;
+    detail: string;
+    imageUrl: string | null;
+    soldOut: boolean;
+  }[];
 };

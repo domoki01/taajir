@@ -41,9 +41,18 @@ export function markJustSignedUp() {
   try {
     sessionStorage.setItem(kJustSignedUp, "1");
   } catch {}
+  // And a sign-up outranks whatever took the visit's dialog slot before it.
+  // Somebody who spends more than a couple of seconds on the sign-up form has
+  // already been offered the install by then, which used to spend the claim —
+  // so the two dialogs that belong to *this* moment, the notification ask and
+  // the contest invitation, found the slot taken and neither ever appeared.
+  releaseFirstRunDialog();
 }
 
 const kDialogClaimed = "taajir.firstRunDialog";
+
+/** Fired when a claim is handed back, so a stood-down dialog can try again. */
+export const kFirstRunReleased = "taajir:first-run-released";
 
 /**
  * One first-run dialog per visit, whichever gets there first.
@@ -60,6 +69,35 @@ export function claimFirstRunDialog(): boolean {
   } catch {
     return true;
   }
+}
+
+/**
+ * Hand the claim back.
+ *
+ * The contest dialog has to claim before it knows whether it has anything to
+ * show — deciding needs a round trip, and a dialog that asked the server first
+ * would lose the claim to the notification prompt while it waited. So it claims,
+ * asks, and releases when the answer is "no campaign", which lets the next
+ * dialog in the queue take its turn instead of the visit ending with none.
+ *
+ * A sign-up releases it too, for the same reason from the other direction: the
+ * claim is there to stop two dialogs sharing a screen, not to let a dialog
+ * shown five minutes ago silence the one that belongs to what just happened.
+ */
+export function releaseFirstRunDialog() {
+  try {
+    sessionStorage.removeItem(kDialogClaimed);
+  } catch {}
+  // The dialogs that lost the claim have already run their timers by now, and a
+  // timer does not fire twice. Without this they would all have stood down for
+  // a dialog that then decided it had nothing to say — or for one shown long
+  // before the moment worth interrupting — and the visit would end with no
+  // dialog at all. Listeners re-arm their delay rather than opening on the
+  // event, so a release during a navigation cannot flash a dialog onto a page
+  // that is already leaving.
+  try {
+    window.dispatchEvent(new Event(kFirstRunReleased));
+  } catch {}
 }
 
 /** Peek without consuming — the install dialog uses it to stand down. */

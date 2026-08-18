@@ -21,25 +21,31 @@ process.env.FIELD_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = "demo-taajir";
 process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
 
+/** Flipped by the one test that asks what a signed-out visitor is offered. */
+let signedIn = true;
+
 const kUid = "racer-uid";
 const kCampaign = "race-1";
 
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+const kSession = {
+  uid: kUid,
+  email: null,
+  name: "متسابق",
+  role: "user",
+  permissions: [],
+};
+
 vi.mock("@/server/auth", () => ({
-  requireUser: async () => ({
-    uid: kUid,
-    email: null,
-    name: "متسابق",
-    role: "user",
-    permissions: [],
-  }),
+  requireUser: async () => kSession,
+  getUser: async () => (signedIn ? kSession : null),
   actorWith: async () => null,
   kForbidden: "ماشي من صلاحياتك",
 }));
 
 const { adminDb } = await import("@/lib/firebase/admin");
 const { kAffiliateSettingsPath } = await import("@/server/affiliate");
-const { claimMission, claimPrize, joinCampaign, startMission } =
+const { claimMission, claimPrize, contestInvite, joinCampaign, startMission } =
   await import("@/server/actions/affiliate");
 const { decryptField } = await import("@/server/crypto");
 
@@ -147,6 +153,7 @@ async function backdate(linkId: string, seconds: number) {
 }
 
 beforeEach(async () => {
+  signedIn = true;
   await Promise.all([
     wipe("users"),
     wipe("pointsLedger"),
@@ -481,5 +488,100 @@ describe("the threshold and the prize", () => {
 
     expect(await claimPrize("binance-id-123")).toMatchObject({ ok: false });
     expect(await startMission("fb")).toMatchObject({ ok: false });
+  });
+});
+
+// ── THE SIGN-UP INVITATION ───────────────────────────────────────────────────
+// A dialog nobody asked for, so every reason not to show it is a test. What is
+// being protected here is the account that has *already* joined and the visitor
+// between campaigns: showing either of them this is a bug, not a nuisance.
+
+describe("contestInvite", () => {
+  it("offers the live race, with the shelf and the line to cross", async () => {
+    const offer = await contestInvite();
+
+    expect(offer).toMatchObject({
+      campaignId: kCampaign,
+      name: "سباق التجربة",
+      threshold: 40,
+    });
+    expect(offer!.prizes.map((p) => p.id)).toEqual(["binance-20", "play-10"]);
+    expect(offer!.prizes[0].soldOut).toBe(false);
+  });
+
+  it("never ships the missions with it", async () => {
+    // The dialog needs three cards and a number. The links carry the secret
+    // words the missions are scored on, and handing those to a browser before
+    // the race starts would answer every question in it.
+    const offer = await contestInvite();
+
+    const flat = JSON.stringify(offer);
+    expect(flat).not.toContain("example.com");
+    expect(flat).not.toContain("dwellSeconds");
+    // The answer itself is the site's own name in this fixture, so a substring
+    // search for it would prove nothing. The field is what must be absent.
+    expect(flat).not.toContain("answer");
+    expect(Object.keys(offer!)).not.toContain("links");
+  });
+
+  it("says nothing to somebody already racing", async () => {
+    await joinCampaign("binance-20");
+
+    expect(await contestInvite()).toBeNull();
+  });
+
+  it("says nothing when the admin switched the popup off", async () => {
+    await db
+      .doc(kAffiliateSettingsPath)
+      .set({ ...kSettings, contestPopup: false });
+
+    expect(await contestInvite()).toBeNull();
+  });
+
+  it("says nothing while the whole programme is off", async () => {
+    await db.doc(kAffiliateSettingsPath).set({ ...kSettings, enabled: false });
+
+    expect(await contestInvite()).toBeNull();
+  });
+
+  it("says nothing when the campaign has not started or has ended", async () => {
+    await db
+      .collection("campaigns")
+      .doc(kCampaign)
+      .update({ endsAt: Date.now() - 1000 });
+
+    expect(await contestInvite()).toBeNull();
+  });
+
+  it("says nothing when every prize is gone", async () => {
+    // A shelf with nothing left on it is not an invitation.
+    await db
+      .collection("campaigns")
+      .doc(kCampaign)
+      .update({
+        prizes: kPrizes.map((p) => ({ ...p, claimed: p.stock })),
+      });
+
+    expect(await contestInvite()).toBeNull();
+  });
+
+  it("says nothing to a visitor with no session", async () => {
+    signedIn = false;
+
+    expect(await contestInvite()).toBeNull();
+  });
+
+  it("still offers when only some of the shelf is gone", async () => {
+    await db
+      .collection("campaigns")
+      .doc(kCampaign)
+      .update({
+        prizes: [{ ...kPrizes[0], claimed: 1 }, kPrizes[1]],
+      });
+
+    const offer = await contestInvite();
+
+    expect(offer!.prizes[0].soldOut).toBe(true);
+    expect(offer!.prizes[1].soldOut).toBe(false);
   });
 });

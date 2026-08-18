@@ -6,6 +6,7 @@ import { BrandingProvider } from "@/components/branding/BrandingProvider";
 import { SideMenuProvider } from "@/components/layout/SideMenu";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { NotifyPrompt } from "@/components/pwa/NotifyPrompt";
+import { ContestPrompt } from "@/components/affiliate/ContestPrompt";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
 import { brandingStyle, getBranding } from "@/server/branding";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
@@ -112,6 +113,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <RegisterSW />
             <InstallPrompt />
             <NotifyPrompt />
+            {/* Third of the first-run dialogs, and the only one that has to ask
+                the server before it knows whether it has anything to show. It
+                asks nothing on an ordinary visit — the sign-up flag gates it
+                before the request is made. */}
+            <ContestPrompt />
           </SideMenuProvider>
         </BrandingProvider>
       </body>

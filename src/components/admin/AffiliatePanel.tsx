@@ -423,6 +423,23 @@ export function AffiliatePanel({
           في آخرو هو أقوى مغناطيس للغش في هاد التصميم.
         </p>
 
+        <label className="rounded-input border-border mt-4 flex items-center gap-2 border px-3 py-3 text-sm font-bold">
+          <input
+            type="checkbox"
+            checked={form.contestPopup}
+            onChange={(e) =>
+              setForm({ ...form, contestPopup: e.target.checked })
+            }
+            className="accent-primary size-4"
+          />
+          اعرض المسابقة في نافذة بعد التسجيل
+        </label>
+        <p className="text-dim mt-2 text-xs leading-relaxed">
+          كي يكمّل واحد التسجيل، تخرجلو نافذة يختار فيها جائزتو ويدخل السباق
+          بضغطة وحدة. ما تبانش كي ما تكونش مسابقة شغّالة، فتقدر تخلّيها محلولة
+          ديما.
+        </p>
+
         <label className="rounded-input border-border mt-4 flex items-center gap-2 border px-3 py-3 text-sm font-extrabold">
           <input
             type="checkbox"
