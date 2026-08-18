@@ -81,7 +81,13 @@ async function fanOut(): Promise<LaunchFanOut> {
     if (u.isBanned) continue;
 
     const targets: Array<[OutboxChannel, string]> = [];
-    if (u.email) targets.push(["email", u.email as string]);
+    // Verified addresses only. Firebase's email/password provider accepted any
+    // address anybody typed, so `users.email` is a field full of claims — and a
+    // launch blast to it would be unsolicited mail to strangers, sent from our
+    // own domain, on the one day its reputation matters most.
+    if (u.email && u.emailVerified === true) {
+      targets.push(["email", u.email as string]);
+    }
     if (u.phone) targets.push(["sms", u.phone as string]);
     targets.push(["push", "device"]);
 

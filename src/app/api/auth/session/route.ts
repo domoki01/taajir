@@ -24,6 +24,29 @@ export async function POST(request: NextRequest) {
   try {
     const decoded = await adminAuth().verifyIdToken(idToken, true);
 
+    // ── THE PROVIDER GATE ────────────────────────────────────────────────────
+    // Enforced here, not in the sign-up form, because the form is not a gate.
+    // The Firebase web API key is public by design and the Identity Toolkit
+    // REST endpoint accepts it from anywhere, so removing a button removes a
+    // button — an attacker calls accounts:signUp directly and never sees the
+    // page. This route is the only place the whole site actually trusts: no
+    // session cookie, no account, whatever exists in Auth.
+    //
+    // The live site was mass-registered from that endpoint — 213 accounts in
+    // under an hour, on invented addresses — which is what this closes.
+    //
+    // Email/password is refused outright rather than merely required to be
+    // verified: an unverified address is a claim on somebody else's inbox, and
+    // the launch mail-out would have delivered to every one of them. Google and
+    // phone both prove the identifier before Firebase ever issues the token.
+    const provider = decoded.firebase?.sign_in_provider;
+    if (provider === "password") {
+      return NextResponse.json(
+        { error: "provider disabled", code: "password-disabled" },
+        { status: 403 },
+      );
+    }
+
     // Settled here rather than at the click, because this is the first moment
     // an account exists to attach it to. The code is only resolved when the
     // cookie is present, so an ordinary sign-in costs no extra read.
@@ -38,6 +61,9 @@ export async function POST(request: NextRequest) {
       // way to reach those users, and the publish form prefills the contact
       // field from it rather than asking for a number they just typed.
       phone: (decoded.phone_number as string) ?? null,
+      // Recorded so the mail-out can refuse anything unproven, rather than
+      // trusting that this route is the only way an account was ever made.
+      emailVerified: decoded.email_verified === true,
       referredBy,
     });
 

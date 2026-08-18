@@ -3,15 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  updateProfile,
-  type User,
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { PhoneAuth } from "@/components/auth/PhoneAuth";
 import { safeNext } from "@/lib/redirect";
@@ -25,16 +17,8 @@ type Mode = "signin" | "signup";
  */
 function humanize(code: string): string {
   switch (code) {
-    case "auth/invalid-credential":
-    case "auth/wrong-password":
-    case "auth/user-not-found":
-      return "الإيميل ولا كلمة السر غالطين";
-    case "auth/email-already-in-use":
-      return "هذا الإيميل عندو حساب من قبل. سجّل الدخول.";
-    case "auth/weak-password":
-      return "كلمة السر قصيرة — لازم 6 حروف على الأقل";
-    case "auth/invalid-email":
-      return "الإيميل ماشي صحيح";
+    case "auth/account-exists-with-different-credential":
+      return "هذا الإيميل عندو حساب. كمّل بـGoogle بنفس الإيميل.";
     case "auth/too-many-requests":
       return "حاولت برك مرات. استنى شوية وعاود.";
     case "auth/network-request-failed":
@@ -57,16 +41,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
   // came for.
   const carry = `?next=${encodeURIComponent(next)}`;
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  // Email and password are folded away rather than removed: they are what the
-  // accounts created before this screen existed still sign in with. A phone
-  // number is what someone arriving today actually has.
-  const [showEmail, setShowEmail] = useState(false);
 
   /** Trade the Firebase ID token for a server session before navigating. */
   async function establishSession(user: User) {
@@ -76,7 +52,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken }),
     });
-    if (!res.ok) throw new Error("session");
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(
+        body.code === "password-disabled" ? "password" : "session",
+      );
+    }
 
     // A brand-new account has the two timestamps equal — Firebase writes both
     // at creation. That is the difference between "welcome, may we notify you?"
@@ -88,31 +69,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
     // refresh() so the server re-renders with the new cookie in place.
     router.replace(next);
     router.refresh();
-  }
-
-  async function onSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-
-    try {
-      const cred =
-        mode === "signup"
-          ? await createUserWithEmailAndPassword(auth, email.trim(), password)
-          : await signInWithEmailAndPassword(auth, email.trim(), password);
-
-      if (mode === "signup" && name.trim()) {
-        await updateProfile(cred.user, { displayName: name.trim() });
-        // Force a token refresh so the session cookie carries the name.
-        await cred.user.getIdToken(true);
-      }
-      await establishSession(cred.user);
-    } catch (e) {
-      const code = (e as { code?: string }).code ?? "";
-      setError(humanize(code) || "وقع مشكل. عاود من جديد.");
-      setBusy(false);
-    }
   }
 
   async function onGoogle() {
@@ -128,23 +84,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
       setBusy(false);
     }
   }
-
-  async function onReset() {
-    if (!email.trim()) {
-      setError("اكتب إيميلك الأول باش نرسلولك رابط");
-      return;
-    }
-    try {
-      await sendPasswordResetEmail(auth, email.trim());
-      setError(null);
-      setNotice("رسّلنالك رابط في الإيميل باش تبدّل كلمة السر.");
-    } catch (e) {
-      setError(humanize((e as { code?: string }).code ?? ""));
-    }
-  }
-
-  const field =
-    "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-primary";
 
   return (
     <div className="space-y-4">
@@ -168,95 +107,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
         كمّل بحساب Google
       </button>
 
-      {!showEmail && (
-        <button
-          type="button"
-          onClick={() => setShowEmail(true)}
-          className="text-dim hover:text-primary w-full text-center text-xs font-bold underline"
-        >
-          {mode === "signup" ? "ولا بالإيميل وكلمة السر" : "دخول بالإيميل"}
-        </button>
-      )}
-
-      {showEmail && (
-        <form onSubmit={onSubmit} className="space-y-3 pt-1">
-          {mode === "signup" && (
-            <div>
-              <label htmlFor="name" className="mb-1.5 block text-sm font-bold">
-                الاسم
-              </label>
-              <input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-                className={field}
-                placeholder="اسمك ولا اسم الوكالة"
-              />
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-bold">
-              الإيميل
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              dir="ltr"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              className={`${field} text-start`}
-              placeholder="nom@example.com"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-1.5 block text-sm font-bold"
-            >
-              كلمة السر
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={6}
-              dir="ltr"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={
-                mode === "signup" ? "new-password" : "current-password"
-              }
-              className={`${field} text-start`}
-            />
-            {mode === "signup" && (
-              <p className="text-dim mt-1.5 text-xs">6 حروف على الأقل</p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-input border-border hover:border-primary w-full border bg-white py-3.5 text-sm font-bold transition-colors disabled:opacity-50"
-          >
-            {busy ? "..." : mode === "signup" ? "أنشئ الحساب" : "دخول"}
-          </button>
-
-          {mode === "signin" && (
-            <button
-              type="button"
-              onClick={onReset}
-              className="text-muted block w-full text-xs font-semibold underline"
-            >
-              نسيت كلمة السر
-            </button>
-          )}
-        </form>
-      )}
+      {/* Email and password used to sit behind a toggle here. They are gone,
+          not folded away: Firebase's password provider accepts any address
+          anybody types and verifies none of them, and the live site was
+          mass-registered through it — 213 accounts on invented addresses in
+          under an hour. Google and phone both prove the identifier before a
+          token is ever issued, and the session route refuses the password
+          provider outright, so leaving the form would only offer a door the
+          server no longer opens. */}
+      <p className="text-dim pt-1 text-center text-xs leading-relaxed">
+        كنت تدخل بالإيميل وكلمة السرّ؟ اضغط «كمّل بحساب Google» بنفس الإيميل —
+        حسابك وإعلاناتك يبقاو كيما هم.
+      </p>
 
       {error && (
         <p
@@ -266,15 +128,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {error}
         </p>
       )}
-      {notice && (
-        <p
-          role="status"
-          className="rounded-input bg-success/10 text-success px-4 py-3 text-sm font-semibold"
-        >
-          {notice}
-        </p>
-      )}
-
       <p className="text-muted pt-1 text-center text-sm">
         {mode === "signup" ? (
           <>

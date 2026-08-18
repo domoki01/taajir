@@ -137,6 +137,8 @@ export async function ensureUserDoc(
     name: string;
     photoURL: string | null;
     phone?: string | null;
+    /** Proven by the provider, never by the account holder typing it. */
+    emailVerified?: boolean;
     /** The uid behind the invite link this visitor arrived through, if any. */
     referredBy?: string | null;
   },
@@ -147,7 +149,14 @@ export async function ensureUserDoc(
     // A returning phone user whose document predates this field gets it filled
     // in, but a number they later edited in their profile is never overwritten.
     const fill = data.phone && !snap.data()?.phone ? { phone: data.phone } : {};
-    await ref.update({ lastSeenAt: Date.now(), ...fill });
+    await ref.update({
+      lastSeenAt: Date.now(),
+      // Refreshed every sign-in: an address can become verified after the
+      // account was made, and the 223 rows written before this field existed
+      // must not read as verified by their absence.
+      emailVerified: data.emailVerified === true,
+      ...fill,
+    });
     return;
   }
 
@@ -164,6 +173,9 @@ export async function ensureUserDoc(
     displayName: data.name || "مستخدم",
     photoURL: data.photoURL,
     phone: data.phone ?? null,
+    // Written on creation and refreshed on every sign-in below: the mail-out
+    // reads this rather than assuming an address in the database was proven.
+    emailVerified: data.emailVerified === true,
     // Attribution is written exactly once, at creation, and never afterwards.
     // Anything else lets an account be re-attributed by clicking a second
     // invite link — which is a referral programme paying twice for one user.
