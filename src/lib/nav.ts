@@ -121,6 +121,11 @@ export function isImmersiveRoute(pathname: string): boolean {
     // Sign-in and sign-up sit between a funnel button and the form it leads to.
     "/connexion",
     "/inscription",
+    // The admin panel is its own context with its own navigation. The visitor
+    // bar underneath it was not just redundant — its publish button is a
+    // floating circle that sat on top of whatever card was at the bottom of an
+    // admin screen, which is how the launch switch ended up half-covered.
+    "/admin",
   ].some((p) => pathname.includes(p));
 }
 

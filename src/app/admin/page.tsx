@@ -5,8 +5,6 @@ import {
   CheckCircle2,
   Clock,
   Image as ImageIcon,
-  MessageSquare,
-  ScrollText,
   UserRound,
   Users,
 } from "lucide-react";
@@ -91,7 +89,7 @@ export default async function AdminHome() {
 
   return (
     <div>
-      <h1 className="text-2xl font-black">لوحة الإشراف</h1>
+      <h1 className="text-xl font-black">نظرة عامة</h1>
       <p className="text-muted mt-1 text-sm font-semibold">
         حالة المنصة، وآخر ما دار فيها.
       </p>
@@ -114,37 +112,6 @@ export default async function AdminHome() {
           </li>
         ))}
       </ul>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Link
-          href="/admin/commentaires"
-          className="rounded-card border-border bg-surface hover:border-primary flex items-center gap-3 border p-4 transition-colors"
-        >
-          <span className="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-[12px]">
-            <MessageSquare className="size-5" />
-          </span>
-          <span>
-            <span className="block text-sm font-bold">التعليقات</span>
-            <span className="text-dim block text-xs">
-              راجع وخبّي التعليقات على الإعلانات
-            </span>
-          </span>
-        </Link>
-        <Link
-          href="/admin/journal"
-          className="rounded-card border-border bg-surface hover:border-primary flex items-center gap-3 border p-4 transition-colors"
-        >
-          <span className="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-[12px]">
-            <ScrollText className="size-5" />
-          </span>
-          <span>
-            <span className="block text-sm font-bold">سجلّ العمليات</span>
-            <span className="text-dim block text-xs">
-              كل قرار إشراف، مع صاحبه ووقته
-            </span>
-          </span>
-        </Link>
-      </div>
 
       {/* ── RECENT ACTIVITY ──────────────────────────────────────────────── */}
       <section className="mt-8">

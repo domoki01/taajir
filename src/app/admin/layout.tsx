@@ -1,61 +1,20 @@
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Container } from "@/components/layout/Container";
+import { AdminNav } from "@/components/admin/AdminNav";
+import { kAdminNav } from "@/app/admin/nav";
 import { hasPermission, requireStaff } from "@/server/auth";
-import type { Permission } from "@/lib/permissions";
 
 /**
- * Every admin destination, and the one permission that opens it.
+ * The admin shell: who you are, where you are, and the way back to the site.
  *
- * The nav is filtered rather than greyed out: a link to a screen that will
+ * The nav is filtered rather than greyed out — a link to a screen that will
  * bounce you is worse than no link. Each page guards itself again, and so does
- * every Server Action behind it — this list decides what is *shown*, never what
- * is allowed.
+ * every Server Action behind it: this list decides what is *shown*, never what
+ * is allowed. requireStaff redirects anyone holding no permission at all before
+ * any child renders.
  */
-const kAdminNav: Array<{
-  href: string;
-  label: string;
-  /** Any one of these opens the link. Empty means everyone who got this far. */
-  need: Permission[];
-}> = [
-  { href: "/admin", label: "نظرة عامة", need: [] },
-  {
-    href: "/admin/moderation",
-    label: "طابور المراجعة",
-    need: ["listings.moderate"],
-  },
-  {
-    href: "/admin/commentaires",
-    label: "التعليقات",
-    need: ["comments.moderate"],
-  },
-  {
-    href: "/admin/utilisateurs",
-    label: "الحسابات",
-    need: ["users.manage", "users.approve"],
-  },
-  { href: "/admin/roles", label: "الأدوار", need: ["roles.manage"] },
-  { href: "/admin/publicites", label: "الإشهارات", need: ["promos.manage"] },
-  { href: "/admin/filtre", label: "الفئات والفلتر", need: ["taxonomy.edit"] },
-  { href: "/admin/articles", label: "المقالات", need: ["articles.manage"] },
-  { href: "/admin/identite", label: "الهوية", need: ["branding.edit"] },
-  { href: "/admin/lancement", label: "الإطلاق", need: ["launch.control"] },
-  {
-    href: "/admin/affiliation",
-    label: "برنامج الدعوة",
-    need: ["affiliate.manage"],
-  },
-  {
-    href: "/admin/notifications",
-    label: "إشعار عام",
-    need: ["push.broadcast"],
-  },
-  { href: "/admin/journal", label: "السجلّ", need: ["audit.view"] },
-];
-
-// requireStaff redirects anyone holding no permission at all away before any
-// child renders. The Server Actions behind the buttons re-check independently —
-// reaching this page is never treated as proof of anything.
 export default async function AdminLayout({
   children,
 }: {
@@ -63,35 +22,37 @@ export default async function AdminLayout({
 }) {
   const admin = await requireStaff();
 
+  const items = kAdminNav.filter(
+    ({ need }) =>
+      need.length === 0 || need.some((p) => hasPermission(admin, p)),
+  );
+
   return (
     <>
       <Header />
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <Container>
-          <div className="mb-6 flex flex-wrap items-center gap-3">
-            <p className="me-auto text-sm font-extrabold">
-              لوحة الإشراف
-              <span className="text-dim ms-2 text-xs font-semibold">
-                {admin.email}
-              </span>
+          {/* The identity line stands on its own. It used to share a row with
+              the first nav button, which is why the panel opened on a title
+              with a stray pill glued to it. */}
+          <div className="border-border mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 border-b pb-4">
+            <h1 className="text-lg font-black">لوحة الإشراف</h1>
+            <p className="text-dim truncate text-xs font-semibold">
+              {admin.email ?? admin.name}
             </p>
-            {kAdminNav
-              .filter(
-                ({ need }) =>
-                  need.length === 0 ||
-                  need.some((p) => hasPermission(admin, p)),
-              )
-              .map(({ href, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
-                >
-                  {label}
-                </Link>
-              ))}
+            <Link
+              href="/"
+              className="text-dim hover:text-primary ms-auto flex items-center gap-1.5 text-xs font-bold transition-colors"
+            >
+              <ExternalLink className="size-3.5" />
+              شوف الموقع
+            </Link>
           </div>
-          {children}
+
+          <div className="md:flex md:items-start md:gap-8">
+            <AdminNav items={items} />
+            <div className="min-w-0 flex-1">{children}</div>
+          </div>
         </Container>
       </main>
     </>
