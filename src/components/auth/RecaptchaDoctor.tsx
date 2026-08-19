@@ -14,6 +14,7 @@ import { useRef, useState } from "react";
 import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { firebaseConfig } from "@/lib/firebase/config";
+import { toE164 } from "@/lib/phone";
 
 type Step = { name: string; ok: boolean | null; detail: string };
 
@@ -41,6 +42,7 @@ function explain(e: unknown): string {
 export function RecaptchaDoctor() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [busy, setBusy] = useState(false);
+  const [phone, setPhone] = useState("");
   const previous = useRef<RecaptchaVerifier | null>(null);
 
   function push(name: string, ok: boolean | null, detail: string) {
@@ -111,9 +113,10 @@ export function RecaptchaDoctor() {
         push("رسم الودجت (تحميل سكريبت قوقل)", false, explain(e));
       }
 
-      // 5 — the token itself: the step the sign-up form dies on.
+      // 5 — the token itself.
+      let token: string | null = null;
       try {
-        const token = await verifier.verify();
+        token = await verifier.verify();
         push(
           "جلب التوكن",
           true,
@@ -121,6 +124,47 @@ export function RecaptchaDoctor() {
         );
       } catch (e) {
         push("جلب التوكن", false, explain(e));
+      }
+
+      // 6 — the decisive one: hand that token straight to the backend, no SDK
+      // in between, and print the server's answer verbatim. The form dies with
+      // an unmapped raw code, which per the SDK's error mapping means the
+      // *server* said something it has no name for — this shows the exact
+      // sentence. Only runs when a number was typed, because success sends a
+      // real SMS to it.
+      const e164 = toE164(phone);
+      if (token && e164) {
+        try {
+          const res = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${firebaseConfig.apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                phoneNumber: e164,
+                clientType: "CLIENT_TYPE_WEB",
+                recaptchaVersion: "RECAPTCHA_ENTERPRISE",
+                captchaResponse: "NO_RECAPTCHA",
+                recaptchaToken: token,
+              }),
+            },
+          );
+          const body = await res.text();
+          const ok = res.ok && body.includes("sessionInfo");
+          push(
+            "إرسال الكود — ردّ السيرفر الخام",
+            ok,
+            `${res.status}\n${body.slice(0, 600)}${ok ? "\n\n✅ إذا وصلك SMS دروك، السلسلة كاملة تخدم." : ""}`,
+          );
+        } catch (e) {
+          push("إرسال الكود — ردّ السيرفر الخام", false, explain(e));
+        }
+      } else if (!e164) {
+        push(
+          "إرسال الكود",
+          null,
+          "ما كتبتش رقم — تخطّينا الإرسال الحقيقي. اكتب رقمك فوق وعاود باش نشوفو ردّ السيرفر.",
+        );
       }
     }
 
@@ -148,6 +192,20 @@ export function RecaptchaDoctor() {
   return (
     <div className="mt-5">
       <div id="doctor-holder" />
+
+      <label htmlFor="doctor-phone" className="mb-2 block text-sm font-bold">
+        رقم الهاتف (باش نجرّبو الإرسال الحقيقي)
+      </label>
+      <input
+        id="doctor-phone"
+        type="tel"
+        inputMode="tel"
+        dir="ltr"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        placeholder="0550 12 34 56"
+        className="rounded-input border-border bg-surface ltr-nums mb-3 w-full border px-4 py-3 text-start text-sm font-semibold"
+      />
 
       <button
         type="button"
