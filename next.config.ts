@@ -100,19 +100,40 @@ const nextConfig: NextConfig = {
   // the duplicate-content question at the source instead of relying on the
   // canonical tag to be honoured.
   //
-  // Matched on the Host header, so it fires only for the generated hostname:
-  // localhost, the custom domain and Cloud Run's own health checks are all
-  // untouched.
+  // Two rules for one condition, because the name the visitor typed reaches the
+  // app in different places depending on who is in front of it.
+  //
+  // `type: "host"` compares the Host header. On App Hosting that header is the
+  // Cloud Run container's own address, not the public hostname — the same trap
+  // that once made the invite link redirect to https://localhost:8080 — so on
+  // its own it matched nothing in production while passing every local test.
+  // The public name arrives in x-forwarded-host instead.
+  //
+  // The header value is a regex rather than a literal: a chain of proxies is
+  // allowed to append to x-forwarded-host, and an exact comparison would miss
+  // "a.example, taajir--….hosted.app".
+  //
+  // Neither rule can fire on the custom domain, and a request carrying neither
+  // header — Cloud Run's own health checks — matches nothing and is served
+  // normally.
   async redirects() {
+    const kOldHost = "taajir--newmokit.europe-west4.hosted.app";
     return [
       {
         source: "/:path*",
         has: [
           {
-            type: "host",
-            value: "taajir--newmokit.europe-west4.hosted.app",
+            type: "header",
+            key: "x-forwarded-host",
+            value: `.*${kOldHost.replace(/\./g, "\\.")}.*`,
           },
         ],
+        destination: "https://taajirdz.com/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: kOldHost }],
         destination: "https://taajirdz.com/:path*",
         permanent: true,
       },

@@ -50,6 +50,15 @@ describe("the site's public origin", () => {
     expect(config).toContain(`destination: "${deployedOrigin()}/:path*"`);
   });
 
+  it("also matches the header the proxy actually sends", () => {
+    // The Host header alone is not enough on App Hosting: it carries the Cloud
+    // Run container's own address, so a host-only rule passes every local test
+    // and matches nothing in production. The public name is in x-forwarded-host,
+    // and this rule is the one that does the work on the live site.
+    const at = config.indexOf("async redirects()");
+    expect(config.slice(at)).toContain('key: "x-forwarded-host"');
+  });
+
   it("matches the redirect on the host, never on the path alone", () => {
     // Without the host condition this rule would fire on the custom domain too
     // and redirect the site to itself, forever.
