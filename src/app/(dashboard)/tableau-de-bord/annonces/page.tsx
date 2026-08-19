@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Megaphone } from "lucide-react";
 import { adminDb } from "@/lib/firebase/admin";
 import { requireUser } from "@/server/auth";
 import { formatPrice } from "@/lib/price";
@@ -96,8 +96,10 @@ export default async function MyListingsPage({
           />
         ) : listings.length === 0 ? (
           <EmptyState
+            icon={Megaphone}
             title="ما عندك حتى إعلان"
             body="انشر أول إعلان وشوفه هنا مع حالته."
+            action={{ label: "انشر إعلان جديد", href: "/publier" }}
           />
         ) : (
           <ul className="space-y-3">

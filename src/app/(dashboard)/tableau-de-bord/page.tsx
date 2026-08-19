@@ -1,22 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  AlertTriangle,
+  BadgeCheck,
+  Bell,
+  ChartNoAxesColumn,
   CheckCircle2,
   Clock,
   Eye,
+  Megaphone,
   PlusCircle,
+  ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { adminDb } from "@/lib/firebase/admin";
-import { requireUser } from "@/server/auth";
+import { isStaff, requireUser } from "@/server/auth";
 import { getUserDoc } from "@/server/users";
 import { ownerStats } from "@/server/stats";
 import { kFreeListingQuota } from "@/lib/constants";
+import { ListGroup, ListRow } from "@/components/app/ListGroup";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import type { Listing } from "@/types/listing";
 
 export const metadata: Metadata = {
-  title: "لوحة التحكّم",
+  title: "حسابي",
   robots: { index: false, follow: false },
 };
 
@@ -47,7 +53,8 @@ async function myListings(uid: string): Promise<Listing[] | null> {
   }
 }
 
-function Tile({
+/** One number, said in as few pixels as it takes. */
+function Stat({
   icon: Icon,
   label,
   value,
@@ -59,17 +66,17 @@ function Tile({
   tone?: string;
 }) {
   return (
-    <div className="rounded-card border-border bg-surface border p-4">
-      <p className="text-dim flex items-center gap-2 text-xs font-bold">
-        <Icon className="size-4" />
+    <div className="rounded-card border-border bg-surface border p-3">
+      <p className="text-dim flex items-center gap-1.5 text-[11px] font-bold">
+        <Icon className="size-3.5" />
         {label}
       </p>
-      <p className={`ltr-nums mt-2 text-2xl font-black ${tone}`}>{value}</p>
+      <p className={`ltr-nums mt-1 text-xl font-black ${tone}`}>{value}</p>
     </div>
   );
 }
 
-export default async function DashboardPage() {
+export default async function AccountPage() {
   const user = await requireUser();
   const [listings, profile] = await Promise.all([
     myListings(user.uid),
@@ -84,42 +91,67 @@ export default async function DashboardPage() {
   const remaining = Math.max(0, stats.listingQuota - stats.activeListingCount);
   const rejected = stats.byStatus.rejected ?? 0;
   const pending = stats.byStatus.pending ?? 0;
+  const published = stats.byStatus.published ?? 0;
 
   return (
-    <div>
-      <h1 className="text-2xl font-black">لوحة التحكّم</h1>
-      <p className="text-muted mt-1 text-sm font-semibold">
-        نظرة سريعة على إعلاناتك وحسابك.
-      </p>
+    <div className="pb-4">
+      {/* ── WHO YOU ARE ──────────────────────────────────────────────────────
+          An account screen opens on the account. The old one opened on four
+          metric tiles under the word "لوحة التحكّم", which is a report, not a
+          place you recognise as yours. */}
+      <div className="mt-1 flex items-center gap-3">
+        <span className="bg-primary text-surface grid size-14 shrink-0 place-items-center rounded-full text-xl font-black">
+          {(user.name || "؟").trim().charAt(0)}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-lg font-black">{user.name || "مستخدم"}</p>
+          <p className="text-dim ltr-nums truncate text-sm font-semibold">
+            {profile?.phone ?? user.email ?? "—"}
+          </p>
+        </div>
+      </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile
+      {/* The first thing to press, at the top and unmissable. Publishing is why
+          almost everybody opens this screen. */}
+      <Link
+        href="/publier"
+        className="bg-accent rounded-card mt-4 flex items-center justify-center gap-2 py-3.5 text-sm font-bold text-white transition-opacity active:opacity-90"
+      >
+        <PlusCircle className="size-5" strokeWidth={2.5} />
+        انشر إعلان جديد
+      </Link>
+
+      {rejected > 0 && (
+        <Link
+          href="/tableau-de-bord/annonces"
+          className="rounded-card bg-danger/10 text-danger mt-3 block px-4 py-3 text-sm font-bold"
+        >
+          عندك {rejected} إعلان مرفوض — شوف السبب وعدّله
+        </Link>
+      )}
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <Stat
           icon={CheckCircle2}
           label="منشورة"
-          value={String(stats.byStatus.published ?? 0)}
-          tone="text-success"
+          value={String(published)}
+          tone={published > 0 ? "text-success" : ""}
         />
-        <Tile
+        <Stat
           icon={Clock}
           label="في المراجعة"
           value={String(pending)}
           tone={pending > 0 ? "text-warning" : ""}
         />
-        <Tile
-          icon={AlertTriangle}
-          label="مرفوضة"
-          value={String(rejected)}
-          tone={rejected > 0 ? "text-danger" : ""}
-        />
-        <Tile
+        <Stat
           icon={Eye}
-          label="مجموع المشاهدات"
+          label="مشاهدات"
           value={listings === null ? "—" : String(stats.views ?? 0)}
         />
       </div>
 
       {/* ── QUOTA ────────────────────────────────────────────────────────── */}
-      <div className="rounded-card border-border bg-surface mt-4 border p-4">
+      <div className="rounded-card border-border bg-surface mt-3 border p-4">
         <div className="flex flex-wrap items-baseline gap-2">
           <p className="text-sm font-extrabold">الإعلانات المسموحة</p>
           <p className="text-dim ltr-nums ms-auto text-sm font-bold">
@@ -148,49 +180,65 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* ── WHAT TO DO NEXT ──────────────────────────────────────────────── */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Link
-          href="/publier"
-          className="rounded-card border-border bg-surface hover:border-primary flex items-center gap-3 border p-4 transition-colors"
-        >
-          <span className="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-[12px]">
-            <PlusCircle className="size-5" />
-          </span>
-          <span>
-            <span className="block text-sm font-bold">انشر إعلان جديد</span>
-            <span className="text-dim block text-xs">
-              صور، سعر، ووثائق — يظهر بعد المراجعة
-            </span>
-          </span>
-        </Link>
+      {/* ── WHERE EVERYTHING IS ───────────────────────────────────────────
+          This list replaces the row of six pills that used to sit above every
+          dashboard screen. Same destinations, in the shape a phone expects. */}
+      <ListGroup title="المحتوى متاعي">
+        <ListRow
+          icon={Megaphone}
+          label="إعلاناتي"
+          hint="شوف حالة كل إعلان وعدّلو"
+          value={listings === null ? undefined : String(listings.length)}
+          href="/tableau-de-bord/annonces"
+        />
+        <ListRow
+          icon={ChartNoAxesColumn}
+          label="منشوراتي"
+          hint="طلباتك وتعليقاتك"
+          href="/tableau-de-bord/publications"
+        />
+        <ListRow
+          icon={Bell}
+          label="تنبيهاتي"
+          hint="البحوث المحفوظة اللي توصلك"
+          href="/tableau-de-bord/alertes"
+        />
+      </ListGroup>
 
-        <Link
+      <ListGroup title="الحساب">
+        <ListRow
+          icon={UserRound}
+          label="معلوماتي"
+          hint={
+            profile?.phone
+              ? "الاسم، الهاتف والولاية"
+              : "زيد رقم هاتفك باش يوصلوك الزبائن"
+          }
+          tone={profile?.phone ? "primary" : "warning"}
           href="/tableau-de-bord/profil"
-          className="rounded-card border-border bg-surface hover:border-primary flex items-center gap-3 border p-4 transition-colors"
-        >
-          <span className="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-[12px]">
-            <UserRound className="size-5" />
-          </span>
-          <span>
-            <span className="block text-sm font-bold">معلوماتي</span>
-            <span className="text-dim block text-xs">
-              {profile?.phone
-                ? "الاسم، الهاتف والولاية"
-                : "زيد رقم هاتفك باش يوصلوك الزبائن"}
-            </span>
-          </span>
-        </Link>
-      </div>
+        />
+        <ListRow
+          icon={BadgeCheck}
+          label="ادعُ أصحابك"
+          hint="اربح نقاط بكل واحد ينشر"
+          href="/tableau-de-bord/parrainage"
+        />
+      </ListGroup>
 
-      {rejected > 0 && (
-        <p className="rounded-input bg-danger/10 text-danger mt-4 px-4 py-3 text-sm font-bold">
-          عندك {rejected} إعلان مرفوض.{" "}
-          <Link href="/tableau-de-bord/annonces" className="underline">
-            شوف السبب وعدّله
-          </Link>
-        </p>
+      {isStaff(user) && (
+        <ListGroup title="الإشراف">
+          <ListRow
+            icon={ShieldCheck}
+            label="لوحة الإشراف"
+            hint="المراجعة، الحسابات وإعدادات المنصّة"
+            href="/admin"
+          />
+        </ListGroup>
       )}
+
+      <div className="mt-5">
+        <SignOutButton />
+      </div>
     </div>
   );
 }

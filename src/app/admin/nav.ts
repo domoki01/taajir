@@ -140,16 +140,3 @@ export const kAdminGroups: Exclude<AdminNavGroup, "">[] = [
   "النمو",
   "المنصّة",
 ];
-
-/**
- * Is this the section being viewed?
- *
- * `/admin` matches only itself. Every other href starts with it, so a plain
- * prefix test would light the overview tab on all thirteen screens — two active
- * tabs at once reads worse than none.
- */
-export function isCurrentAdmin(pathname: string, href: string): boolean {
-  return href === "/admin"
-    ? pathname === "/admin"
-    : pathname === href || pathname.startsWith(`${href}/`);
-}

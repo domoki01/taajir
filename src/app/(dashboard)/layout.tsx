@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { Header } from "@/components/layout/Header";
-import { Container } from "@/components/layout/Container";
-import { SignOutButton } from "@/components/auth/SignOutButton";
+import { AppBar } from "@/components/app/AppBar";
 import { getUser } from "@/server/auth";
 
 // Authorisation lives in the pages, not in middleware: verifying a session
@@ -32,47 +30,14 @@ export default async function DashboardLayout({
   return (
     <>
       <Header />
-      <main className="flex-1 py-8">
-        <Container>
-          <div className="mb-6 flex flex-wrap items-center gap-3">
-            <div className="me-auto">
-              <p className="text-dim text-xs font-semibold">مرحبا</p>
-              <p className="font-extrabold">{user.name || user.email}</p>
-            </div>
-            <Link
-              href="/tableau-de-bord"
-              className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
-            >
-              نظرة عامة
-            </Link>
-            <Link
-              href="/tableau-de-bord/publications"
-              className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
-            >
-              منشوراتي
-            </Link>
-            <Link
-              href="/tableau-de-bord/annonces"
-              className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
-            >
-              إعلاناتي
-            </Link>
-            <Link
-              href="/tableau-de-bord/alertes"
-              className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
-            >
-              تنبيهاتي
-            </Link>
-            <Link
-              href="/tableau-de-bord/profil"
-              className="rounded-input border-border bg-surface hover:border-primary border px-4 py-2 text-sm font-bold transition-colors"
-            >
-              معلوماتي
-            </Link>
-            <SignOutButton />
-          </div>
-          {children}
-        </Container>
+      {/* Six identical pills used to sit here, on every screen in the section,
+          wrapping into three ragged lines on a phone. The destinations moved
+          into the grouped list on the account screen, where a phone expects to
+          find them; what is left is the one thing a screen inside a section
+          needs, which is the way back out of it. */}
+      <AppBar root="/tableau-de-bord" label="حسابي" />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-8">
+        {children}
       </main>
     </>
   );
