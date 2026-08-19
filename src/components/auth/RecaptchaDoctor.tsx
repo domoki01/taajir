@@ -10,7 +10,7 @@
 // stops is the bug, and the error is printed with every field it carries rather
 // than just `.code` — the interesting part has repeatedly been somewhere else.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { firebaseConfig } from "@/lib/firebase/config";
@@ -41,6 +41,7 @@ function explain(e: unknown): string {
 export function RecaptchaDoctor() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [busy, setBusy] = useState(false);
+  const previous = useRef<RecaptchaVerifier | null>(null);
 
   function push(name: string, ok: boolean | null, detail: string) {
     setSteps((s) => [...s, { name, ok, detail }]);
@@ -49,6 +50,16 @@ export function RecaptchaDoctor() {
   async function run() {
     setSteps([]);
     setBusy(true);
+
+    // A second press used to report "already been rendered" and hide whatever
+    // the first press found — which is the only run that matters. grecaptcha
+    // keeps its widget attached to the element, so both have to go.
+    try {
+      previous.current?.clear();
+    } catch {}
+    previous.current = null;
+    const holder = document.getElementById("doctor-holder");
+    if (holder) holder.innerHTML = "";
 
     // 1 — the browser itself.
     const g = window as unknown as { grecaptcha?: { enterprise?: unknown } };
@@ -85,6 +96,7 @@ export function RecaptchaDoctor() {
       verifier = new RecaptchaVerifier(auth, "doctor-holder", {
         size: "invisible",
       });
+      previous.current = verifier;
       push("إنشاء RecaptchaVerifier", true, "تمّ");
     } catch (e) {
       push("إنشاء RecaptchaVerifier", false, explain(e));

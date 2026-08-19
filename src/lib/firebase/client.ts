@@ -115,6 +115,12 @@ function createAuth(): Auth {
 }
 
 export const auth = createAuth();
+
+// The SMS and the reCAPTCHA challenge both come out in this language, and the
+// diagnostic showed Google's script being loaded with an empty `hl=` — Firebase
+// passes whatever `languageCode` holds, and it held nothing. Arabic is what
+// everybody reading either of them speaks.
+auth.languageCode = "ar";
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
