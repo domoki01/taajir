@@ -44,9 +44,23 @@ export const firebaseConfig = {
  * on the key itself, which is what stops it being reused elsewhere. The secret
  * half lives in Google Cloud and never reaches a browser.
  */
+/**
+ * The App Check site key — configured, never guessed.
+ *
+ * There used to be a hard-coded fallback here, and it named a reCAPTCHA key
+ * that does not exist in this project. That is worse than having no key at
+ * all: App Check loads the reCAPTCHA Enterprise script with whatever it is
+ * given, so every page view was starting Google's script against a site key it
+ * would refuse — and phone sign-in drives the same script through the same
+ * global. Attestation cannot succeed with a key from another project, so the
+ * fallback bought nothing and could only interfere.
+ *
+ * Empty means App Check simply does not start. Enforcement is off for every
+ * service in this project, so that costs nothing today, and a key that is
+ * actually correct can be set without a code change.
+ */
 export const kAppCheckSiteKey =
-  process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_KEY ??
-  "6Lcz3ogtAAAAAOA4Q9Vk5JVY4frkUhJEbiYCecDW";
+  process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_KEY ?? "";
 
 /** Firestore prefers a region close to the traffic; DZ routes via Europe. */
 export const kFirestoreRegion = "europe-west1";

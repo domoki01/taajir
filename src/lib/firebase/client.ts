@@ -49,6 +49,11 @@ function startAppCheck() {
   // reCAPTCHA key from localhost only produces noise in the console.
   if (useEmulators) return;
 
+  // No key configured, nothing to attest with. Starting Google's script with a
+  // key this project does not own is not a degraded App Check — it is a broken
+  // reCAPTCHA on every page, shared with the one phone sign-in needs.
+  if (!kAppCheckSiteKey) return;
+
   const w = window as typeof window & { __taajirAppCheck?: boolean };
   if (w.__taajirAppCheck) return; // Fast refresh runs this module again.
   w.__taajirAppCheck = true;
