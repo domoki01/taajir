@@ -88,6 +88,36 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // ── ONE ADDRESS ────────────────────────────────────────────────────────────
+  // App Hosting keeps serving the site on its generated hostname, and every
+  // link ever pasted from it stays alive — an invite in a WhatsApp group, a
+  // Facebook post, whatever Google has already crawled. Changing the origin the
+  // site *hands out* does not retire the ones already in circulation.
+  //
+  // So the old hostname sends everyone here, path intact, rather than serving a
+  // second copy of the site under a name nobody would type. That also settles
+  // the duplicate-content question at the source instead of relying on the
+  // canonical tag to be honoured.
+  //
+  // Matched on the Host header, so it fires only for the generated hostname:
+  // localhost, the custom domain and Cloud Run's own health checks are all
+  // untouched.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "taajir--newmokit.europe-west4.hosted.app",
+          },
+        ],
+        destination: "https://taajirdz.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -29,11 +29,18 @@ scripts:
   runCommand: npm run start
 
 env:
-  # Absolute origin. Feeds metadataBase, canonical URLs, OpenGraph tags and the
-  # sitemap, so it must be correct at BUILD time as well as at runtime — a wrong
-  # value here silently poisons every shareable link and every indexed page.
+  # Absolute origin. Feeds metadataBase, canonical URLs, OpenGraph tags, the
+  # sitemap, push-notification links and the referral invite link, so it must be
+  # correct at BUILD time as well as at runtime — a wrong value here silently
+  # poisons every shareable link and every indexed page.
+  #
+  # The custom domain, not the App Hosting one. Every link the site hands out is
+  # built from this: an invite pasted into WhatsApp, the URL under a Facebook
+  # share, the canonical tag Google indexes. A backend hostname in any of those
+  # is the difference between a business and somebody's test deployment. The
+  # generated hostname still serves the site and redirects here (next.config.ts).
   - variable: NEXT_PUBLIC_SITE_URL
-    value: https://taajir--newmokit.europe-west4.hosted.app
+    value: https://taajirdz.com
     availability:
       - BUILD
       - RUNTIME
