@@ -93,7 +93,13 @@ export function PhoneAuth({
       case "auth/web-storage-unsupported":
         return kStorageMessage;
       default:
-        return "وقع مشكل. عاود من جديد.";
+        // Everything the SDK does not name — including the internal reCAPTCHA
+        // codes that arrive as `auth/error-code:-39` with nothing else in them.
+        // "Something went wrong, try again" is a dead end when trying again
+        // does the same thing; Google sign-in is one button below and works, so
+        // the message points at it rather than leaving somebody stranded on the
+        // last screen before they had an account.
+        return "ما نجحش إرسال الكود. جرّب «كمّل بحساب Google» من تحت، ولا عاود من بعد.";
     }
   }
 
