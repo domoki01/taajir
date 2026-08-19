@@ -9,6 +9,26 @@ export const kSiteTagline = "عقارات الجزائر";
 export const kSiteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+/**
+ * Whether a *new* account may be opened with a phone number.
+ *
+ * Firebase's SMS backend started refusing this project's verification codes —
+ * a valid reCAPTCHA token passes the captcha check and the send then answers
+ * HTTP 503 `backendError`, which the SDK surfaces as an unmapped number. It is
+ * outside this codebase, so the only thing to decide here is what somebody
+ * standing in front of the form should be offered meanwhile.
+ *
+ * Signing *in* by phone is never hidden by this. Thirty-five accounts have no
+ * email and no password; hiding their only door would strand them, and it costs
+ * nothing to leave a door that works again the moment Google's does.
+ *
+ * An environment variable rather than an admin setting on purpose: the day this
+ * is switched back is the day somebody watches it work, not a day it should
+ * flip on its own.
+ */
+export const kPhoneSignupEnabled =
+  process.env.NEXT_PUBLIC_PHONE_SIGNUP !== "off";
+
 /** Photos per listing. Real-estate ads live on their gallery. */
 export const kMaxImages = 20;
 

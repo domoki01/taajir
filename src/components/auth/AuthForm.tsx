@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase/client";
 import { PhoneAuth } from "@/components/auth/PhoneAuth";
 import { safeNext } from "@/lib/redirect";
 import { markJustSignedUp } from "@/lib/firstRun";
+import { kPhoneSignupEnabled } from "@/lib/constants";
 
 type Mode = "signin" | "signup";
 
@@ -85,27 +86,47 @@ export function AuthForm({ mode }: { mode: Mode }) {
     }
   }
 
+  // Hidden for new accounts only, and only while Google's SMS backend is
+  // refusing this project's codes. Someone signing *in* keeps the phone form
+  // whatever the flag says: it is the only door thirty-five accounts have.
+  const showPhone = mode === "signin" || kPhoneSignupEnabled;
+
   return (
     <div className="space-y-4">
       {/* ── PHONE ──────────────────────────────────────────────────────────
           First, and not behind a toggle. Most people here have a phone number
           and no Gmail they remember the password to. */}
-      <PhoneAuth onDone={establishSession} />
+      {showPhone && (
+        <>
+          <PhoneAuth onDone={establishSession} />
 
-      <div className="flex items-center gap-3">
-        <span className="bg-border h-px flex-1" />
-        <span className="text-dim text-xs font-semibold">ولا</span>
-        <span className="bg-border h-px flex-1" />
-      </div>
+          <div className="flex items-center gap-3">
+            <span className="bg-border h-px flex-1" />
+            <span className="text-dim text-xs font-semibold">ولا</span>
+            <span className="bg-border h-px flex-1" />
+          </div>
+        </>
+      )}
 
       <button
         type="button"
         onClick={onGoogle}
         disabled={busy}
-        className="rounded-input border-border hover:border-primary w-full border bg-white py-3.5 text-sm font-bold transition-colors disabled:opacity-50"
+        className={`rounded-input w-full py-3.5 text-sm font-bold transition-colors disabled:opacity-50 ${
+          showPhone
+            ? "border-border hover:border-primary border bg-white"
+            : "bg-accent text-white hover:opacity-90"
+        }`}
       >
         كمّل بحساب Google
       </button>
+
+      {!showPhone && (
+        <p className="text-muted text-center text-xs leading-relaxed">
+          التسجيل برقم الهاتف موقّف مؤقّتاً — عندنا مشكل عند مزوّد الرسائل. سجّل
+          بحساب Google دروك، وتقدر تزيد رقمك من «معلوماتي» من بعد.
+        </p>
+      )}
 
       {/* Email and password used to sit behind a toggle here. They are gone,
           not folded away: Firebase's password provider accepts any address

@@ -45,6 +45,27 @@ env:
       - BUILD
       - RUNTIME
 
+  # Whether a NEW account may be opened with a phone number.
+  #
+  # Off since Firebase's SMS backend began refusing this project's verification
+  # codes: a valid reCAPTCHA token passes the captcha check and the send then
+  # answers HTTP 503 `backendError` ("Error code: 39"), which the SDK reports as
+  # an unmapped number. Measured, not guessed — the /diagnostic screen prints the
+  # raw response. Thirty-five accounts were created by phone before it started,
+  # the most recent hours earlier, so this is a change on Google's side.
+  #
+  # Signing *in* by phone is never hidden — those thirty-five accounts have no
+  # email and no password, and their door has to keep working the moment
+  # Google's does.
+  #
+  # To switch back: set this to "on" (or delete the variable) and deploy, then
+  # watch somebody actually receive a code before trusting it.
+  - variable: NEXT_PUBLIC_PHONE_SIGNUP
+    value: "off"
+    availability:
+      - BUILD
+      - RUNTIME
+
   # The key that encrypts the few fields identifying a bank account: the RIP
   # number on a payout request and the Binance / BaridiMob handle on a prize
   # claim. It lives in Secret Manager, never in the repository and never in the
