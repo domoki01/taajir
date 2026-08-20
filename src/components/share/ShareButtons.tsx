@@ -14,7 +14,8 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Send, Share2 } from "lucide-react";
 import { shareHref, shareUrl, type ShareTarget } from "@/lib/share";
-import { myShareCode } from "@/server/actions/affiliate";
+import { shortLinkUrl } from "@/lib/shortlink";
+import { shareInfo } from "@/server/actions/affiliate";
 
 /** WhatsApp and Facebook have no lucide glyph; these are their own marks. */
 function WhatsAppMark() {
@@ -63,27 +64,33 @@ export function ShareButtons({
   text: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const [code, setCode] = useState<string | null>(null);
+  const [info, setInfo] = useState<{
+    code: string | null;
+    short: string | null;
+  } | null>(null);
 
   // Asked for here rather than resolved when the page rendered: reading the
   // session during that render would opt the listing route out of its cache,
-  // and that is the page search engines land on. A signed-out visitor gets
-  // null and shares a perfectly good link without a code.
+  // and that is the page search engines land on. A signed-out visitor gets a
+  // null code and shares a perfectly good link without one.
   useEffect(() => {
     let alive = true;
-    void myShareCode()
-      .then((c) => alive && setCode(c))
+    void shareInfo(path)
+      .then((i) => alive && setInfo(i))
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, []);
+  }, [path]);
 
-  const url =
-    typeof window === "undefined"
-      ? path
-      : shareUrl(window.location.origin, path, code);
-  const earns = !!code;
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  // The short link when there is one, the full link otherwise. Falling back
+  // rather than waiting: the buttons work from the first paint, and quietly get
+  // shorter a moment later.
+  const url = info?.short
+    ? shortLinkUrl(origin, info.short)
+    : shareUrl(origin, path, info?.code);
+  const earns = !!info?.code;
 
   async function copy() {
     try {

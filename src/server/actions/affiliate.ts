@@ -21,6 +21,7 @@ import {
   myEntry,
 } from "@/server/affiliate";
 import { kTooFast, withinRate } from "@/server/rateLimit";
+import { shortenPath } from "@/server/shortlink";
 import {
   kReferralCodePattern,
   kReferralCookie,
@@ -72,6 +73,23 @@ export async function myShareCode(): Promise<string | null> {
   const user = await getUser();
   if (!user) return null;
   return ensureReferralCode(user.uid);
+}
+
+/**
+ * Everything the share row needs, in one round trip: the sharer's code and a
+ * short link that already carries it.
+ *
+ * One call rather than two because the row asks on mount and a second request
+ * would show as a second flicker on a slow connection. The short link is
+ * derived from the destination, so asking again for the same ad returns the
+ * same link and costs a single read.
+ */
+export async function shareInfo(
+  path: string,
+): Promise<{ code: string | null; short: string | null }> {
+  const user = await getUser();
+  const code = user ? await ensureReferralCode(user.uid) : null;
+  return { code, short: await shortenPath(path, code) };
 }
 
 /**
