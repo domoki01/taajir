@@ -27,5 +27,25 @@ export function safeNext(
   // A control character can truncate the URL in some parsers; nothing legitimate
   // carries one.
   if (/[\u0000-\u001f\u007f]/.test(value)) return fallback;
+
+  // The same checks again, on the decoded form. `/%2f%2fevil.example` passes
+  // every test above as a literal path segment, and does stay same-origin in a
+  // browser — but "stays same-origin in a browser" is a claim about one of the
+  // parsers this value can reach, and the value also travels into a push
+  // notification opened by a service worker. A guard that is only correct for
+  // the caller it was written against is one refactor from being wrong.
+  //
+  // Decoded for the *check* alone: the original is what gets returned, so a
+  // legitimate path carrying an encoded character keeps it. Malformed encoding
+  // is refused rather than repaired.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    return fallback;
+  }
+  if (decoded.startsWith("//") || decoded.includes("\\")) return fallback;
+  if (/[\u0000-\u001f\u007f]/.test(decoded)) return fallback;
+
   return value;
 }
