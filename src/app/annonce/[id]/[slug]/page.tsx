@@ -15,7 +15,8 @@ import { getCommune, getWilaya, placeLabel } from "@/lib/geo";
 import { formatPrice, formatPriceExact } from "@/lib/price";
 import { kAmenities, kConditions, kPaperwork } from "@/lib/enums";
 import { getTaxonomy, labelOf } from "@/server/filterSettings";
-import { kSiteUrl } from "@/lib/constants";
+import { kDefaultShareImage, kSiteUrl } from "@/lib/constants";
+import { ShareButtons } from "@/components/share/ShareButtons";
 import { jsonLdScript } from "@/lib/jsonld";
 
 export const revalidate = 300;
@@ -45,8 +46,11 @@ export async function generateMetadata({
       title: `${listing.title} — ${price}${wilaya ? ` | ${wilaya.nameAr}` : ""}`,
       description: listing.description.slice(0, 200).replace(/\s+/g, " "),
       // The first photo is what shows in a WhatsApp preview, which is the main
-      // sharing channel here — worth more than a generated card.
-      images: listing.coverUrl ? [listing.coverUrl] : undefined,
+      // sharing channel here — worth more than a generated card. An ad without
+      // one falls back to the brand card rather than to nothing: a preview with
+      // no image is a grey rectangle, and it is the single biggest difference
+      // between a link people tap and a link people scroll past.
+      images: [listing.coverUrl || kDefaultShareImage],
     },
   };
 }
@@ -263,6 +267,19 @@ export default async function ListingPage({ params }: { params: Params }) {
               createdAtLabel: formatDateTime(c.createdAt),
             }))}
           />
+
+          {/* Below the ad and above the related ones: the moment somebody has
+              decided this is worth showing to a cousin. */}
+          <div className="mt-8">
+            <ShareButtons
+              path={`/annonce/${listing.id}/${listing.slug}`}
+              text={`${listing.title} — ${
+                listing.priceOnRequest
+                  ? "السعر بالاتفاق"
+                  : formatPrice(listing.price)
+              }`}
+            />
+          </div>
 
           {similar.length > 0 && (
             <section className="mt-12">

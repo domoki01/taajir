@@ -29,6 +29,16 @@ export const kSiteUrl =
 export const kPhoneSignupEnabled =
   process.env.NEXT_PUBLIC_PHONE_SIGNUP !== "off";
 
+/**
+ * The picture a shared link shows when the thing being shared has none.
+ *
+ * Demands never have a photo and plenty of ads are posted without one. A link
+ * preview with no image is a grey rectangle in a WhatsApp group, next to
+ * everybody else's pictures — this is the difference between a link that gets
+ * tapped and one that gets scrolled past.
+ */
+export const kDefaultShareImage = "/og-default.png";
+
 /** Photos per listing. Real-estate ads live on their gallery. */
 export const kMaxImages = 20;
 

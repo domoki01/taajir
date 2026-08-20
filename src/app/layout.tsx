@@ -7,6 +7,8 @@ import { SideMenuProvider } from "@/components/layout/SideMenu";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { NotifyPrompt } from "@/components/pwa/NotifyPrompt";
 import { ContestPrompt } from "@/components/affiliate/ContestPrompt";
+import { Suspense } from "react";
+import { ReferralCatcher } from "@/components/referral/ReferralCatcher";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
 import { brandingStyle, getBranding } from "@/server/branding";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
@@ -110,6 +112,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             {/* The worker has to be registered for the browser to consider the
                 site installable at all, and installing is what unlocks push on
                 iOS — so these two belong together and on every route. */}
+            {/* A shared listing carries `?ref=CODE`; this records it. Wrapped
+                because it reads the query string, which makes anything above it
+                a client boundary if it is not. */}
+            <Suspense fallback={null}>
+              <ReferralCatcher />
+            </Suspense>
             <RegisterSW />
             <InstallPrompt />
             <NotifyPrompt />

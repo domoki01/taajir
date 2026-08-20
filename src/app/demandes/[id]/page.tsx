@@ -16,6 +16,8 @@ import {
   listMyPublishedListings,
 } from "@/server/requests";
 import { getUser, hasPermission } from "@/server/auth";
+import { kDefaultShareImage } from "@/lib/constants";
+import { ShareButtons } from "@/components/share/ShareButtons";
 import { getWilaya, placeLabel } from "@/lib/geo";
 import { formatFullDateTime } from "@/lib/datetime";
 import { kRequestIntents } from "@/lib/enums";
@@ -36,6 +38,14 @@ export async function generateMetadata({
     title: request.title,
     description: request.description.slice(0, 160),
     alternates: { canonical: `/demandes/${id}` },
+    // A demand has no photo by design, so every shared one takes the brand
+    // card. Without it a demand pasted into a group is a grey rectangle.
+    openGraph: {
+      type: "article",
+      title: request.title,
+      description: request.description.slice(0, 200).replace(/\s+/g, " "),
+      images: [kDefaultShareImage],
+    },
   };
 }
 
@@ -137,6 +147,10 @@ export default async function RequestPage({
               )}
             </div>
           </article>
+
+          <div className="mt-8">
+            <ShareButtons path={`/demandes/${id}`} text={request.title} />
+          </div>
 
           <RequestThread
             requestId={id}

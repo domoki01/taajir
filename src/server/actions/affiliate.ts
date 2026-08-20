@@ -7,6 +7,7 @@
 // consequence of something being approved.
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { actorWith, getUser, kForbidden, requireUser } from "@/server/auth";
@@ -20,6 +21,11 @@ import {
   myEntry,
 } from "@/server/affiliate";
 import { kTooFast, withinRate } from "@/server/rateLimit";
+import {
+  kReferralCodePattern,
+  kReferralCookie,
+  kReferralCookieMaxAgeMs,
+} from "@/lib/referral";
 import { encryptField, fieldEncryptionReady } from "@/server/crypto";
 import type {
   AffiliateSettings,
@@ -47,6 +53,24 @@ export type AffiliateResult =
 /** Mint this account's code on demand, so the invite page can show a link. */
 export async function myReferralCode(): Promise<string | null> {
   const user = await requireUser("/tableau-de-bord/parrainage");
+  return ensureReferralCode(user.uid);
+}
+
+/**
+ * The same code, for the share buttons, without the redirect.
+ *
+ * `myReferralCode` sends a signed-out caller to the sign-in page, which is
+ * right for the invite screen and wrong here: the share row sits on a listing
+ * page that anonymous visitors read, and it has to work for them too — just
+ * without a code attached. Null is an ordinary answer, not a refusal.
+ *
+ * Called from the client rather than resolved when the page renders, because
+ * reading cookies during that render would opt the listing route out of its
+ * cache — and that is the page search engines actually land on.
+ */
+export async function myShareCode(): Promise<string | null> {
+  const user = await getUser();
+  if (!user) return null;
   return ensureReferralCode(user.uid);
 }
 
@@ -183,6 +207,40 @@ export async function redeem(
     console.error("[affiliate] redeem failed:", error);
     return { ok: false, error: "ما نجحش. عاود من بعد." };
   }
+}
+
+/**
+ * Remember who sent this visitor, from a `?ref=` on any page.
+ *
+ * The `/r/CODE` route does the same thing for the bare invite link. This exists
+ * because a shared *listing* cannot go through that route: what gets pasted in
+ * a WhatsApp group has to preview the flat, not a redirect. So the code rides
+ * on the listing's own URL and is picked up here.
+ *
+ * A Server Action rather than a route handler because a page cannot set a
+ * cookie during render, and this cookie has to be httpOnly — the session
+ * exchange trusts it later to decide who gets paid for the account.
+ *
+ * Validated by shape alone, with no database read: this is public and
+ * unauthenticated, and resolving every code that arrives would hand a stranger
+ * one Firestore read per request. A well-formed code belonging to nobody simply
+ * fails to resolve at signup, which costs nothing. An existing cookie is never
+ * overwritten — the first person to send you here keeps the credit.
+ */
+export async function captureReferral(code: string): Promise<void> {
+  const clean = code.trim().toUpperCase();
+  if (!kReferralCodePattern.test(clean)) return;
+
+  const jar = await cookies();
+  if (jar.get(kReferralCookie)?.value) return;
+
+  jar.set(kReferralCookie, clean, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: Math.floor(kReferralCookieMaxAgeMs / 1000),
+  });
 }
 
 // ── THE RACE ─────────────────────────────────────────────────────────────────
