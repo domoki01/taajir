@@ -12,7 +12,7 @@ import { ReferralCatcher } from "@/components/referral/ReferralCatcher";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
 import { brandingStyle, getBranding } from "@/server/branding";
 import { getVisibleFilterOptions } from "@/server/filterSettings";
-import { kSiteUrl } from "@/lib/constants";
+import { kGoogleSiteVerification, kSiteUrl } from "@/lib/constants";
 import "./globals.css";
 
 // Self-hosted by Next at build time — no runtime request to Google, and no
@@ -44,6 +44,12 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: "ar_DZ",
       siteName,
     },
+    // Emitted only when a token is configured. Next drops the key entirely for
+    // undefined, so an unconfigured deploy ships no tag at all rather than an
+    // empty one that reads to a crawler as a failed claim of ownership.
+    verification: kGoogleSiteVerification
+      ? { google: kGoogleSiteVerification }
+      : undefined,
   };
 }
 

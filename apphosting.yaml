@@ -66,6 +66,31 @@ env:
       - BUILD
       - RUNTIME
 
+  # Google Search Console's proof that we own this domain.
+  #
+  # Until it verifies, Search Console shows nothing at all — no queries, no
+  # impressions, no coverage errors, no way to submit the sitemap. For a
+  # classifieds site whose entire acquisition story is people searching for
+  # "شقة للكراء" plus a wilaya name, that is the one dashboard that matters.
+  #
+  # The alternative is a TXT record at the registrar. This tag is here because
+  # the registrar is not always reachable by whoever is deploying, and a proof
+  # that lives in the repository is re-asserted by every build instead of
+  # depending on a DNS zone nobody has opened in a year.
+  #
+  # BUILD as well as RUNTIME: the tag is rendered into the document head, and
+  # the home page is statically generated, so a value that only exists at
+  # runtime would never reach the page Google actually fetches.
+  #
+  # Google mints a different token per property and per method. If Search
+  # Console's "HTML tag" panel shows something other than this, that value wins
+  # — replace it here and redeploy.
+  - variable: NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    value: Bab1MWRNxemvglKtF8cJgfIL08PchaTa6270QiT-CwI
+    availability:
+      - BUILD
+      - RUNTIME
+
   # The key that encrypts the few fields identifying a bank account: the RIP
   # number on a payout request and the Binance / BaridiMob handle on a prize
   # claim. It lives in Secret Manager, never in the repository and never in the

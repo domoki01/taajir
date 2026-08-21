@@ -70,3 +70,28 @@ export const kMaxOpenRequests = 5;
 // mixing the two units up is a 10_000x error, so the conversion lives in
 // exactly one place (lib/price.ts) and nowhere else.
 export const kDinarsPerMillion = 10_000;
+
+/**
+ * Search Console's ownership token, emitted as a `<meta>` tag.
+ *
+ * Google will not show a single impression, query or indexing error for a site
+ * whose ownership is unproven, so this is the gate in front of every SEO number
+ * the site will ever have. Two methods prove it: a TXT record at the registrar,
+ * which nothing in this repository can reach, and this tag — which means the
+ * codebase can carry its own proof and re-prove it on every deploy.
+ *
+ * Configuration rather than a constant because Search Console mints a separate
+ * token per property and per method: the value under "HTML tag" is not
+ * necessarily the value under "DNS record", and a stale one here is a
+ * verification that quietly stops passing. Empty is a valid state — the tag is
+ * simply not emitted, which is better than emitting an empty `content`.
+ */
+export const kGoogleSiteVerification = (
+  process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? ""
+)
+  .trim()
+  // Search Console shows the DNS value as the whole record — the name and the
+  // token joined by "=" — and that is what gets copied. The meta tag wants the
+  // token alone; pasting the record verbatim produces a tag whose content is a
+  // key=value pair and a verification that fails with nothing to look at.
+  .replace(/^google-site-verification\s*=\s*/i, "");
