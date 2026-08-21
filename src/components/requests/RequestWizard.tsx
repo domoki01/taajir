@@ -2,10 +2,12 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Wizard, ChoiceGrid } from "@/components/ui/Wizard";
 import { createRequest } from "@/server/actions/requests";
 import { getCommunes, kWilayas } from "@/lib/geo";
 import { kRequestIntents } from "@/lib/enums";
+import { kIntentParam } from "@/lib/funnel";
 
 const kTitle = { min: 6, max: 90 };
 const kBody = { min: 10, max: 600 };
@@ -23,6 +25,7 @@ export function RequestWizard({ initialIntent }: { initialIntent: string }) {
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
 
   const [intent, setIntent] = useState(
     initialIntent in kRequestIntents ? initialIntent : "vente",
@@ -55,26 +58,52 @@ export function RequestWizard({ initialIntent }: { initialIntent: string }) {
         router.refresh();
       } else {
         setError(res.error);
+        setNeedsAuth(res.needsAuth === true);
       }
     });
   }
 
   const back = () => {
     setError(null);
+    setNeedsAuth(false);
     setStep((s) => s - 1);
   };
   const next = () => {
     setError(null);
+    setNeedsAuth(false);
     setStep((s) => s + 1);
   };
 
+  // The intent they picked rides back through sign-up, so the wizard reopens on
+  // their own answer instead of asking for it a second time.
+  const returnPath = `/demandes/nouvelle?${kIntentParam}=${intent}`;
+
   const alert = error && (
-    <p
+    <div
       role="alert"
       className="rounded-input bg-danger/10 text-danger mt-4 px-4 py-3 text-sm font-semibold"
     >
       {error}
-    </p>
+      {/* Two buttons rather than a sentence about needing an account. This is
+          the end of the wizard, which is the moment somebody has said enough
+          about what they want to have a reason to register. */}
+      {needsAuth && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href={`/inscription?next=${encodeURIComponent(returnPath)}`}
+            className="bg-accent rounded-input px-4 py-2 text-sm font-bold text-white"
+          >
+            حساب جديد
+          </Link>
+          <Link
+            href={`/connexion?next=${encodeURIComponent(returnPath)}`}
+            className="rounded-input border-border border bg-white px-4 py-2 text-sm font-bold"
+          >
+            عندي حساب
+          </Link>
+        </div>
+      )}
+    </div>
   );
 
   if (step === 1) {

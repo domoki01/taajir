@@ -42,7 +42,7 @@ export async function PrelaunchLanding({ signedIn }: { signedIn: boolean }) {
           </h1>
         </div>
 
-        <IntentPicker signedIn={signedIn} />
+        <IntentPicker />
 
         <p className="text-dim mt-9 text-center text-xs">
           {signedIn ? (
