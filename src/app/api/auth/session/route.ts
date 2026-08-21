@@ -64,6 +64,10 @@ export async function POST(request: NextRequest) {
       // Recorded so the mail-out can refuse anything unproven, rather than
       // trusting that this route is the only way an account was ever made.
       emailVerified: decoded.email_verified === true,
+      // Read from the verified token, never from the client: it decides whether
+      // this account has to wait for a moderator, so it has to come from the
+      // half of the exchange the caller cannot write.
+      provider,
       referredBy,
     });
 
