@@ -7,6 +7,7 @@ import { resetBranding, saveBranding } from "@/server/actions/branding";
 import { contrastRatio, kAaNormal } from "@/lib/contrast";
 import { kBrandColors, type BrandColor } from "@/types/branding";
 import type { Branding } from "@/types/branding";
+import { cn } from "@/lib/utils";
 
 /**
  * What each colour has to stay readable against, and why.
@@ -168,7 +169,7 @@ export function BrandingEditor({ branding }: { branding: Branding }) {
                 onChange={(e) => setColor(key, e.target.value)}
                 dir="ltr"
                 aria-label={`${kBrandColors[key]} — hex`}
-                className={`${field} ltr-nums w-28 shrink-0 text-start`}
+                className={cn(field, "ltr-nums w-28 shrink-0 text-start")}
               />
               <span className="text-muted min-w-0 flex-1 text-xs font-semibold">
                 {kBrandColors[key]}

@@ -25,6 +25,8 @@ import {
 } from "@/lib/enums";
 import { getCommunes, kWilayas } from "@/lib/geo";
 import { shrinkImage } from "@/lib/image";
+import { formatPriceExact, toDinars } from "@/lib/price";
+import { cn } from "@/lib/utils";
 import { kDealParam, readDeal } from "@/lib/funnel";
 
 type Img = { url: string; w: number; h: number };
@@ -373,7 +375,10 @@ export function PostForm({
             onChange={(e) => setPriceAmount(e.target.value)}
             placeholder={rental ? "45000" : "800"}
             aria-label="السعر"
-            className={`${field} ltr-nums text-start text-xl font-black disabled:opacity-50`}
+            className={cn(
+              field,
+              "ltr-nums w-auto min-w-0 flex-1 text-start text-xl font-black disabled:opacity-50",
+            )}
           />
           {/* Algerians quote sales in ملايين and rents in dinars; the toggle
               defaults accordingly and the server stores dinars either way. */}
@@ -384,12 +389,30 @@ export function PostForm({
             }
             disabled={priceOnRequest}
             aria-label="وحدة السعر"
-            className={`${field} w-28 shrink-0 font-bold disabled:opacity-50`}
+            // cn(), not a template string: `field` carries w-full, and Tailwind
+            // emits .w-full after .w-28 at equal specificity, so the plain
+            // concatenation lost — the select took the whole line, shrink-0
+            // refused to give any of it back, and the row ran off the screen.
+            className={cn(field, "w-28 shrink-0 font-bold disabled:opacity-50")}
           >
             <option value="million">مليون</option>
             <option value="dzd">دج</option>
           </select>
         </div>
+
+        {/* The whole point of the unit toggle, said out loud. "800" under
+            مليون and "800" under دج are the same three keystrokes and a
+            10 000x difference in what gets stored, and the seller is the only
+            person who can catch it — but only if they are shown the number
+            they are actually publishing. */}
+        {!priceOnRequest && Number(priceAmount) > 0 && (
+          <p className="text-muted mt-2 text-sm font-semibold">
+            يعني{" "}
+            <span className="text-primary ltr-nums font-black">
+              {formatPriceExact(toDinars(Number(priceAmount), priceUnitInput))}
+            </span>
+          </p>
+        )}
 
         {/* These two used to read almost identically ("بالاتفاق" vs "قابل
             للتفاوض"), and ticking the first silently threw away a price the
