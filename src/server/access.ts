@@ -14,6 +14,31 @@ export type AccessSettings = {
 export const kNeedsApproval =
   "حسابك ما زال يستنّى تأكيد الإدارة. تقدر تتصفّح عادي، والنشر يتفكّ كي يتأكّد حسابك.";
 
+/**
+ * Sign-in providers that skip the approval queue.
+ *
+ * Approval exists to filter accounts opened on invented identifiers — the 213
+ * that arrived in under an hour through Identity Toolkit's REST endpoint. A
+ * Google account is not one of those: Google proved the address before Firebase
+ * ever issued the token, and a moderator opening that row by hand has nothing
+ * left to check. Holding those people costs the queue its meaning without
+ * buying anything, so the switch keeps filtering everyone else and lets them
+ * through.
+ *
+ * A list rather than an `=== "google.com"` because the next provider added to
+ * the site is a decision to be made here, in one place, with this comment in
+ * front of it. Phone is deliberately not on it: it proves a number, not a
+ * person, and one SIM is cheap enough to buy in bulk.
+ */
+export const kSelfApprovingProviders: readonly string[] = ["google.com"];
+
+/** Does this provider vouch for the account well enough to skip review? */
+export function skipsApprovalQueue(provider: string | null | undefined) {
+  return (
+    typeof provider === "string" && kSelfApprovingProviders.includes(provider)
+  );
+}
+
 const kOpen: AccessSettings = {
   requireApproval: false,
   updatedAt: 0,
