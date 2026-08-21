@@ -116,11 +116,13 @@ export function ShareButtons({
   }
 
   return (
-    // A row, not a card. This sits between somebody reading a demand and the
-    // box where they answer it: as a bordered panel with its own heading and
-    // four full-width buttons it was ~190px tall, which on a phone pushed the
-    // composer — and the sign-up button a signed-out visitor needs — off the
-    // bottom of the screen. Sharing is worth offering, not worth the fold.
+    // Four icons, one line. This began as a bordered panel with a heading and
+    // four full-width buttons — about 190px on a phone, which on a demand was
+    // the composer and the sign-up button pushed off the bottom of the screen.
+    // Dropping the labels is what makes the row fit at any width instead of
+    // nearly fitting at 360px: a green circle carrying WhatsApp's own mark is
+    // read faster than the word beside it, and these are targets people
+    // recognise by logo, never by name.
     <section aria-label="شارك" className="flex flex-wrap items-center gap-2">
       {kTargets.map(({ id, label, Mark, tone }) => (
         <a
@@ -128,22 +130,20 @@ export function ShareButtons({
           href={shareHref(id, url, text)}
           target="_blank"
           rel="noopener noreferrer"
-          className={`rounded-input flex items-center gap-2 px-3 py-2 text-sm font-bold transition-opacity active:opacity-90 ${tone}`}
+          aria-label={`شارك على ${label}`}
+          title={label}
+          className={`rounded-input grid size-10 place-items-center transition-opacity active:opacity-90 ${tone}`}
         >
           <Mark />
-          {label}
         </a>
       ))}
 
-      {/* The two secondary targets lose their labels rather than their place.
-          Icon-only keeps all four on one line at 360px, and these are the two
-          nobody scans for by name — the reader is looking for the green one. */}
       <button
         type="button"
         onClick={native}
         aria-label="شارك في تطبيق آخر"
         title="تطبيق آخر"
-        className="rounded-input border-border bg-surface hover:border-primary flex items-center border p-2.5 transition-colors"
+        className="rounded-input border-border bg-surface hover:border-primary grid size-10 place-items-center border transition-colors"
       >
         <Send className="size-5" />
       </button>
@@ -153,7 +153,7 @@ export function ShareButtons({
         onClick={copy}
         aria-label={copied ? "تنسخ الرابط" : "انسخ الرابط"}
         title={copied ? "تنسخ" : "انسخ الرابط"}
-        className={`rounded-input flex items-center border p-2.5 transition-colors ${
+        className={`rounded-input grid size-10 place-items-center border transition-colors ${
           copied
             ? "border-success text-success"
             : "border-border bg-surface hover:border-primary"
@@ -162,6 +162,8 @@ export function ShareButtons({
         {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
       </button>
 
+      {/* Only ever shown to somebody whose link actually earns them something,
+          so it costs a signed-out reader no height at all. */}
       {earns && (
         <p className="text-muted w-full text-xs leading-relaxed">
           الرابط متاعك يحسب — كل واحد يسجّل منّو ينضاف لنقاطك.
