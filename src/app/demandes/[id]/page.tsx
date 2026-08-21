@@ -148,10 +148,6 @@ export default async function RequestPage({
             </div>
           </article>
 
-          <div className="mt-8">
-            <ShareButtons path={`/demandes/${id}`} text={request.title} />
-          </div>
-
           <RequestThread
             requestId={id}
             replies={thread}
@@ -159,6 +155,15 @@ export default async function RequestPage({
             isStaff={staff}
             myListings={myListings.map((l) => ({ id: l.id, title: l.title }))}
           />
+
+          {/* After the thread, like the listing page puts it after the
+              comments. Answering a demand is what this page is for; sharing is
+              what somebody does once they have read it and thought of a cousin.
+              Above the thread it was neither — just the thing standing between
+              the demand and the box for replying to it. */}
+          <div className="mt-8">
+            <ShareButtons path={`/demandes/${id}`} text={request.title} />
+          </div>
         </Container>
       </main>
     </>
