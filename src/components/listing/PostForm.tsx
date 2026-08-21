@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -24,6 +25,7 @@ import {
 } from "@/lib/enums";
 import { getCommunes, kWilayas } from "@/lib/geo";
 import { shrinkImage } from "@/lib/image";
+import { kDealParam, readDeal } from "@/lib/funnel";
 
 type Img = { url: string; w: number; h: number };
 
@@ -119,6 +121,7 @@ export function PostForm({
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
 
   const isLand = kLandPropertyTypes.includes(propertyType);
   const rental =
@@ -216,26 +219,52 @@ export function PostForm({
       router.refresh();
     } else {
       setError(result.error);
+      setNeedsAuth(result.needsAuth === true);
       setBusy(false);
     }
   }
 
   const back = () => {
     setError(null);
+    setNeedsAuth(false);
     setStep((s) => s - 1);
   };
   const next = () => {
     setError(null);
+    setNeedsAuth(false);
     setStep((s) => s + 1);
   };
 
+  const returnPath = `/publier${
+    readDeal(transactionType) ? `?${kDealParam}=${transactionType}` : ""
+  }`;
+
   const alert = error && (
-    <p
+    <div
       role="alert"
       className="rounded-input bg-danger/10 text-danger mt-4 px-4 py-3 text-sm font-semibold"
     >
       {error}
-    </p>
+      {/* The two doors, not a message about needing one. Somebody who has just
+          filled in nine screens has earned a button, and the deal they picked
+          rides back in `next` so the form reopens on their own answer. */}
+      {needsAuth && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href={`/inscription?next=${encodeURIComponent(returnPath)}`}
+            className="bg-accent rounded-input px-4 py-2 text-sm font-bold text-white"
+          >
+            حساب جديد
+          </Link>
+          <Link
+            href={`/connexion?next=${encodeURIComponent(returnPath)}`}
+            className="rounded-input border-border border bg-white px-4 py-2 text-sm font-bold"
+          >
+            عندي حساب
+          </Link>
+        </div>
+      )}
+    </div>
   );
 
   // ── 1. WHAT ────────────────────────────────────────────────────────────────
