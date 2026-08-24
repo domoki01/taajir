@@ -80,9 +80,16 @@ const nextConfig: NextConfig = {
       "upgrade-insecure-requests",
     ].join("; ");
 
+    const hsts = {
+      key: "Strict-Transport-Security",
+      value: "max-age=63072000; includeSubDomains; preload",
+    };
+
     return [
       {
-        source: "/:path*",
+        // Everything except the proxied auth handler — see the block below for
+        // why that one is carved out rather than covered.
+        source: "/((?!__/auth/).*)",
         headers: [
           { key: "Content-Security-Policy", value: csp },
           { key: "X-Content-Type-Options", value: "nosniff" },
@@ -92,11 +99,64 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), payment=(), geolocation=(self)",
           },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
+          hsts,
         ],
+      },
+      {
+        // ── THE ONE PAGE THAT HAS TO BE FRAMED ─────────────────────────────
+        // Google's sign-in helper is rendered in an iframe by the Firebase SDK.
+        // The headers above exist to stop this site being framed at all —
+        // `frame-ancestors 'none'` and X-Frame-Options: DENY — and either one
+        // applied to the helper blocks the frame sign-in depends on. Firebase
+        // serves it with no framing headers of its own, so the only thing that
+        // could break it is us.
+        //
+        // Measured, not assumed: on Next 16.3 an externally rewritten path
+        // passes the upstream response through and `headers()` does not run
+        // for it, so today neither this block nor the exclusion above changes
+        // a byte — /__/auth/handler comes back with no CSP either way. Both
+        // stay because that is a behaviour of the framework, not a promise it
+        // makes. If a later version starts applying headers to proxied paths,
+        // the difference is sign-in that keeps working versus sign-in that
+        // dies with DENY on the day of an upgrade, and the failure is silent
+        // in the server log — the only sign is a console message in somebody
+        // else's browser.
+        source: "/__/auth/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self'",
+          },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          hsts,
+        ],
+      },
+    ];
+  },
+
+  // ── THE AUTH HANDLER, ON OUR OWN NAME ──────────────────────────────────────
+  // "Sign in to continue to newmokit.firebaseapp.com" is what Google showed
+  // every visitor: the name of a Firebase project, on the one screen where
+  // somebody decides whether this site is worth handing an account to.
+  //
+  // The fix is to point `authDomain` at taajirdz.com, and the obstacle is that
+  // taajirdz.com is served by App Hosting — this Next app — while /__/auth/* is
+  // served by Firebase Hosting. The path simply 404s here, which is what makes
+  // the obvious change break sign-in rather than rebrand it.
+  //
+  // So the app serves it, by proxy. The handler's own HTML pulls handler.js and
+  // experiments.js relatively, and the SDK asks for /__/auth/iframe as well, so
+  // the whole subtree is forwarded rather than the one page.
+  //
+  // Nothing here switches anything on: this only makes the path exist. The
+  // switch is NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, which is also how it is
+  // switched back in one deploy if the flow misbehaves.
+  async rewrites() {
+    return [
+      {
+        source: "/__/auth/:path*",
+        destination: "https://newmokit.firebaseapp.com/__/auth/:path*",
       },
     ];
   },
