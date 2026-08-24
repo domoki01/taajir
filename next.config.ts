@@ -40,6 +40,18 @@ const nextConfig: NextConfig = {
     const emulators = process.env.NEXT_PUBLIC_USE_EMULATORS === "true";
     const local = emulators ? " http://127.0.0.1:* http://localhost:*" : "";
 
+    // Google sign-in renders its handler in an iframe served from whatever
+    // `authDomain` the client SDK was given, so this host has to be the same
+    // one. Read from the env var rather than written out, because the day it
+    // changes — moving off newmokit.firebaseapp.com onto a domain of our own,
+    // so the account chooser stops naming a project nobody has heard of — a
+    // literal here would keep the old host and CSP would block the frame. The
+    // failure mode is sign-in that stops working with nothing in the server
+    // log, only a console message in someone else's browser.
+    const authDomain =
+      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
+      "newmokit.firebaseapp.com";
+
     const csp = [
       "default-src 'self'",
       // Google's script hosts are reCAPTCHA Enterprise, which phone sign-in
@@ -59,7 +71,7 @@ const nextConfig: NextConfig = {
       // cannot mint a token without that round trip.
       `connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com https://www.recaptcha.net${local}${dev ? " ws://127.0.0.1:* ws://localhost:*" : ""}`,
       // The auth handler and the reCAPTCHA challenge both render in an iframe.
-      "frame-src 'self' https://www.google.com https://www.recaptcha.net https://newmokit.firebaseapp.com",
+      `frame-src 'self' https://www.google.com https://www.recaptcha.net https://${authDomain}`,
       "worker-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",
