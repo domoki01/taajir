@@ -45,6 +45,42 @@ env:
       - BUILD
       - RUNTIME
 
+  # The domain Google names on its own sign-in screen.
+  #
+  # Left at the Firebase default, that screen reads "Sign in to continue to
+  # newmokit.firebaseapp.com" — the name of a Firebase project, on the one page
+  # where somebody decides whether this site is worth handing an account to.
+  # Setting it to taajirdz.com is what puts our name there instead.
+  #
+  # BUILD as well as RUNTIME: it is read into the client bundle by
+  # src/lib/firebase/config.ts, so a RUNTIME-only value ships the fallback and
+  # changes nothing at all.
+  #
+  # ── BEFORE CHANGING THIS TO taajirdz.com ──────────────────────────────────
+  # The path has to exist and the console has to accept it, or sign-in stops
+  # working for everybody. In order:
+  #
+  #   1. next.config.ts forwards /__/auth/* to the Firebase handler, because
+  #      taajirdz.com is App Hosting and that path is Firebase Hosting. Already
+  #      in place; verify it after deploy with
+  #        curl -I https://taajirdz.com/__/auth/handler     (expect 200)
+  #   2. Firebase Console -> Authentication -> Settings -> Authorized domains:
+  #      add taajirdz.com.
+  #   3. Google Cloud -> Credentials -> the OAuth 2.0 Client ID Firebase made ->
+  #      Authorized redirect URIs: add
+  #        https://taajirdz.com/__/auth/handler
+  #      Keep the firebaseapp.com one until the new flow is proven.
+  #   4. Then change the value below and deploy, and sign in from a private
+  #      window before telling anybody.
+  #
+  # Going back is this line and one deploy. CSP's frame-src reads the same
+  # variable, so the two cannot drift apart.
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: newmokit.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+
   # Whether a NEW account may be opened with a phone number.
   #
   # Off since Firebase's SMS backend began refusing this project's verification
