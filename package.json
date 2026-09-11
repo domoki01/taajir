@@ -2,6 +2,9 @@
   "name": "taajir",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22"
+  },
   "description": "تأجير — منصة إعلانات كراء وبيع العقارات في الجزائر",
   "scripts": {
     "dev": "next dev",

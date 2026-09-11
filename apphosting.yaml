@@ -11,6 +11,14 @@
 # auto-detection, so a change in App Hosting's detection logic cannot silently
 # alter how this app is built.
 
+# ── RUNTIME ──────────────────────────────────────────────────────────────────
+# The Node version is pinned in package.json `engines`, not left to App
+# Hosting's default. It was unpinned, so builds took whatever was newest — and
+# when that version was decommissioned the console stopped accepting new
+# rollouts, with the note that existing deployments on a decommissioned runtime
+# may stop serving and can be reclaimed. An unpinned runtime is a deploy that
+# changes underneath the project on a date nobody picked.
+
 runConfig:
   cpu: 1
   memoryMiB: 512
