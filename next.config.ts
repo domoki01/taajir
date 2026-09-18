@@ -1,6 +1,35 @@
 import type { NextConfig } from "next";
 
+// ── SELF-HOSTED BUILD ────────────────────────────────────────────────────────
+// App Hosting runs the app the way Next expects: `next build` then
+// `next start`, with node_modules present on the machine that serves. A cPanel
+// account has neither — Passenger boots one JavaScript file, and installing 1100
+// packages inside a shared-hosting quota is not something to rely on.
+//
+// `output: "standalone"` answers exactly that: the build traces which files the
+// server actually reaches at runtime and copies them, plus a self-contained
+// `server.js`, into `.next/standalone`. That directory runs on a machine with
+// nothing but Node installed.
+//
+// Kept behind an env flag rather than switched on for everyone, because the
+// standalone tree is what `npm run start` would then have to be pointed at, and
+// App Hosting's run command (apphosting.yaml) is `npm run start`. A flag keeps
+// the two deployment targets from having to agree.
+const kStandalone = process.env.NEXT_OUTPUT === "standalone";
+
+// Image optimisation transcodes on the server: every distinct size of every
+// listing photo is fetched from Firebase Storage and re-encoded to AVIF/WebP by
+// sharp. On Cloud Run that is a CPU second nobody notices. On shared hosting it
+// is the single most likely way to hit the account's CPU/memory limit, and the
+// symptom — the process killed mid-request — looks nothing like its cause.
+//
+// Set NEXT_IMAGE_UNOPTIMIZED=true and next/image emits the Storage URL as-is:
+// no transcoding, no srcset, larger payloads, a working page.
+const kUnoptimizedImages = process.env.NEXT_IMAGE_UNOPTIMIZED === "true";
+
 const nextConfig: NextConfig = {
+  ...(kStandalone ? { output: "standalone" as const } : {}),
+
   images: {
     // Listing photos are served straight from Firebase Storage; next/image
     // generates the responsive AVIF/WebP srcset, so no second stored thumbnail.
@@ -16,6 +45,9 @@ const nextConfig: NextConfig = {
     // Next 16 ships [75] only. 65 is for grid thumbnails, where the smaller
     // payload matters more than the detail on a mobile connection.
     qualities: [65, 75],
+
+    // See kUnoptimizedImages above — off everywhere except a shared host.
+    unoptimized: kUnoptimizedImages,
   },
 
   // ── SECURITY HEADERS ───────────────────────────────────────────────────────

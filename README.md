@@ -52,6 +52,22 @@ npm run build
 ولهذا السبب تحديداً أوامر البناء والتشغيل مكتوبة صراحة في `apphosting.yaml` بدل
 الاعتماد على الاكتشاف التلقائي للإطار.
 
+## تجربة على استضافة cPanel
+
+الموقع يحتاج Node.js على الخادم — كل الصفحات تقريباً تُبنى عند الطلب، والنشر
+والإشراف يمرّان عبر Server Actions، فلا يصلح معه تصدير ساكن. على حساب cPanel
+يقدّم **Setup Node.js App** بـ Node 20.9 فأعلى:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://test.taajirdz.com NEXT_IMAGE_UNOPTIMIZED=true \
+  npm run build:cpanel -- --slim
+```
+
+يبني المشروع على جهازك ويُخرج `dist/taajir-cpanel.tgz` جاهزاً للرفع. الخطوات
+كاملة — ملف البيئة، فحص `preflight.js`، إعداد Passenger، وحدود هذه الاستضافة —
+في [`docs/cpanel.md`](./docs/cpanel.md). هذا مسار تجربة لا يغيّر شيئاً في نشر
+App Hosting: إعداده كلّه خلف متغيّرات بيئة مطفأة افتراضياً.
+
 ## الاصطلاحات
 
 مكتوبة في [`CLAUDE.md`](./CLAUDE.md): قواعد الاتجاه RTL، تخزين الأسعار بالدينار،
