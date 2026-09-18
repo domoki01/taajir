@@ -70,21 +70,4 @@ enum TransactionType: string
             self::Echange => PriceUnit::Total,
         };
     }
-
-    /**
-     * The built-in deals as the menus want them.
-     *
-     * The *filter* label, not the plain one: a menu is somewhere people go
-     * looking, so "للبيع / شراء" is the wording, the same as the dropdowns and
-     * the same as what getVisibleFilterOptions() hands the React side menu.
-     *
-     * @return list<array{slug: string, label: string}>
-     */
-    public static function deals(): array
-    {
-        return array_map(
-            fn (self $type) => ['slug' => $type->value, 'label' => $type->filterLabel()],
-            self::cases(),
-        );
-    }
 }

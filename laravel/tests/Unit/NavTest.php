@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Enums\TransactionType;
 use App\Support\Nav;
 use Tests\TestCase;
 
@@ -71,16 +70,5 @@ final class NavTest extends TestCase
         // A hidden category must be absent rather than linked to a page an admin
         // deliberately took down, so the list can only ever hold what it is fed.
         $this->assertSame(['/', '/vente', '/recherche', '/demandes'], $hrefs);
-    }
-
-    public function test_the_menu_words_a_deal_the_way_someone_searching_would(): void
-    {
-        $labels = array_column(TransactionType::deals(), 'label', 'slug');
-
-        // A buyer and a seller are on opposite sides of one set of ads, so the
-        // word a buyer looks for belongs in the label even though "شراء" is not
-        // a filter value of its own.
-        $this->assertSame('للبيع / شراء', $labels['vente']);
-        $this->assertSame('للكراء', $labels['location']);
     }
 }

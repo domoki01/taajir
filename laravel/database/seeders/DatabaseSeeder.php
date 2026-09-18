@@ -14,12 +14,12 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      *
-     * Empty until phase 2, which seeds the 69 wilayas and their communes from
-     * `../src/data/geo/` — not from Firestore, because that dataset is committed
-     * source rather than user data.
+     * Geography is the only thing seeded unconditionally: the 69 wilayas and
+     * their 1541 communes are source, not user data, and nothing resolves a URL
+     * without them.
      */
     public function run(): void
     {
-        //
+        $this->call(GeographySeeder::class);
     }
 }

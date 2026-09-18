@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\StaticPageController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,3 +27,16 @@ foreach (['a-propos', 'aide', 'cgu', 'confidentialite', 'securite'] as $page) {
         ->defaults('page', $page)
         ->name("static.{$page}");
 }
+
+/*
+ * The SEO catch-all: /vente/appartement/alger/bab-ezzouar.
+ *
+ * Registered last, after every fixed path, because it would otherwise resolve
+ * /cgu as a transaction type. The controller checks each segment against the
+ * live taxonomy and the seeded geography in order — deal, property type,
+ * wilaya, commune — and 404s on anything else, so a crawler cannot walk an
+ * unbounded set of empty pages.
+ */
+Route::get('/{transaction}/{rest?}', BrowseController::class)
+    ->where('rest', '.*')
+    ->name('browse');

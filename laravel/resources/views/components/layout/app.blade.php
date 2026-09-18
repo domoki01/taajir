@@ -60,10 +60,10 @@
 
     <x-layout.bottom-nav />
 
-    {{-- Rendered once, opened by the header's trigger and the phone bar's. The
-         deals it lists are the built-in transaction types until phase 2 puts the
-         live taxonomy behind them — a hard-coded list would offer a category an
-         admin had hidden. --}}
-    <x-layout.side-menu :deals="\App\Enums\TransactionType::deals()" />
+    {{-- Rendered once, opened by the header's trigger and the phone bar's. Its
+         browse links come from the *live* taxonomy rather than a constant: a
+         hard-coded list would offer a category an admin had hidden, which is a
+         link to a page they deliberately took down. --}}
+    <x-layout.side-menu :deals="\App\Services\Taxonomy::current()->visibleOptions()['transactionTypes']" />
 </body>
 </html>
