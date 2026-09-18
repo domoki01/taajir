@@ -1,13 +1,15 @@
 // Builds the app into an upload-ready bundle for cPanel shared hosting.
 //
 //   npm run build:cpanel
+//   npm run build:cpanel -- --zip          # .zip instead of .tgz
 //   npm run build:cpanel -- --slim         # drop the sharp builds this host cannot use
 //   npm run build:cpanel -- --skip-build   # repackage the .next already on disk
 //
-// Produces `dist/cpanel/` (upload this directory) and `dist/taajir-cpanel.tgz`
-// (upload this single file instead, and extract it from cPanel's File Manager —
-// which is the faster route by an order of magnitude, because shared-hosting
-// upload forms transfer one file at a time and the bundle has thousands).
+// Produces `dist/cpanel/` (upload this directory) and one archive of it — a
+// .tgz, or a .zip with --zip. Upload the archive and press Extract in cPanel's
+// File Manager: that is the faster route by an order of magnitude, because a
+// shared-hosting upload form transfers one file at a time and this bundle has
+// thousands. File Manager extracts both formats.
 //
 // What the assembly is for: `next build` with output "standalone" writes a
 // server that runs anywhere Node runs, but deliberately leaves out two things
@@ -32,10 +34,12 @@ import { join } from "node:path";
 const args = process.argv.slice(2);
 const slim = args.includes("--slim");
 const skipBuild = args.includes("--skip-build");
+const asZip = args.includes("--zip");
 
 const kRoot = process.cwd();
 const kOut = join(kRoot, "dist", "cpanel");
 const kTarball = join(kRoot, "dist", "taajir-cpanel.tgz");
+const kZip = join(kRoot, "dist", "taajir-cpanel.zip");
 const unoptimizedImages = process.env.NEXT_IMAGE_UNOPTIMIZED === "true";
 
 // ── BUILD ────────────────────────────────────────────────────────────────────
@@ -173,22 +177,38 @@ if (unoptimizedImages) {
 }
 if (freed) console.log(`  ${(freed / 1024 / 1024).toFixed(0)} MB freed`);
 
-// ── TARBALL ──────────────────────────────────────────────────────────────────
+// ── ARCHIVE ──────────────────────────────────────────────────────────────────
 // Uploading the directory file-by-file through File Manager is hours; uploading
 // one archive and pressing Extract is minutes.
-rmSync(kTarball, { force: true });
+//
+// zip is the default-friendlier of the two only because it is what a File
+// Manager user recognises — cPanel extracts either. It is also the one that may
+// be missing from the machine building this, hence the fallback rather than a
+// hard requirement: a bundle without an archive is still a bundle.
+const archive = asZip ? kZip : kTarball;
+rmSync(archive, { force: true });
+
 try {
-  execFileSync("tar", ["-czf", kTarball, "-C", kOut, "."], {
-    stdio: "inherit",
-  });
+  if (asZip) {
+    // -r recurse, -q quiet, -X drop the extra file attributes: those carry the
+    // building machine's uid/gid, which mean nothing on a shared host and make
+    // two builds of identical content differ.
+    execFileSync("zip", ["-rqX", archive, "."], {
+      cwd: kOut,
+      stdio: "inherit",
+    });
+  } else {
+    execFileSync("tar", ["-czf", archive, "-C", kOut, "."], {
+      stdio: "inherit",
+    });
+  }
 } catch (err) {
-  console.warn(`\ncould not create the tarball (${err.message}).`);
+  console.warn(`\ncould not create the archive (${err.message}).`);
   console.warn(
     "dist/cpanel is complete — archive it with whatever is at hand.\n",
   );
 }
-
-const size = existsSync(kTarball) ? statSync(kTarball).size : 0;
+const size = existsSync(archive) ? statSync(archive).size : 0;
 console.log(
   `\ndist/cpanel ready (${(dirSize(kOut) / 1024 / 1024).toFixed(0)} MB` +
     (size ? `, ${(size / 1024 / 1024).toFixed(0)} MB compressed` : "") +
