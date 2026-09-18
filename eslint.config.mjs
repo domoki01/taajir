@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Laravel port is a second application in this repository with its own
+    // toolchain. Its handful of JavaScript files answer to Laravel's
+    // conventions, and `vendor/` alone is tens of thousands of files ESLint has
+    // no business walking.
+    "laravel/**",
   ]),
 ]);
 
