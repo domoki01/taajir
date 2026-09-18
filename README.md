@@ -68,6 +68,12 @@ NEXT_PUBLIC_SITE_URL=https://test.taajirdz.com NEXT_IMAGE_UNOPTIMIZED=true \
 في [`docs/cpanel.md`](./docs/cpanel.md). هذا مسار تجربة لا يغيّر شيئاً في نشر
 App Hosting: إعداده كلّه خلف متغيّرات بيئة مطفأة افتراضياً.
 
+## نسخة PHP / Laravel
+
+مخطّط كامل لإعادة بناء الموقع بـ Laravel وMySQL، مع إبقاء Firebase لتسجيل الدخول
+وحده: خريطة المسارات، جداول قاعدة البيانات، الصلاحيات، منظومة الألوان، وخطة
+الترحيل والتسليم على مراحل — في [`docs/laravel-port.md`](./docs/laravel-port.md).
+
 ## الاصطلاحات
 
 مكتوبة في [`CLAUDE.md`](./CLAUDE.md): قواعد الاتجاه RTL، تخزين الأسعار بالدينار،
