@@ -23,14 +23,40 @@ use Symfony\Component\Console\Output\BufferedOutput;
  * what an uncaught exception produces.
  */
 
-$base = dirname(__DIR__, 3).'/taajir-app';
-if (! is_file($base.'/vendor/autoload.php')) {
-    $base = dirname(__DIR__).'/taajir-app';
+// Same search as index.php: accounts differ on how deep the document root
+// sits, so walk up and look for taajir-app beside each ancestor.
+$candidates = [];
+
+if ($fromEnv = getenv('TAAJIR_APP_BASE')) {
+    $candidates[] = rtrim($fromEnv, '/');
 }
 
-if (! is_file($base.'/vendor/autoload.php')) {
+$dir = __DIR__;
+for ($level = 0; $level < 6; $level++) {
+    $candidates[] = $dir.'/taajir-app';
+    $parent = dirname($dir);
+    if ($parent === $dir) {
+        break;
+    }
+    $dir = $parent;
+}
+
+$base = null;
+foreach ($candidates as $candidate) {
+    if (is_file($candidate.'/vendor/autoload.php')) {
+        $base = $candidate;
+        break;
+    }
+}
+
+if ($base === null) {
     http_response_code(500);
-    exit("لم يتم العثور على مجلد taajir-app. تأكّد أنه مرفوع فوق public_html.\n");
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "لم يتم العثور على مجلّد taajir-app.\n\nهذا الملف في:\n  ".__DIR__."\n\nبحثت في:\n";
+    foreach ($candidates as $candidate) {
+        echo '  '.(is_dir($candidate) ? '[موجود بلا vendor] ' : '[غير موجود] ').$candidate."\n";
+    }
+    exit;
 }
 
 define('TAAJIR_PUBLIC_PATH', __DIR__);

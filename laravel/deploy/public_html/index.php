@@ -14,21 +14,36 @@ use Illuminate\Http\Request;
  * be able to fetch by URL. Anything reachable by URL is reachable by everyone.
  */
 
-// Where the application tree is. The standard DirectAdmin layout puts the
-// document root at ~/domains/DOMAIN/public_html, so ~/taajir-app is three
-// levels up — which is why this usually needs no editing at all. Set
-// TAAJIR_APP_BASE in the environment, or edit the last candidate, if the
-// account is laid out differently.
-$candidates = [
-    getenv('TAAJIR_APP_BASE') ?: null,
-    dirname(__DIR__, 3).'/taajir-app',
-    dirname(__DIR__).'/taajir-app',
-    '/home/CHANGEME/taajir-app',
-];
+/*
+ * Find the application tree.
+ *
+ * Accounts differ: the document root is `~/domains/DOMAIN/public_html` on most
+ * DirectAdmin setups and plain `~/public_html` on others, and there is no way
+ * to tell from in here which one this is. So rather than assume a depth, walk
+ * up from this file and look for `taajir-app` beside each ancestor. That finds
+ * it in every layout where the two were uploaded as a pair.
+ *
+ * TAAJIR_APP_BASE in the environment overrides the search.
+ */
+$candidates = [];
+
+if ($fromEnv = getenv('TAAJIR_APP_BASE')) {
+    $candidates[] = rtrim($fromEnv, '/');
+}
+
+$dir = __DIR__;
+for ($level = 0; $level < 6; $level++) {
+    $candidates[] = $dir.'/taajir-app';
+    $parent = dirname($dir);
+    if ($parent === $dir) {
+        break;
+    }
+    $dir = $parent;
+}
 
 $base = null;
 foreach ($candidates as $candidate) {
-    if ($candidate !== null && is_file($candidate.'/vendor/autoload.php')) {
+    if (is_file($candidate.'/vendor/autoload.php')) {
         $base = $candidate;
         break;
     }
@@ -36,9 +51,26 @@ foreach ($candidates as $candidate) {
 
 if ($base === null) {
     http_response_code(500);
-    exit('Application not found. Set TAAJIR_APP_BASE or edit public_html/index.php.');
+    header('Content-Type: text/plain; charset=utf-8');
+
+    // Saying where it looked is the difference between a two-minute fix and an
+    // evening. Only paths are shown, and only ones derived from this file's own
+    // location — nothing about the account that a visitor could not already
+    // guess from the URL.
+    echo "لم يتم العثور على مجلّد taajir-app.\n\n";
+    echo "هذا الملف موجود في:\n  ".__DIR__."\n\n";
+    echo "بحثت عن vendor/autoload.php في:\n";
+    foreach ($candidates as $candidate) {
+        echo '  '.(is_dir($candidate) ? '[موجود لكن بلا vendor] ' : '[غير موجود] ').$candidate."\n";
+    }
+    echo "\nارفع مجلّد taajir-app إلى أحد هذه المسارات، أو عدّل السطر\n";
+    echo "getenv('TAAJIR_APP_BASE') في هذا الملف ليشير إلى مكانه.\n";
+    exit;
 }
 
+// Tells bootstrap/app.php that the document root is here rather than at
+// <base>/public, which does not exist in this layout.
+define('TAAJIR_PUBLIC_PATH', __DIR__);
 define('APP_BASE', $base);
 define('LARAVEL_START', microtime(true));
 
@@ -48,10 +80,6 @@ if (file_exists($maintenance = APP_BASE.'/storage/framework/maintenance.php')) {
 }
 
 // Register the Composer autoloader...
-// Tells bootstrap/app.php that the document root is here rather than at
-// <base>/public, which does not exist in this layout.
-define('TAAJIR_PUBLIC_PATH', __DIR__);
-
 require APP_BASE.'/vendor/autoload.php';
 
 // Bootstrap Laravel and handle the request...
