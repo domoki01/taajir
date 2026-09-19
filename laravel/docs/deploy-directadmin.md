@@ -127,6 +127,22 @@ destinations.
 10. **Permissions.** `storage/` and `bootstrap/cache/` must be writable by the
     PHP user. `chmod -R 775` on both, and nothing wider.
 
+## Every page is a 500 until the installer has run
+
+`.env` ships with an empty `APP_KEY`, and Laravel refuses to serve anything
+without one — so opening the site before running `setup.php` gives a bare
+"Server Error" on every URL. That is expected, not a broken upload.
+
+`health.php` says which of the usual causes it is: PHP version, missing
+extensions, unwritable directories, an empty `APP_KEY`, bad database
+credentials, a stale `bootstrap/cache/config.php`, and the last error from the
+log. It is guarded by `SETUP_TOKEN` like the installer, and should be deleted
+once the site is up.
+
+Turning `APP_DEBUG=true` to find this out is the wrong trade: it publishes the
+database password, the whole environment and a stack trace on a public URL for
+as long as it takes someone to remember it is still on.
+
 ## Still missing
 
 - **The security headers.** Roadmap §12 wants CSP, `X-Frame-Options`,
