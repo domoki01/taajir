@@ -14,12 +14,15 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      *
-     * Geography is the only thing seeded unconditionally: the 69 wilayas and
-     * their 1541 communes are source, not user data, and nothing resolves a URL
-     * without them.
+     * Both of these are source rather than user data: the 69 wilayas and their
+     * 1541 communes, without which nothing resolves a URL, and the four
+     * built-in roles, without which nobody can be anything but a visitor.
      */
     public function run(): void
     {
-        $this->call(GeographySeeder::class);
+        $this->call([
+            RoleSeeder::class,
+            GeographySeeder::class,
+        ]);
     }
 }

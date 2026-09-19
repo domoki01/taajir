@@ -34,6 +34,7 @@
          disabled pinch zoom, which fails WCAG 1.4.4 and hurts users reading
          property details on small screens. --}}
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#0f172a">
 
     <title>{{ $documentTitle }}</title>
@@ -87,5 +88,28 @@
          hard-coded list would offer a category an admin had hidden, which is a
          link to a page they deliberately took down. --}}
     <x-layout.side-menu :deals="\App\Services\Taxonomy::current()->visibleOptions()['transactionTypes']" />
+
+    {{-- Page-specific scripts, after Alpine has been started by app.js. The
+         sign-in page is the only user of this so far, and it needs the Firebase
+         SDK, which no other page should pay for. --}}
+    {{-- The handful of strings the scripts need. Emitted rather than fetched:
+         they are three lines, and a sign-in page that has to wait on a request
+         before it can tell you what went wrong is worse than one that cannot. --}}
+    @php
+        // Built here rather than inline: Blade's directive parser reads a
+        // directive's argument up to the first unbalanced bracket on the line,
+        // so a multi-line array inside @json is a parse error.
+        $scriptMessages = [
+            'failed' => __('auth.failed'),
+            'passwordDisabled' => __('auth.password_disabled'),
+            'banned' => __('auth.banned'),
+            'tooMany' => __('auth.too_many'),
+        ];
+    @endphp
+    <script>
+        window.taajirMessages = {!! json_encode($scriptMessages, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
+    </script>
+
+    @stack('scripts')
 </body>
 </html>

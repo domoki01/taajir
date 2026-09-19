@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountIsActive;
+use App\Http\Middleware\RedirectIfUnauthenticated;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,7 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Every page is in one of three languages, and which one is decided by
         // the URL before anything renders.
-        $middleware->web(append: [SetLocale::class]);
+        $middleware->web(append: [SetLocale::class, EnsureAccountIsActive::class]);
+
+        // Named rather than global: most of this site is readable signed out,
+        // and that is deliberate — browsing needs no account.
+        $middleware->alias(['auth.session' => RedirectIfUnauthenticated::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

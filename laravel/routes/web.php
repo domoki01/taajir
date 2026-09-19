@@ -1,7 +1,11 @@
 <?php
 
 use App\Enums\Locale;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\BrowseController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\StaticPageController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -39,6 +43,19 @@ $routes = function (): void {
     }
 
     /*
+     * Sign-in. The pages host the Firebase widget; the exchange is what the
+     * site actually trusts — see SessionController.
+     */
+    Route::get('/connexion', [AuthController::class, 'signIn'])->name('sign-in');
+    Route::get('/inscription', [AuthController::class, 'signUp'])->name('sign-up');
+    Route::post('/auth/session', [SessionController::class, 'store'])->name('session.store');
+    Route::delete('/auth/session', [SessionController::class, 'destroy'])->name('session.destroy');
+
+    Route::get('/tableau-de-bord', DashboardController::class)
+        ->middleware('auth.session')
+        ->name('dashboard');
+
+    /*
      * The SEO catch-all: /vente/appartement/alger/bab-ezzouar.
      *
      * Registered last, after every fixed path. The controller checks each
@@ -59,6 +76,15 @@ $routes = function (): void {
 Route::redirect('/'.Locale::default()->value, '/', 301);
 Route::get('/'.Locale::default()->value.'/{rest}', fn (string $rest) => redirect('/'.$rest, 301))
     ->where('rest', '.*');
+
+/*
+ * The referral link. Outside the locale group on purpose: it is pasted into
+ * WhatsApp and typed off paper, so it stays as short as it can be, and it
+ * redirects rather than rendering anything.
+ */
+Route::get('/r/{code}', ReferralController::class)
+    ->where('code', '[A-Z0-9]{6}')
+    ->name('referral');
 
 Route::prefix('{locale}')
     ->where(['locale' => Locale::prefixedPattern()])
