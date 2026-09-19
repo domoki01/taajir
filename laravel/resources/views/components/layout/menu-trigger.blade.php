@@ -4,7 +4,7 @@
     type="button"
     x-data
     x-on:click="$store.menu.show()"
-    aria-label="القائمة"
+    aria-label="{{ __('nav.menu') }}"
     aria-haspopup="dialog"
     {{ $attributes->merge(['class' => 'text-primary hover:bg-surface-soft grid size-10 place-items-center rounded-full transition-colors']) }}
 >

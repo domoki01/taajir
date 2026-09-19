@@ -8,8 +8,8 @@ namespace App\Enums;
  * How a price is expressed. Derived from the transaction type.
  *
  * Ported from kPriceUnits in the Next app's src/lib/enums.ts. Keys are Latin
- * and stable — they end up in URLs and database rows. Labels are Arabic and
- * may be reworded freely.
+ * and stable — they end up in URLs and database rows. Labels live in
+ * lang/{locale}/taxonomy.php and may be reworded freely in any of the three.
  */
 enum PriceUnit: string
 {
@@ -21,13 +21,7 @@ enum PriceUnit: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Total => 'السعر الإجمالي',
-            self::Mois => 'في الشهر',
-            self::Annee => 'في السنة',
-            self::Nuit => 'في الليلة',
-            self::M2 => 'للمتر المربع',
-        };
+        return __('taxonomy.price_units.'.$this->value);
     }
 
     /**

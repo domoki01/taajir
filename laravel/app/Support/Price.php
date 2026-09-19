@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\Locale;
 use App\Enums\PriceUnit;
 
 /**
@@ -14,8 +15,10 @@ use App\Enums\PriceUnit;
  * 30 000 DZD.
  *
  * Prices are stored as a whole number of DINARS everywhere — the `listings`
- * table, every filter, every sort key. Mixing the units up is a 10 000x error,
- * so every conversion lives in this class and nowhere else. This is the PHP
+ * table, every filter, every sort key, in every language. Mixing the units up
+ * is a 10 000x error, so every conversion lives in this class and nowhere else.
+ * What the three locales change is only the words around the number, and
+ * whether the ملايين convention is used at all. This is the PHP
  * mirror of src/lib/price.ts, minus the Firestore bucket half: SQL answers
  * `WHERE price BETWEEN ? AND ?` directly, so the buckets have nothing left to
  * work around.
@@ -58,12 +61,20 @@ final class Price
     public static function format(int|float|null $dinars): string
     {
         if ($dinars === null || ! is_finite((float) $dinars) || $dinars <= 0) {
-            return 'السعر بالاتفاق';
+            return __('price.negotiable');
+        }
+
+        // English is the one language that does not quote in ملايين — see
+        // Locale::quotesInMillions(). There the amount is the plain dinar
+        // figure, which is the same number said a way that needs no local
+        // knowledge.
+        if (! Locale::current()->quotesInMillions()) {
+            return self::formatExact($dinars);
         }
 
         $millions = $dinars / config('taajir.dinars_per_million');
         if ($millions < 1) {
-            return self::digits(round($dinars)).' دج';
+            return self::digits(round($dinars)).' '.__('price.currency');
         }
 
         // One decimal only when it carries information: 3.5 مليون, not 800.0 مليون.
@@ -71,17 +82,17 @@ final class Price
             ? round($millions * 10) / 10
             : round($millions);
 
-        return self::digits($rounded).' مليون';
+        return self::digits($rounded).' '.__('price.million');
     }
 
     /** Full form for the listing detail page, where precision is expected. */
     public static function formatExact(int|float|null $dinars): string
     {
         if ($dinars === null || ! is_finite((float) $dinars) || $dinars <= 0) {
-            return 'السعر بالاتفاق';
+            return __('price.negotiable');
         }
 
-        return self::digits(round($dinars)).' دج';
+        return self::digits(round($dinars)).' '.__('price.currency');
     }
 
     /** Price with its unit suffix, e.g. "4.5 مليون في الشهر". */

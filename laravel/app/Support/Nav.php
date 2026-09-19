@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\Locale;
+
 /**
  * ── SITE NAVIGATION ──────────────────────────────────────────────────────────
  * One list of destinations, two presentations: a bottom bar on phones and the
@@ -34,18 +36,18 @@ final class Nav
     public static function items(): array
     {
         return [
-            ['href' => '/', 'label' => 'الرئيسية', 'icon' => 'home', 'also' => []],
+            ['href' => '/', 'label' => __('nav.home'), 'icon' => 'home', 'also' => []],
             [
                 'href' => '/recherche',
-                'label' => 'بحث',
+                'label' => __('nav.search'),
                 'icon' => 'search',
                 // The browse routes are "results" to the person looking at them,
                 // the same as a search. Leaving them with no destination marked
                 // reads as a bug.
                 'also' => ['/vente', '/location', '/vacances', '/echange'],
             ],
-            ['href' => '/demandes', 'label' => 'طلبات', 'icon' => 'megaphone', 'also' => []],
-            ['href' => '/tableau-de-bord', 'label' => 'حسابي', 'icon' => 'user-round', 'also' => []],
+            ['href' => '/demandes', 'label' => __('nav.requests'), 'icon' => 'megaphone', 'also' => []],
+            ['href' => '/tableau-de-bord', 'label' => __('nav.account'), 'icon' => 'user-round', 'also' => []],
         ];
     }
 
@@ -59,12 +61,12 @@ final class Nav
     public static function accountLinks(): array
     {
         return [
-            ['href' => '/tableau-de-bord', 'label' => 'لوحتي'],
-            ['href' => '/tableau-de-bord/publications', 'label' => 'منشوراتي'],
-            ['href' => '/tableau-de-bord/annonces', 'label' => 'إعلاناتي'],
-            ['href' => '/tableau-de-bord/alertes', 'label' => 'تنبيهاتي'],
-            ['href' => '/tableau-de-bord/parrainage', 'label' => 'ادعُ أصحابك'],
-            ['href' => '/tableau-de-bord/profil', 'label' => 'معلوماتي'],
+            ['href' => '/tableau-de-bord', 'label' => __('nav.account_links.dashboard')],
+            ['href' => '/tableau-de-bord/publications', 'label' => __('nav.account_links.posts')],
+            ['href' => '/tableau-de-bord/annonces', 'label' => __('nav.account_links.listings')],
+            ['href' => '/tableau-de-bord/alertes', 'label' => __('nav.account_links.alerts')],
+            ['href' => '/tableau-de-bord/parrainage', 'label' => __('nav.account_links.referral')],
+            ['href' => '/tableau-de-bord/profil', 'label' => __('nav.account_links.profile')],
         ];
     }
 
@@ -76,12 +78,12 @@ final class Nav
     public static function infoLinks(): array
     {
         return [
-            ['href' => '/articles', 'label' => 'المقالات'],
-            ['href' => '/a-propos', 'label' => 'من نحن'],
-            ['href' => '/aide', 'label' => 'المساعدة'],
-            ['href' => '/securite', 'label' => 'نصائح الأمان'],
-            ['href' => '/cgu', 'label' => 'شروط الاستعمال'],
-            ['href' => '/confidentialite', 'label' => 'سياسة الخصوصية'],
+            ['href' => '/articles', 'label' => __('nav.info_links.articles')],
+            ['href' => '/a-propos', 'label' => __('nav.info_links.about')],
+            ['href' => '/aide', 'label' => __('nav.info_links.help')],
+            ['href' => '/securite', 'label' => __('nav.info_links.safety')],
+            ['href' => '/cgu', 'label' => __('nav.info_links.terms')],
+            ['href' => '/confidentialite', 'label' => __('nav.info_links.privacy')],
         ];
     }
 
@@ -96,13 +98,13 @@ final class Nav
     public static function browseLinks(array $deals): array
     {
         return [
-            ['href' => '/', 'label' => 'الرئيسية'],
+            ['href' => '/', 'label' => __('nav.home')],
             ...array_map(
                 fn (array $deal) => ['href' => '/'.$deal['slug'], 'label' => $deal['label']],
                 $deals,
             ),
-            ['href' => '/recherche', 'label' => 'بحث متقدّم'],
-            ['href' => '/demandes', 'label' => 'طلبات العقار'],
+            ['href' => '/recherche', 'label' => __('nav.advanced_search')],
+            ['href' => '/demandes', 'label' => __('nav.property_requests')],
         ];
     }
 
@@ -148,17 +150,46 @@ final class Nav
     }
 
     /**
-     * The path of the request being rendered, with its leading slash.
+     * The path of the request being rendered, with its leading slash and
+     * WITHOUT the locale prefix.
      *
      * Every bar in the layout needs it to mark the current destination, and
-     * Laravel's request()->path() drops the slash and answers "/" at the root —
-     * which would make the root "//" if each caller glued one on itself.
+     * those destinations are stored unprefixed — /cgu is the same page whether
+     * it was reached at /cgu, /fr/cgu or /en/cgu, and the menu has to light up
+     * on all three. Laravel's request()->path() drops the leading slash and
+     * answers "/" at the root, which would make the root "//" if each caller
+     * glued one on itself.
      */
     public static function currentPath(): string
     {
         $path = request()->path();
+        $path = $path === '/' ? '/' : '/'.$path;
 
-        return $path === '/' ? '/' : '/'.$path;
+        foreach (Locale::cases() as $locale) {
+            $prefix = $locale->prefix();
+            if ($prefix === '') {
+                continue;
+            }
+            if ($path === $prefix) {
+                return '/';
+            }
+            if (str_starts_with($path, $prefix.'/')) {
+                return substr($path, strlen($prefix));
+            }
+        }
+
+        return $path;
+    }
+
+    /**
+     * A destination's href in the language being rendered.
+     *
+     * Every href in this file is stored unprefixed, because that is what the
+     * page *is*; which URL it lives at is the locale's business.
+     */
+    public static function href(string $path): string
+    {
+        return Locale::current()->path($path);
     }
 
     /**

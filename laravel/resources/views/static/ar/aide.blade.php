@@ -28,7 +28,7 @@
 
 <x-layout.static-page
     title="المساعدة"
-    description="أسئلة شائعة حول نشر الإعلانات، البحث عن عقار، والاشتراكات في منصة {{ config('taajir.site_name') }}."
+    description="أسئلة شائعة حول نشر الإعلانات، البحث عن عقار، والاشتراكات في منصة {{ __('brand.name') }}."
 >
     <article>
         <h1>المساعدة</h1>
@@ -42,7 +42,7 @@
 
         <h2>ما لقيتش جوابك؟</h2>
         <p>
-            اقرأ <a href="/securite">نصائح الأمان</a> و <a href="/cgu">شروط الاستعمال</a>.
+            اقرأ <a href="{{ \App\Support\Nav::href('/securite') }}">نصائح الأمان</a> و <a href="{{ \App\Support\Nav::href('/cgu') }}">شروط الاستعمال</a>.
         </p>
     </article>
 </x-layout.static-page>

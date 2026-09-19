@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Locale;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -22,6 +23,12 @@ class Commune extends Model
     public $timestamps = false;
 
     protected $guarded = [];
+
+    /** The name in the language being rendered; see Wilaya::name(). */
+    public function name(): string
+    {
+        return Locale::current() === Locale::Ar ? $this->name_ar : $this->name_fr;
+    }
 
     public function wilaya(): BelongsTo
     {

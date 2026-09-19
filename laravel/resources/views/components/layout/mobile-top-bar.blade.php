@@ -30,9 +30,9 @@
             x-on:click="
                 document.referrer.startsWith(window.location.origin) || window.history.length > 2
                     ? window.history.back()
-                    : window.location.assign('/')
+                    : window.location.assign(@js(\App\Support\Nav::href('/')))
             "
-            aria-label="رجوع"
+            aria-label="{{ __('nav.back') }}"
             class="text-primary grid size-10 place-items-center rounded-full transition-transform active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
         >
             <x-icon.chevron-right class="size-6" stroke-width="2.4" />
@@ -41,5 +41,5 @@
         <x-layout.menu-trigger />
     @endif
 
-    <a href="/" class="text-sm font-extrabold tracking-tight">{{ config('taajir.site_name') }}</a>
+    <a href="{{ \App\Support\Nav::href('/') }}" class="text-sm font-extrabold tracking-tight">{{ __('brand.name') }}</a>
 </div>

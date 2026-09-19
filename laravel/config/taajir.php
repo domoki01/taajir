@@ -7,8 +7,12 @@
 
 return [
 
-    'site_name' => 'تأجير',
-    'site_tagline' => 'عقارات الجزائر',
+    /*
+     * The site's name and tagline are not here: they are in
+     * lang/{locale}/brand.php, because the mark is "تأجير" in Arabic and
+     * "Taajir" in the two Latin languages, and a single config value cannot
+     * say both. Phase 7's branding editor overrides them there.
+     */
 
     /*
      * Absolute origin, needed by canonical URLs, the sitemap and OG tags.

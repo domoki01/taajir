@@ -9,8 +9,8 @@ namespace App\Enums;
  *
  * Ported from kPropertyTypes in src/lib/enums.ts. The slugs are the second
  * segment of a browse URL (`/vente/appartement/alger`), so they are part of the
- * contract with Google; the Arabic labels may be reworded freely, and an admin
- * can rename, reorder, hide or add to this list — which is why the column that
+ * contract with Google; the labels live in lang/{locale}/taxonomy.php, and an
+ * admin can rename, reorder, hide or add to this list — which is why the column that
  * stores one is a VARCHAR and the live list comes from App\Services\Taxonomy
  * rather than from here.
  */
@@ -32,21 +32,7 @@ enum PropertyType: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Appartement => 'شقة',
-            self::Villa => 'فيلا',
-            self::Maison => 'منزل',
-            self::NiveauVilla => 'مستوى في فيلا',
-            self::Studio => 'استوديو',
-            self::Duplex => 'دوبلكس',
-            self::Terrain => 'أرض',
-            self::TerrainAgricole => 'أرض فلاحية',
-            self::Local => 'محل تجاري',
-            self::Bureau => 'مكتب',
-            self::Hangar => 'مستودع',
-            self::Garage => 'كراج',
-            self::Immeuble => 'عمارة',
-        };
+        return __('taxonomy.property_types.'.$this->value);
     }
 
     /** Priced and searched by land area rather than built area. */

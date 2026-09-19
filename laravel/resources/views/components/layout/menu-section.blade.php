@@ -11,7 +11,7 @@
             @endphp
             <li>
                 <a
-                    href="{{ $link['href'] }}"
+                    href="{{ \App\Support\Nav::href($link['href']) }}"
                     x-bind:tabindex="$store.menu.open ? 0 : -1"
                     @if ($current) aria-current="page" @endif
                     class="block rounded-[10px] px-3 py-2.5 text-[15px] transition-colors {{ $current ? 'bg-primary-soft text-primary font-extrabold' : 'text-muted hover:bg-surface-soft font-semibold' }}"

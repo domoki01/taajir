@@ -13,18 +13,18 @@
              destinations; the panel is everything else the site has. --}}
         <x-layout.menu-trigger class="-ms-2" />
 
-        <a href="/" class="flex items-center gap-2">
+        <a href="{{ \App\Support\Nav::href('/') }}" class="flex items-center gap-2">
             <span class="bg-primary grid size-9 place-items-center rounded-[12px] text-white">
                 <x-icon.building-2 class="size-5" stroke-width="2.4" />
             </span>
-            <span class="text-lg font-extrabold tracking-tight">{{ config('taajir.site_name') }}</span>
+            <span class="text-lg font-extrabold tracking-tight">{{ __('brand.name') }}</span>
         </a>
 
-        <nav aria-label="التنقّل" class="text-muted ms-auto flex items-center gap-6 text-sm font-semibold">
+        <nav aria-label="{{ __('nav.navigation') }}" class="text-muted ms-auto flex items-center gap-6 text-sm font-semibold">
             @foreach (\App\Support\Nav::items() as $item)
                 @php($active = \App\Support\Nav::isCurrent($path, $item))
                 <a
-                    href="{{ $item['href'] }}"
+                    href="{{ \App\Support\Nav::href($item['href']) }}"
                     @if ($active) aria-current="page" @endif
                     class="transition-colors {{ $active ? 'text-primary font-extrabold' : 'hover:text-primary' }}"
                 >{{ $item['label'] }}</a>
@@ -34,11 +34,11 @@
         {{-- "الوكالات" stays hidden until agency profiles exist — a link that
              404s is worse than no link. --}}
         <a
-            href="{{ \App\Support\Nav::PUBLISH_HREF }}"
+            href="{{ \App\Support\Nav::href(\App\Support\Nav::PUBLISH_HREF) }}"
             class="bg-accent rounded-input ms-1 inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
         >
             <x-icon.plus class="size-4" stroke-width="3" />
-            نشر إعلان
+            {{ __('nav.publish') }}
         </a>
     </div>
 </header>

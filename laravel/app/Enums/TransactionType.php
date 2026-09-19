@@ -27,12 +27,7 @@ enum TransactionType: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Vente => 'بيع',
-            self::Location => 'كراء',
-            self::Vacances => 'كراء بالليلة',
-            self::Echange => 'مبادلة',
-        };
+        return __('taxonomy.deals.'.$this->value);
     }
 
     /**
@@ -44,12 +39,7 @@ enum TransactionType: string
      */
     public function filterLabel(): string
     {
-        return match ($this) {
-            self::Vente => 'للبيع / شراء',
-            self::Location => 'للكراء',
-            self::Vacances => 'كراء بالليلة',
-            self::Echange => 'مبادلة',
-        };
+        return __('taxonomy.deal_filters.'.$this->value);
     }
 
     /**

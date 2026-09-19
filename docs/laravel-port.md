@@ -525,6 +525,56 @@ mirroring `storage.rules`. Path `storage/app/public/listings/{uid}/{listing}/`.
 
 ---
 
+## 7.5 Languages
+
+Added after phase 2, on request, and therefore not in the original plan. Worth
+recording here because it changes the shape of every screen that follows.
+
+The site speaks **Arabic, French and English**. Arabic is the default and takes
+no URL prefix: every path in §2 is already Arabic and already indexed, and
+moving them under `/ar` would break the contract this document opens with. The
+two additions are the ones that take a prefix.
+
+|         |                                                |
+| ------- | ---------------------------------------------- |
+| Arabic  | `/cgu`, `/vente/appartement/alger` — unchanged |
+| French  | `/fr/cgu`, `/fr/vente/appartement/alger`       |
+| English | `/en/cgu`, `/en/vente/appartement/alger`       |
+
+- `/ar/...` 301s to the unprefixed path. One canonical URL per page per language.
+- Every page emits `hreflang` for all three plus `x-default` → Arabic.
+- `<html dir>` follows the locale. This costs nothing because the utilities were
+  logical from the first commit — `CLAUDE.md` calls physical `left`/`right`
+  "bugs waiting for a French locale", and this is that locale arriving.
+- UI strings live in `lang/{locale}/`. A test asserts the three key sets are
+  identical: Laravel falls back to the default locale silently, so a forgotten
+  French string renders Arabic right-to-left inside a left-to-right paragraph
+  and nothing reports it.
+- The five content pages are **written** in each language, not assembled from
+  keys — they are legal and safety prose, and a terms page built from forty keys
+  is one nobody can read before publishing it.
+
+Two rules that are not translation:
+
+- **Prices.** Arabic and French both quote in ملايين; that is how the market
+  speaks in both. English shows the plain dinar amount, because "800 million" is
+  not a translation of "800 مليون" — it is a different number, and the unit is a
+  million _centimes_ that an English reader has no reason to know. The storage
+  rule is untouched: whole dinars, one helper, in every language.
+- **Place names.** `wilayas.name_fr` serves English too; Algerian place names in
+  English are the French forms. Only established exonyms are overridden, and so
+  far that is Algiers alone.
+
+User-written content — ad titles, descriptions, comments, requests — is never
+translated and never machine-translated. It stays in the language it was
+written in.
+
+Still open: the admin branding editor (§7.1) sets one site name, and the mark is
+"تأجير" in Arabic and "Taajir" in Latin script. Phase 7 has to decide whether
+that field is per-locale.
+
+---
+
 ## 8. Search
 
 Today: an array of ≥3-character tokens and `array-contains-any`, with Arabic

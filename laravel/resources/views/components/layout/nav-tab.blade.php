@@ -4,7 +4,7 @@
 
 <li class="flex-1">
     <a
-        href="{{ $item['href'] }}"
+        href="{{ \App\Support\Nav::href($item['href']) }}"
         @if ($active) aria-current="page" @endif
         class="flex min-h-14 flex-col items-center justify-center gap-1 py-2 transition-transform active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 {{ $active ? 'text-primary' : 'text-dim' }}"
     >

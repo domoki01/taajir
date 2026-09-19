@@ -8,8 +8,8 @@
 
     <main class="flex-1 py-16">
         <x-layout.container max="max-w-3xl" class="text-center">
-            <h1 class="text-3xl font-black">{{ config('taajir.site_name') }}</h1>
-            <p class="text-muted mt-2">{{ config('taajir.site_tagline') }}</p>
+            <h1 class="text-3xl font-black">{{ __('brand.name') }}</h1>
+            <p class="text-muted mt-2">{{ __('brand.tagline') }}</p>
         </x-layout.container>
     </main>
 </x-layout.app>

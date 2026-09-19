@@ -1,6 +1,6 @@
 <x-layout.static-page
     title="سياسة الخصوصية"
-    description="كيف تتعامل منصة {{ config('taajir.site_name') }} مع بياناتك الشخصية."
+    description="كيف تتعامل منصة {{ __('brand.name') }} مع بياناتك الشخصية."
 >
     <article>
         <h1>سياسة الخصوصية</h1>

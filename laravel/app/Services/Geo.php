@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\Locale;
 use App\Models\Commune;
 use App\Models\Wilaya;
 use App\Support\Text;
@@ -61,17 +62,23 @@ final class Geo
     }
 
     /**
-     * "باب الزوار، الجزائر" — the Arabic commune name where we have it, falling
-     * back to a de-slugged form. Printing the raw Latin slug inside Arabic prose
-     * looks broken and reads worse, so the lookup is worth the query.
+     * "باب الزوار، الجزائر" — or "Bab Ezzouar, Alger" — the commune name in the
+     * language being rendered, falling back to a de-slugged form. Printing the
+     * raw Latin slug inside Arabic prose looks broken and reads worse, so the
+     * lookup is worth the query.
+     *
+     * The separator is the language's own: Arabic uses the Arabic comma, which
+     * is a different character and sits on the other side of the word.
      */
     public static function placeLabel(string $wilayaSlug, string $communeSlug): string
     {
         $wilaya = self::wilaya($wilayaSlug);
         $commune = $wilaya ? self::commune($wilaya->code, $communeSlug) : null;
-        $communeName = $commune?->name_ar ?? str_replace('-', ' ', $communeSlug);
+        $communeName = $commune?->name() ?? str_replace('-', ' ', $communeSlug);
 
-        return $wilaya ? $communeName.'، '.$wilaya->name_ar : $communeName;
+        $comma = Locale::current() === Locale::Ar ? '، ' : ', ';
+
+        return $wilaya ? $communeName.$comma.$wilaya->name() : $communeName;
     }
 
     /**

@@ -1,6 +1,6 @@
 <x-layout.static-page
     title="شروط الاستعمال"
-    description="شروط استعمال منصة {{ config('taajir.site_name') }} لنشر إعلانات العقارات."
+    description="شروط استعمال منصة {{ __('brand.name') }} لنشر إعلانات العقارات."
 >
     <article>
         <h1>شروط الاستعمال</h1>
@@ -12,7 +12,7 @@
              line on this page that most needs to stand out, so it is emphasised
              properly here. --}}
         <p>
-            {{ config('taajir.site_name') }} منصة استضافة إعلانات عقارية. المنصة <strong>ليست طرفاً</strong> في أي
+            {{ __('brand.name') }} منصة استضافة إعلانات عقارية. المنصة <strong>ليست طرفاً</strong> في أي
             معاملة بيع أو كراء، ولا تتوسّط في الدفع، ولا تضمن صحة ما ورد في أي
             إعلان. العقد يُبرم بين المعلن والزبون مباشرة.
         </p>

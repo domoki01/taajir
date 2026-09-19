@@ -5,18 +5,21 @@
      the filter panel arrive in phase 4 with the listings read path — there is
      no listings table yet, and a hard-coded "0 إعلان" would be a claim this
      page cannot make. --}}
-<x-layout.app :title="$heading" :description="'تصفّح إعلانات '.$heading.' على '.config('taajir.site_name').': أسعار، مساحات، صور ووثائق، من الملاك مباشرة ومن الوكالات.'">
+<x-layout.app
+    :title="$heading"
+    :description="__('browse.meta_description', ['heading' => $heading, 'site' => __('brand.name')])"
+>
     <x-layout.header />
 
     <main class="flex-1 py-8">
         <x-layout.container>
-            <nav aria-label="مسار التصفّح" class="text-dim mb-3 text-xs font-semibold">
-                <a href="/" class="hover:text-primary">الرئيسية</a>
+            <nav aria-label="{{ __('nav.breadcrumb') }}" class="text-dim mb-3 text-xs font-semibold">
+                <a href="{{ \App\Support\Nav::href('/') }}" class="hover:text-primary">{{ __('nav.home') }}</a>
                 <span class="mx-1.5">/</span>
-                <a href="/{{ $transaction }}" class="hover:text-primary">{{ $taxonomy->transactionTypes[$transaction] }}</a>
+                <a href="{{ \App\Support\Nav::href('/'.$transaction) }}" class="hover:text-primary">{{ $taxonomy->transactionTypes[$transaction] }}</a>
                 @if ($wilaya)
                     <span class="mx-1.5">/</span>
-                    <span>{{ $wilaya->name_ar }}</span>
+                    <span>{{ $wilaya->name() }}</span>
                 @endif
             </nav>
 
@@ -29,14 +32,14 @@
             {{-- Internal links are what get the long tail of wilaya pages crawled
                  at all; without them these routes exist but are unreachable. --}}
             <section class="mt-12">
-                <h2 class="text-base font-extrabold">{{ $taxonomy->transactionTypes[$transaction] }} حسب الولاية</h2>
+                <h2 class="text-base font-extrabold">{{ __('browse.by_wilaya', ['deal' => $taxonomy->transactionTypes[$transaction]]) }}</h2>
                 <ul class="mt-3 flex flex-wrap gap-2">
                     @foreach (\App\Services\Geo::wilayas()->take(24) as $w)
                         <li>
                             <a
-                                href="/{{ $transaction }}/{{ $propertyType ?? 'appartement' }}/{{ $w->slug }}"
+                                href="{{ \App\Support\Nav::href('/'.$transaction.'/'.($propertyType ?? 'appartement').'/'.$w->slug) }}"
                                 class="rounded-input border-border bg-surface hover:border-primary inline-block border px-3 py-1.5 text-xs font-semibold transition-colors"
-                            >{{ $w->name_ar }}</a>
+                            >{{ $w->name() }}</a>
                         </li>
                     @endforeach
                 </ul>

@@ -5,20 +5,25 @@
      is `sticky top-0` and has to sit ahead of the content it sticks above. --}}
 @props([
     'title' => null,
-    'description' => 'منصة جزائرية لكراء وبيع العقارات: شقق، فيلات، أراضي ومحلات تجارية في كل ولايات الوطن. ابحث حسب الولاية والبلدية والسعر، وانشر إعلانك مجاناً.',
+    'description' => null,
 ])
 
 @php
-    $siteName = config('taajir.site_name');
-    $tagline = config('taajir.site_tagline');
+    $locale = \App\Enums\Locale::current();
+    $siteName = __('brand.name');
+    $tagline = __('brand.tagline');
+    $description ??= __('brand.description');
 
-    // Matches the Next app's metadata template exactly: a page's own title is
-    // suffixed with the site name, and the home page carries the tagline.
+    // A page's own title is suffixed with the site name, and the home page
+    // carries the tagline instead. Matches the Next app's metadata template.
     $documentTitle = $title ? $title.' | '.$siteName : $siteName.' — '.$tagline;
+
+    // The same page, unprefixed, so every locale's URL for it can be built.
+    $path = \App\Support\Nav::currentPath();
 @endphp
 
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" class="h-full antialiased">
+<html lang="{{ $locale->htmlLang() }}" dir="{{ $locale->direction() }}" class="h-full antialiased">
 <head>
     <meta charset="utf-8">
     {{-- viewport-fit=cover is required by the bottom nav: without it
@@ -35,11 +40,27 @@
     <meta name="description" content="{{ $description }}">
     <meta name="application-name" content="{{ $siteName }}">
 
+    {{-- Three URLs serve the same page, so each has to say so or Google picks
+         one and drops the other two as duplicates. x-default points at Arabic:
+         it is the site's own language and the version every existing inbound
+         link already resolves to. --}}
+    <link rel="canonical" href="{{ url($locale->path($path)) }}">
+    @foreach (\App\Enums\Locale::cases() as $alternate)
+        <link rel="alternate" hreflang="{{ $alternate->htmlLang() }}" href="{{ url($alternate->path($path)) }}">
+    @endforeach
+    <link rel="alternate" hreflang="x-default" href="{{ url(\App\Enums\Locale::default()->path($path)) }}">
+
     <meta property="og:type" content="website">
-    <meta property="og:locale" content="ar_DZ">
+    <meta property="og:locale" content="{{ $locale->openGraphLocale() }}">
+    @foreach (\App\Enums\Locale::cases() as $alternate)
+        @if ($alternate !== $locale)
+            <meta property="og:locale:alternate" content="{{ $alternate->openGraphLocale() }}">
+        @endif
+    @endforeach
     <meta property="og:site_name" content="{{ $siteName }}">
     <meta property="og:title" content="{{ $documentTitle }}">
     <meta property="og:description" content="{{ $description }}">
+    <meta property="og:url" content="{{ url($locale->path($path)) }}">
 
     {{-- Emitted only when a token is configured: an empty `content` reads to a
          crawler as a failed claim of ownership, which is worse than no tag. --}}
@@ -49,7 +70,8 @@
 
     {{-- Cairo, self-hosted: @fonts emits the @font-face block and preloads the
          weights the build downloaded, so nothing is fetched from a font CDN at
-         runtime. --}}
+         runtime. It carries Latin as well as Arabic, so French and English cost
+         no extra request. --}}
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

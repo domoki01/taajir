@@ -17,7 +17,10 @@
      full page load, so the panel is gone either way. --}}
 @props(['deals' => []])
 
-@php($path = \App\Support\Nav::currentPath())
+@php
+    $path = \App\Support\Nav::currentPath();
+    $locale = \App\Enums\Locale::current();
+@endphp
 
 {{-- Backdrop and panel stay mounted so the slide has something to animate from;
      `invisible` keeps them out of the tab order when shut. --}}
@@ -32,14 +35,14 @@
         type="button"
         x-bind:tabindex="$store.menu.open ? 0 : -1"
         x-on:click="$store.menu.hide()"
-        aria-label="إغلاق القائمة"
+        aria-label="{{ __('nav.close_menu') }}"
         class="absolute inset-0 h-full w-full cursor-default bg-black/40"
     ></button>
 
     <div
         role="dialog"
         aria-modal="true"
-        aria-label="قائمة الموقع"
+        aria-label="{{ __('nav.site_menu') }}"
         tabindex="-1"
         {{-- Focus moves into the panel so the keyboard and the screen reader
              follow it; without this, tabbing continues behind the overlay. --}}
@@ -49,14 +52,14 @@
     >
         <div class="border-border flex items-start gap-2 border-b px-4 py-4">
             <div class="min-w-0 flex-1">
-                <p class="text-lg leading-tight font-black">{{ config('taajir.site_name') }}</p>
-                <p class="text-dim mt-0.5 text-xs leading-snug">{{ config('taajir.site_tagline') }}</p>
+                <p class="text-lg leading-tight font-black">{{ __('brand.name') }}</p>
+                <p class="text-dim mt-0.5 text-xs leading-snug">{{ __('brand.tagline') }}</p>
             </div>
             <button
                 type="button"
                 x-bind:tabindex="$store.menu.open ? 0 : -1"
                 x-on:click="$store.menu.hide()"
-                aria-label="إغلاق"
+                aria-label="{{ __('nav.close') }}"
                 class="text-dim hover:text-primary -me-1 grid size-9 shrink-0 place-items-center rounded-full transition-colors"
             >
                 <x-icon.x class="size-5" />
@@ -68,25 +71,51 @@
              can go. --}}
         <div class="px-4 pt-4">
             <a
-                href="{{ \App\Support\Nav::PUBLISH_HREF }}"
+                href="{{ \App\Support\Nav::href(\App\Support\Nav::PUBLISH_HREF) }}"
                 x-bind:tabindex="$store.menu.open ? 0 : -1"
                 class="bg-accent rounded-input flex items-center justify-center gap-2 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90"
             >
                 <x-icon.plus class="size-4" stroke-width="3" />
-                نشر إعلان
+                {{ __('nav.publish') }}
             </a>
         </div>
 
-        <nav aria-label="كل الصفحات" class="flex-1 overflow-y-auto px-2 py-3">
-            <x-layout.menu-section title="تصفّح" :links="\App\Support\Nav::browseLinks($deals)" :path="$path" />
-            <x-layout.menu-section title="حسابي" :links="\App\Support\Nav::accountLinks()" :path="$path" />
-            <x-layout.menu-section title="المنصّة" :links="\App\Support\Nav::infoLinks()" :path="$path" />
+        <nav aria-label="{{ __('nav.all_pages') }}" class="flex-1 overflow-y-auto px-2 py-3">
+            <x-layout.menu-section :title="__('nav.section_browse')" :links="\App\Support\Nav::browseLinks($deals)" :path="$path" />
+            <x-layout.menu-section :title="__('nav.section_account')" :links="\App\Support\Nav::accountLinks()" :path="$path" />
+            <x-layout.menu-section :title="__('nav.section_platform')" :links="\App\Support\Nav::infoLinks()" :path="$path" />
+
+            {{-- The switcher stays inside the panel rather than in a bar. It is
+                 something you touch once, on your first visit, and a permanent
+                 control for it would spend header room that four destinations
+                 already compete for. Each option links to *this* page in that
+                 language, not to the home page: being thrown back to the start
+                 of the site is the thing a language switcher most often gets
+                 wrong. --}}
+            <div class="mb-1">
+                <h2 class="text-dim px-3 pt-3 pb-1 text-[11px] font-extrabold tracking-wide">{{ __('nav.language') }}</h2>
+                <ul class="flex flex-wrap gap-2 px-3 pt-1">
+                    @foreach (\App\Enums\Locale::cases() as $option)
+                        <li>
+                            <a
+                                href="{{ $option->path($path) }}"
+                                hreflang="{{ $option->htmlLang() }}"
+                                lang="{{ $option->htmlLang() }}"
+                                dir="{{ $option->direction() }}"
+                                x-bind:tabindex="$store.menu.open ? 0 : -1"
+                                @if ($option === $locale) aria-current="true" @endif
+                                class="rounded-input inline-block border px-3 py-1.5 text-xs font-bold transition-colors {{ $option === $locale ? 'border-primary bg-primary-soft text-primary' : 'border-border text-muted hover:border-primary' }}"
+                            >{{ $option->nativeName() }}</a>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
         </nav>
 
         <div class="border-border border-t px-4 py-3">
-            <a href="/inscription" x-bind:tabindex="$store.menu.open ? 0 : -1" class="text-primary text-sm font-bold">حساب جديد</a>
+            <a href="{{ \App\Support\Nav::href('/inscription') }}" x-bind:tabindex="$store.menu.open ? 0 : -1" class="text-primary text-sm font-bold">{{ __('nav.sign_up') }}</a>
             <span class="text-dim mx-2 text-sm">·</span>
-            <a href="/connexion" x-bind:tabindex="$store.menu.open ? 0 : -1" class="text-primary text-sm font-bold">دخول</a>
+            <a href="{{ \App\Support\Nav::href('/connexion') }}" x-bind:tabindex="$store.menu.open ? 0 : -1" class="text-primary text-sm font-bold">{{ __('nav.sign_in') }}</a>
         </div>
     </div>
 </div>

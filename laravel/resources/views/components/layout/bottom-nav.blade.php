@@ -28,7 +28,7 @@
          readable the moment a white card slides behind it. The blur keeps the
          glass feel, the opacity keeps the text. --}}
     <nav
-        aria-label="التنقّل السريع"
+        aria-label="{{ __('nav.quick_navigation') }}"
         class="rounded-t-sheet border-border bg-surface/95 shadow-lifted fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur-xl md:hidden"
         style="padding-bottom: env(safe-area-inset-bottom)"
     >
@@ -44,8 +44,8 @@
                  destination borrows the colour, this stops reading as a button. --}}
             <li class="flex items-start">
                 <a
-                    href="{{ \App\Support\Nav::PUBLISH_HREF }}"
-                    aria-label="نشر إعلان"
+                    href="{{ \App\Support\Nav::href(\App\Support\Nav::PUBLISH_HREF) }}"
+                    aria-label="{{ __('nav.publish') }}"
                     class="bg-accent shadow-lifted ring-bg grid size-14 -translate-y-5 place-items-center rounded-full text-white ring-4 transition-transform hover:opacity-95 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
                     <x-icon.plus class="size-7" stroke-width="3" />

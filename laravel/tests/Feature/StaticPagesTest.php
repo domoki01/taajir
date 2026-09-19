@@ -23,7 +23,7 @@ final class StaticPagesTest extends TestCase
     {
         $this->get('/cgu')
             ->assertOk()
-            ->assertSee('<html lang="ar" dir="rtl"', false);
+            ->assertSee('<html lang="ar-DZ" dir="rtl"', false);
     }
 
     public function test_a_page_title_carries_the_site_name(): void

@@ -84,7 +84,7 @@ final class BrowseRoutingTest extends TestCase
         // /cgu would resolve as a transaction type if the catch-all were
         // registered ahead of them.
         foreach (['/a-propos', '/aide', '/cgu', '/confidentialite', '/securite'] as $path) {
-            $this->get($path)->assertOk()->assertSee('<html lang="ar" dir="rtl"', false);
+            $this->get($path)->assertOk()->assertSee('<html lang="ar-DZ" dir="rtl"', false);
         }
     }
 

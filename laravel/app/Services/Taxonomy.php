@@ -57,8 +57,18 @@ final class Taxonomy
      */
     public readonly array $settings;
 
-    /** Deduped per request, the way React's `cache` deduped the Firestore read. */
-    private static ?self $current = null;
+    /**
+     * Deduped per request, the way React's `cache` deduped the Firestore read.
+     *
+     * Keyed by locale, because what this object holds is *translated* labels,
+     * resolved once when it is built. One memo for all three languages hands a
+     * French page the Arabic labels of whichever request built it first — which
+     * is a cross-request leak under any persistent worker, and is visible today
+     * in any process that renders two locales.
+     *
+     * @var array<string, self>
+     */
+    private static array $current = [];
 
     /** @param array<string, mixed> $settings */
     public function __construct(array $settings = [])
@@ -136,8 +146,10 @@ final class Taxonomy
      */
     public static function current(): self
     {
-        if (self::$current !== null) {
-            return self::$current;
+        $locale = app()->getLocale();
+
+        if (isset(self::$current[$locale])) {
+            return self::$current[$locale];
         }
 
         try {
@@ -147,13 +159,13 @@ final class Taxonomy
             $settings = [];
         }
 
-        return self::$current = new self($settings);
+        return self::$current[$locale] = new self($settings);
     }
 
     /** Test seam: the memo is stale once a test writes the settings row. */
     public static function forget(): void
     {
-        self::$current = null;
+        self::$current = [];
     }
 
     /** The label for one slug, never blank — an unknown slug prints as itself. */

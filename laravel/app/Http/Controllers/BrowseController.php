@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Wilaya;
 use App\Services\Geo;
 use App\Services\Taxonomy;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,7 +34,6 @@ final class BrowseController extends Controller
             'wilaya' => $parsed['wilaya'],
             'commune' => $parsed['commune'],
             'heading' => $this->heading($parsed, $taxonomy),
-            'canonical' => $this->canonicalPath($parsed),
         ]);
     }
 
@@ -101,30 +101,34 @@ final class BrowseController extends Controller
         ];
     }
 
-    /** @param array{transaction: string, propertyType: ?string, wilaya: ?Wilaya, commune: ?string} $parsed */
+    /**
+     * "شقة للبيع في الجزائر", "Appartement à vendre en Algérie", "Apartment for
+     * sale in Algeria".
+     *
+     * The deal is a whole phrase rather than a label with a preposition glued
+     * to it, because the three languages glue differently: Arabic prefixes لل,
+     * French says "à vendre", English says "for sale". A deal an admin invented
+     * has a label and no phrase, so it falls back to the locale's pattern.
+     *
+     * @param  array{transaction: string, propertyType: ?string, wilaya: ?Wilaya, commune: ?string}  $parsed
+     */
     private function heading(array $parsed, Taxonomy $taxonomy): string
     {
         $what = $parsed['propertyType']
             ? $taxonomy->propertyTypes[$parsed['propertyType']]
-            : 'عقارات';
-        $deal = $taxonomy->transactionTypes[$parsed['transaction']];
-        $where = $parsed['wilaya'] ? ' في '.$parsed['wilaya']->name_ar : ' في الجزائر';
+            : __('browse.all_properties');
 
-        return $what.' لل'.$deal.$where;
-    }
+        $key = 'taxonomy.deal_headings.'.$parsed['transaction'];
+        $deal = Lang::has($key)
+            ? __($key)
+            : __('taxonomy.deal_headings.fallback', [
+                'label' => $taxonomy->transactionTypes[$parsed['transaction']],
+            ]);
 
-    /**
-     * The canonical path stops at the wilaya, as it does on the other side: the
-     * commune narrows the same page rather than being one of its own.
-     *
-     * @param  array{transaction: string, propertyType: ?string, wilaya: ?Wilaya, commune: ?string}  $parsed
-     */
-    private function canonicalPath(array $parsed): string
-    {
-        return '/'.implode('/', array_filter([
-            $parsed['transaction'],
-            $parsed['propertyType'],
-            $parsed['wilaya']?->slug,
-        ]));
+        $where = $parsed['wilaya']
+            ? __('browse.in_place', ['place' => $parsed['wilaya']->name()])
+            : __('browse.in_algeria');
+
+        return __('browse.heading', ['what' => $what, 'deal' => $deal, 'where' => $where]);
     }
 }
