@@ -1,0 +1,77 @@
+#!/bin/sh
+#
+# Deploy hook for a bare repository on a DirectAdmin account.
+#
+# Install it as hooks/post-receive inside the bare repo and chmod +x. It runs on
+# the server after every push and does the whole deploy: check the branch out,
+# lay the two halves of the tree where they belong, install dependencies,
+# migrate, and rebuild the caches.
+#
+# Edit the four settings below. Everything else should need no changes.
+
+set -eu
+
+# ── Settings ─────────────────────────────────────────────────────────────────
+APP="$HOME/taajir-app"                           # the app tree, above the docroot
+DOCROOT="$HOME/domains/taajirdz.com/public_html" # what the web server serves
+BRANCH="main"                                    # the branch that deploys
+PHP="${PHP_BIN:-php}"                            # e.g. /usr/local/php84/bin/php
+COMPOSER="${COMPOSER_BIN:-composer}"             # often $HOME/composer.phar
+
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+
+while read -r _old _new ref; do
+    [ "$ref" = "refs/heads/$BRANCH" ] || continue
+
+    WORK="$(mktemp -d)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '$WORK'" EXIT
+
+    git --git-dir="$REPO" --work-tree="$WORK" checkout -f "$BRANCH"
+
+    SRC="$WORK/laravel"
+    if [ ! -d "$SRC" ]; then
+        echo "!! no laravel/ directory in this push — nothing deployed" >&2
+        exit 1
+    fi
+
+    echo "→ application tree"
+    # --delete so a file removed in git is removed on the server. The excludes
+    # are the things that live on the server and are not in git: the real .env,
+    # the writable storage tree, and vendor/ (installed below rather than
+    # pushed). rsync will not delete an excluded path.
+    rsync -a --delete \
+        --exclude '.env' \
+        --exclude 'storage/' \
+        --exclude 'vendor/' \
+        --exclude 'node_modules/' \
+        --exclude 'public/' \
+        "$SRC/" "$APP/"
+
+    echo "→ document root"
+    # No --delete here: the document root also holds index.php (the split-layout
+    # front controller, which is NOT the one in git), build/ (the compiled CSS,
+    # JS and fonts, which git does not carry — see docs/deploy-git.md) and the
+    # storage symlink. Wiping those on every push is a site with no styling.
+    #
+    # build/ is not excluded: if a push does carry it, it should win.
+    rsync -a --exclude 'index.php' "$SRC/public/" "$DOCROOT/"
+
+    echo "→ dependencies"
+    cd "$APP"
+    $COMPOSER install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+    echo "→ schema"
+    # --force because a hook has no terminal to confirm at. Migrations here are
+    # additive; anything destructive should be run by hand, watching.
+    $PHP artisan migrate --force
+
+    echo "→ caches"
+    # Rebuilt on every deploy. A stale config:cache is the classic "why is it
+    # still using the old database" hour.
+    $PHP artisan config:cache
+    $PHP artisan route:cache
+    $PHP artisan view:cache
+
+    echo "✓ deployed $BRANCH"
+done

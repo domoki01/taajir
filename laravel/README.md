@@ -85,7 +85,9 @@ It stays in whatever language it was written in, as it must.
 
 ## Deploying
 
-`docs/deploy-directadmin.md`. Read the certificate section first — the Next app
+`docs/deploy-directadmin.md` for the layout and the one-time setup, and
+`docs/deploy-git.md` for pushing over Git with `deploy/post-receive`. Read the
+certificate section first — the Next app
 has been sending a two-year HSTS header, so a new host without a valid
 certificate for the domain is a hard block for returning visitors, not a
 warning they can click through.
