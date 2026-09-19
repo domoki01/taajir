@@ -1,15 +1,40 @@
-{{-- Placeholder. The real home page — featured ads, latest ads, the promo
-     carousel and the wilaya tiles — is phase 4, once listings have a read path.
-     Until then this renders the shell, which is what phase 1 is for: the header,
-     the phone bars and the side menu are the same on every screen, and this is
-     where they get looked at. --}}
 <x-layout.app>
     <x-layout.header />
 
-    <main class="flex-1 py-16">
-        <x-layout.container max="max-w-3xl" class="text-center">
-            <h1 class="text-3xl font-black">{{ __('brand.name') }}</h1>
-            <p class="text-muted mt-2">{{ __('brand.tagline') }}</p>
+    <main class="flex-1 py-6">
+        <x-layout.container>
+            @if (count($featured) > 0)
+                <section>
+                    <h2 class="text-lg font-extrabold">{{ __('listing.featured_listings') }}</h2>
+                    <div class="mt-3">
+                        <x-listing.grid :listings="$featured" />
+                    </div>
+                </section>
+            @endif
+
+            <section class="{{ count($featured) > 0 ? 'mt-10' : '' }}">
+                <h2 class="text-lg font-extrabold">{{ __('listing.latest') }}</h2>
+                <div class="mt-3">
+                    <x-listing.grid :listings="$latest" />
+                </div>
+            </section>
+
+            {{-- The wilaya shortcuts. Ordered by population weight rather than
+                 by code, so they are useful instead of alphabetical — and they
+                 are what gets the long tail of wilaya pages crawled at all. --}}
+            <section class="mt-12">
+                <h2 class="text-base font-extrabold">{{ __('listing.browse_by_wilaya') }}</h2>
+                <ul class="mt-3 flex flex-wrap gap-2">
+                    @foreach ($wilayas as $wilaya)
+                        <li>
+                            <a
+                                href="{{ \App\Support\Nav::href('/vente/appartement/'.$wilaya->slug) }}"
+                                class="rounded-input border-border bg-surface hover:border-primary inline-block border px-3 py-1.5 text-xs font-semibold transition-colors"
+                            >{{ $wilaya->name() }}</a>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
         </x-layout.container>
     </main>
 </x-layout.app>

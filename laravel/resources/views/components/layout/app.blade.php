@@ -73,6 +73,9 @@
          weights the build downloaded, so nothing is fetched from a font CDN at
          runtime. It carries Latin as well as Arabic, so French and English cost
          no extra request. --}}
+    {{-- Per-page <head> additions, e.g. the noindex on /recherche. --}}
+    @stack('head')
+
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

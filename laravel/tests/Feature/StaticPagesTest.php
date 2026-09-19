@@ -4,10 +4,24 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Services\Geo;
+use Database\Seeders\GeographySeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class StaticPagesTest extends TestCase
 {
+    // The home page reads listings and the featured wilayas, so these need a
+    // database now — they did not when the shell was all there was.
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(GeographySeeder::class);
+        Geo::forget();
+    }
+
     /**
      * The URL scheme is the contract with Google and with every WhatsApp message
      * ever sent. These five paths are what the Next app serves today.

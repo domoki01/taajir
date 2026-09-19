@@ -5,7 +5,11 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StaticPageController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -30,7 +34,15 @@ use Illuminate\Support\Facades\URL;
 */
 
 $routes = function (): void {
-    Route::view('/', 'home')->name('home');
+    Route::get('/', HomeController::class)->name('home');
+
+    Route::get('/recherche', SearchController::class)->name('search');
+
+    // The id resolves it; the slug is for humans. A wrong slug 301s to the
+    // right one rather than 404ing, so old links keep landing.
+    Route::get('/annonce/{id}/{slug}', [ListingController::class, 'show'])
+        ->where('id', '[a-z0-9]{12}')
+        ->name('listing');
 
     /*
      * The content pages. Listed one by one rather than as `/{page}` so that the
@@ -82,6 +94,8 @@ Route::get('/'.Locale::default()->value.'/{rest}', fn (string $rest) => redirect
  * WhatsApp and typed off paper, so it stays as short as it can be, and it
  * redirects rather than rendering anything.
  */
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+
 Route::get('/r/{code}', ReferralController::class)
     ->where('code', '[A-Z0-9]{6}')
     ->name('referral');

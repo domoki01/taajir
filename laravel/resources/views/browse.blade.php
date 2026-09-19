@@ -1,10 +1,8 @@
 {{-- The browse page for one clean combination of deal, property type and place.
 
-     Phase 2 builds the routing: the segments resolve against the live taxonomy
-     and the seeded geography, and anything else is a 404. The results grid and
-     the filter panel arrive in phase 4 with the listings read path — there is
-     no listings table yet, and a hard-coded "0 إعلان" would be a claim this
-     page cannot make. --}}
+     These are the indexable pages — the ones a search for "كراء شقة باب الزوار"
+     is meant to land on. Free-form filtering lives at /recherche, which is
+     noindex, so a crawler only ever sees these clean combinations. --}}
 <x-layout.app
     :title="$heading"
     :description="__('browse.meta_description', ['heading' => $heading, 'site' => __('brand.name')])"
@@ -28,6 +26,18 @@
             @if ($commune)
                 <p class="text-muted mt-1 text-sm font-semibold">{{ \App\Services\Geo::placeLabel($wilaya->slug, $commune) }}</p>
             @endif
+
+            <p class="text-muted ltr-nums mt-1 text-sm font-semibold">
+                {{ __('listing.count', ['count' => $results->total()]) }}
+            </p>
+
+            <div class="mt-5">
+                <x-listing.grid :listings="$results" />
+            </div>
+
+            <div class="mt-6">
+                {{ $results->links() }}
+            </div>
 
             {{-- Internal links are what get the long tail of wilaya pages crawled
                  at all; without them these routes exist but are unreachable. --}}

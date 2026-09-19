@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Wilaya;
 use App\Services\Geo;
+use App\Services\ListingQuery;
 use App\Services\Taxonomy;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\View\View;
@@ -27,7 +28,15 @@ final class BrowseController extends Controller
 
         abort_if($parsed === null, Response::HTTP_NOT_FOUND);
 
+        $filters = [
+            'transaction' => $parsed['transaction'],
+            'type' => $parsed['propertyType'],
+            'wilaya' => $parsed['wilaya']?->slug,
+            'commune' => $parsed['commune'],
+        ];
+
         return view('browse', [
+            'results' => ListingQuery::make($filters)->paginate(24),
             'taxonomy' => $taxonomy,
             'transaction' => $parsed['transaction'],
             'propertyType' => $parsed['propertyType'],
