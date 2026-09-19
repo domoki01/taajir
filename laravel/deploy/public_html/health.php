@@ -64,21 +64,49 @@ if (! is_file($base.'/.env') || ! is_file($base.'/vendor/autoload.php')) {
     exit("\nصحّح ما سبق ثم أعد المحاولة.\n");
 }
 
-// Read .env directly rather than booting: the point is to work when booting is
-// what fails.
+/*
+ * Read .env directly rather than booting: the point is to work when booting is
+ * what fails.
+ *
+ * Carefully, because this file is edited in a text editor on someone's desktop
+ * and uploaded. A Windows editor writes CRLF, and FILE_IGNORE_NEW_LINES strips
+ * only the \n — leaving a \r glued to every value, which is invisible in a
+ * panel and makes a token comparison fail for no visible reason. A BOM does the
+ * same to the first key. Laravel's own parser handles both; this one has to as
+ * well or it reports problems that are its own.
+ */
 $env = [];
-foreach (file($base.'/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-    if ($line[0] === '#' || ! str_contains($line, '=')) {
+$contents = file_get_contents($base.'/.env');
+$contents = preg_replace('/^\xEF\xBB\xBF/', '', $contents);
+
+foreach (preg_split("/\r\n|\n|\r/", $contents) as $line) {
+    $line = trim($line);
+    if ($line === '' || $line[0] === '#' || ! str_contains($line, '=')) {
         continue;
     }
     [$key, $value] = explode('=', $line, 2);
-    $env[trim($key)] = trim($value, " \t\"'");
+    $key = trim(preg_replace('/^export\s+/', '', trim($key)));
+    $env[$key] = trim(trim($value), "\"'");
 }
 
 $token = $env['SETUP_TOKEN'] ?? '';
-if ($token === '' || ! hash_equals($token, (string) ($_GET['token'] ?? ''))) {
+$given = (string) ($_GET['token'] ?? '');
+
+if ($token === '') {
     http_response_code(403);
-    exit("\n✖ أضف ?token=... بقيمة SETUP_TOKEN من ملف .env.\n");
+    exit("\n✖ SETUP_TOKEN فارغ في ملف .env.\n   افتح taajir-app/.env وضع له قيمة، ثم أعد المحاولة بنفس القيمة.\n");
+}
+
+if (! hash_equals($token, $given)) {
+    http_response_code(403);
+    // Lengths, never the values — enough to spot a typo or a stray character
+    // without printing the thing the guard exists to protect.
+    printf(
+        "\n✖ التوكن غير مطابق.\n   في .env: %d حرفاً\n   في الرابط: %d حرفاً\n\n   إن تساوى الطول فالفرق مسافة أو حرف مخفي.\n",
+        mb_strlen($token),
+        mb_strlen($given),
+    );
+    exit;
 }
 
 echo "\n";
