@@ -8,7 +8,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
@@ -28,3 +28,21 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+
+/*
+ * On a DirectAdmin or cPanel account the document root is a fixed `public_html`
+ * that cannot be moved, so the application tree sits above it and only the
+ * contents of `public/` go inside — which means `<base>/public` does not exist
+ * on the server at all.
+ *
+ * Laravel still looks there for anything it serves by path, and the first thing
+ * that breaks is the Vite manifest: every page 500s with "Vite manifest not
+ * found" on a deployment that is otherwise perfectly correct. The front
+ * controller in deploy/public_html defines this constant; locally it is absent
+ * and the default stands.
+ */
+if (defined('TAAJIR_PUBLIC_PATH')) {
+    $app->usePublicPath(TAAJIR_PUBLIC_PATH);
+}
+
+return $app;
