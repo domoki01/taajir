@@ -6,6 +6,11 @@
 @props([
     'title' => null,
     'description' => null,
+    // A page that is the whole site for as long as it is showing. The closed
+    // door is the only one: every destination the bars offer is behind the
+    // hold, so drawing them would be four links that bounce the visitor
+    // straight back here, plus a menu of the same.
+    'bare' => false,
 ])
 
 @php
@@ -97,17 +102,23 @@
     @endif
 </head>
 <body class="flex min-h-full flex-col">
-    <x-layout.mobile-top-bar />
+    @unless ($bare)
+        <x-layout.mobile-top-bar />
+    @endunless
 
     {{ $slot }}
 
-    <x-layout.bottom-nav />
+    @unless ($bare)
+        <x-layout.bottom-nav />
+    @endunless
 
     {{-- Rendered once, opened by the header's trigger and the phone bar's. Its
          browse links come from the *live* taxonomy rather than a constant: a
          hard-coded list would offer a category an admin had hidden, which is a
          link to a page they deliberately took down. --}}
-    <x-layout.side-menu :deals="\App\Services\Taxonomy::current()->visibleOptions()['transactionTypes']" />
+    @unless ($bare)
+        <x-layout.side-menu :deals="\App\Services\Taxonomy::current()->visibleOptions()['transactionTypes']" />
+    @endunless
 
     {{-- Page-specific scripts, after Alpine has been started by app.js. The
          sign-in page is the only user of this so far, and it needs the Firebase

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureStaff;
+use App\Http\Middleware\HoldForLaunch;
 use App\Http\Middleware\RedirectIfUnauthenticated;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -29,6 +30,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
             // is decided per screen, and again by every action behind every
             // button.
             'staff' => EnsureStaff::class,
+            // The pre-launch hold. Named rather than global: the closed page
+            // itself, sign-in, publishing and the whole admin section stay
+            // reachable while the catalogue does not.
+            'launched' => HoldForLaunch::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

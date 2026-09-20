@@ -9,6 +9,7 @@ use App\Models\Listing;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Geo;
+use App\Services\Launch;
 use App\Services\ListingService;
 use Database\Seeders\GeographySeeder;
 use Database\Seeders\RoleSeeder;
@@ -45,6 +46,12 @@ final class ListingWriteTest extends TestCase
             'price_unit' => 'total',
             'rooms_code' => 'F3',
         ], $overrides);
+    }
+
+    protected function tearDown(): void
+    {
+        Launch::forget();
+        parent::tearDown();
     }
 
     private function service(): ListingService
@@ -140,7 +147,11 @@ final class ListingWriteTest extends TestCase
 
     public function test_the_launch_hold_wins_over_a_clean_verdict(): void
     {
-        Setting::create(['key' => 'launch', 'value' => ['held' => true]]);
+        // `state`, which is what the Firestore export carries and what the
+        // admin screen writes. Launch memoises per request, so a test that
+        // writes the row has to say so.
+        Setting::create(['key' => 'launch', 'value' => ['state' => Launch::PRELAUNCH]]);
+        Launch::forget();
 
         $listing = $this->service()->create($this->owner, $this->input());
 

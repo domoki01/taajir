@@ -9,7 +9,6 @@ use App\Models\AuditEntry;
 use App\Models\Listing;
 use App\Models\PropertyRequest;
 use App\Models\RequestReply;
-use App\Models\Setting;
 use App\Models\User;
 use App\Support\Links;
 use App\Support\ListingId;
@@ -120,7 +119,7 @@ final class RequestService
 
     private function statusFor(array $verdict): string
     {
-        if ((Setting::read('launch')['held'] ?? false) === true) {
+        if (Launch::current()->isHeld()) {
             return 'pendingLaunch';
         }
 

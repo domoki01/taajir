@@ -10,6 +10,7 @@ use App\Models\Listing;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Geo;
+use App\Services\Launch;
 use App\Services\ModerationService;
 use Database\Seeders\GeographySeeder;
 use Database\Seeders\RoleSeeder;
@@ -32,6 +33,12 @@ final class ModerationTest extends TestCase
         Geo::forget();
         $this->moderator = User::factory()->create(['role_id' => 'moderator']);
         $this->visitor = User::factory()->create(['role_id' => 'user']);
+    }
+
+    protected function tearDown(): void
+    {
+        Launch::forget();
+        parent::tearDown();
     }
 
     private function service(): ModerationService
@@ -114,7 +121,11 @@ final class ModerationTest extends TestCase
     {
         // Reusing `published` for "approved" would put the ad on the site the
         // moment the moderator clicked.
-        Setting::create(['key' => 'launch', 'value' => ['held' => true]]);
+        // `state`, which is what the Firestore export carries and what the
+        // admin screen writes. Launch memoises per request, so a test that
+        // writes the row has to say so.
+        Setting::create(['key' => 'launch', 'value' => ['state' => Launch::PRELAUNCH]]);
+        Launch::forget();
         $listing = Listing::factory()->create([
             'status' => ListingStatus::PendingLaunch->value,
             'published_at' => null,

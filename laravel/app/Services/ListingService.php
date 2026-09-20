@@ -203,6 +203,6 @@ final class ListingService
         // Phase 8 owns this switch; reading it here is what makes the hold
         // real, and its default is "open" so a missing row never stops anyone
         // publishing.
-        return (Setting::read('launch')['held'] ?? false) === true;
+        return Launch::current()->isHeld();
     }
 }

@@ -102,4 +102,30 @@ return [
         trim((string) env('TAAJIR_GOOGLE_SITE_VERIFICATION', '')),
     ),
 
+    /*
+     * ── NOTIFICATION CHANNELS ────────────────────────────────────────────────
+     * None of the three is wired, and each is one variable plus one adapter
+     * away from being so. They are read only to decide whether the admin screen
+     * offers to send or says plainly that nothing can be delivered yet — a send
+     * button that quietly does nothing is worse than no button.
+     *
+     * Push is a decision rather than an omission: sending through FCM needs a
+     * Firebase service-account credential on the web host, and keeping that
+     * credential off the host is the reason §5 verifies ID tokens with php-jwt
+     * instead of the Admin SDK. Until there is a channel that does not need it,
+     * every push row sits in `launch_outbox` waiting for one.
+     */
+    'email_provider_key' => env('EMAIL_PROVIDER_KEY'),
+    'sms_provider_key' => env('SMS_PROVIDER_KEY'),
+    'fcm_ready' => (bool) env('FCM_READY', false),
+
+    /*
+     * The shared secret on GET /api/cron/launch.
+     *
+     * Empty means the route answers 503 and the launch stays where it already
+     * works — the admin's switch. That ordering is deliberate: an automated
+     * launch that half-works is worse than one that plainly does not.
+     */
+    'cron_secret' => env('CRON_SECRET'),
+
 ];

@@ -45,11 +45,11 @@ final class AdminNav
      * An empty `need` means everyone who got past the door — which is everyone
      * holding any permission at all.
      *
-     * Three screens the permission catalogue names are missing here on purpose:
-     * the launch gate, the broadcast and the affiliate programme arrive in
-     * phase 8 (§13), and listing a row now would put a 404 behind it — the same
-     * objection as a row that 403s, for the same reason. They go in with the
-     * routes, not before.
+     * One screen the permission catalogue names is missing here on purpose:
+     * the affiliate programme, which §11 says is legitimately optional for v1
+     * and which this deployment ships without. Listing a row for it would put a
+     * 404 behind it — the same objection as a row that 403s, for the same
+     * reason. It goes in with its routes, not before.
      *
      * @return list<array{href: string, key: string, icon: string, group: string, need: list<Permission>}>
      */
@@ -67,6 +67,9 @@ final class AdminNav
             ['href' => '/admin/roles', 'key' => 'roles', 'icon' => 'shield-check', 'group' => self::PEOPLE, 'need' => [Permission::RolesManage]],
 
             ['href' => '/admin/publicites', 'key' => 'promos', 'icon' => 'image', 'group' => self::GROWTH, 'need' => [Permission::PromosManage]],
+            ['href' => '/admin/notifications', 'key' => 'push', 'icon' => 'bell', 'group' => self::GROWTH, 'need' => [Permission::PushBroadcast]],
+
+            ['href' => '/admin/lancement', 'key' => 'launch', 'icon' => 'rocket', 'group' => self::PLATFORM, 'need' => [Permission::LaunchControl]],
 
             ['href' => '/admin/identite', 'key' => 'branding', 'icon' => 'palette', 'group' => self::PLATFORM, 'need' => [Permission::BrandingEdit]],
             ['href' => '/admin/journal', 'key' => 'audit', 'icon' => 'scroll-text', 'group' => self::PLATFORM, 'need' => [Permission::AuditView]],

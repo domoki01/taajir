@@ -4,8 +4,10 @@ use App\Enums\Locale;
 use App\Http\Controllers\Admin\ArticleController as AdminArticleController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BrandingController;
+use App\Http\Controllers\Admin\BroadcastController;
 use App\Http\Controllers\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Admin\HomeController as AdminHomeController;
+use App\Http\Controllers\Admin\LaunchController as AdminLaunchController;
 use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Admin\PromoController;
 use App\Http\Controllers\Admin\RoleController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\Dashboard\ListingController as DashboardListingControll
 use App\Http\Controllers\Dashboard\SavedSearchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LaunchController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\PublishController;
 use App\Http\Controllers\ReferralController;
@@ -51,14 +54,31 @@ use Illuminate\Support\Facades\URL;
 */
 
 $routes = function (): void {
-    Route::get('/', HomeController::class)->name('home');
+    /*
+     * The home page is held too. It renders featured and latest listings, and
+     * a hold that left it open would show the whole catalogue through the one
+     * URL everybody types — the ads stay `published` while the site is held,
+     * so nothing else would be hiding them.
+     *
+     * The articles are deliberately NOT held: they carry no listings, and they
+     * are the one surface worth having indexed before the doors open.
+     */
+    Route::get('/', HomeController::class)->middleware('launched')->name('home');
 
-    Route::get('/recherche', SearchController::class)->name('search');
+    /*
+     * The closed door. Outside the launch guard, obviously — it is where the
+     * guard sends people.
+     */
+    Route::get('/lancement', [LaunchController::class, 'show'])->name('launch');
+    Route::get('/api/launch-state', [LaunchController::class, 'state'])->name('launch.state');
+
+    Route::get('/recherche', SearchController::class)->middleware('launched')->name('search');
 
     // The id resolves it; the slug is for humans. A wrong slug 301s to the
     // right one rather than 404ing, so old links keep landing.
     Route::get('/annonce/{id}/{slug}', [ListingController::class, 'show'])
         ->where('id', '[a-z0-9]{12}')
+        ->middleware('launched')
         ->name('listing');
 
     /*
@@ -110,10 +130,10 @@ $routes = function (): void {
     /*
      * The demand feed. Reading is open; posting is not.
      */
-    Route::get('/demandes', [RequestController::class, 'index'])->name('requests');
+    Route::get('/demandes', [RequestController::class, 'index'])->middleware('launched')->name('requests');
     Route::get('/demandes/nouvelle', [RequestController::class, 'create'])->middleware('auth.session')->name('requests.create');
     Route::post('/demandes', [RequestController::class, 'store'])->middleware('auth.session')->name('requests.store');
-    Route::get('/demandes/{id}', [RequestController::class, 'show'])->name('requests.show');
+    Route::get('/demandes/{id}', [RequestController::class, 'show'])->middleware('launched')->name('requests.show');
     Route::post('/demandes/{id}/repondre', [RequestController::class, 'reply'])->middleware('auth.session')->name('requests.reply');
 
     Route::middleware('auth.session')->group(function () {
@@ -213,6 +233,19 @@ $routes = function (): void {
         Route::post('/commentaires/articles/{comment}/afficher', [AdminCommentController::class, 'showArticleComment'])->name('admin.comments.article.show');
         Route::delete('/commentaires/articles/{comment}', [AdminCommentController::class, 'destroyArticleComment'])->name('admin.comments.article.destroy');
 
+        /*
+         * The launch. Its own permission: a moderator reviews ads, they do not
+         * decide whether the public can see the site at all.
+         */
+        Route::get('/lancement', [AdminLaunchController::class, 'index'])->name('admin.launch');
+        Route::post('/lancement', [AdminLaunchController::class, 'execute'])->name('admin.launch.execute');
+        Route::post('/lancement/etat', [AdminLaunchController::class, 'state'])->name('admin.launch.state');
+        Route::post('/lancement/compte-a-rebours', [AdminLaunchController::class, 'timer'])->name('admin.launch.timer');
+
+        // Speaking to everybody at once, behind its own permission.
+        Route::get('/notifications', [BroadcastController::class, 'index'])->name('admin.broadcast');
+        Route::post('/notifications', [BroadcastController::class, 'store'])->name('admin.broadcast.store');
+
         Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
         // The demand queue rides in the same screen, on its own permission.
         Route::post('/moderation/demandes/{propertyRequest}', [ModerationController::class, 'decideRequest'])->name('admin.moderation.request');
@@ -236,6 +269,7 @@ $routes = function (): void {
      */
     Route::get('/{transaction}/{rest?}', BrowseController::class)
         ->where('rest', '.*')
+        ->middleware('launched')
         ->name('browse');
 };
 
@@ -253,6 +287,12 @@ Route::get('/'.Locale::default()->value.'/{rest}', fn (string $rest) => redirect
  * WhatsApp and typed off paper, so it stays as short as it can be, and it
  * redirects rather than rendering anything.
  */
+/*
+ * The unattended launch. Unlocalised and outside every group: it is called by a
+ * cron with a bearer token, never by a browser.
+ */
+Route::get('/api/cron/launch', [LaunchController::class, 'cron'])->name('cron.launch');
+
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 
 // Unlocalised: it returns data the form reads, and the commune names come back

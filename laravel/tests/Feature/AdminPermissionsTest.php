@@ -30,10 +30,9 @@ final class AdminPermissionsTest extends TestCase
     /**
      * The screen each permission opens, for the ones phase 7 delivers.
      *
-     * launch.control, push.broadcast and affiliate.manage are absent on
-     * purpose: §13 puts the launch gate, notifications and the affiliate
-     * programme in phase 8, and a route asserted here before it exists would
-     * be a test that passes by being wrong.
+     * affiliate.manage is absent on purpose: §11 calls the affiliate
+     * programme legitimately optional for v1 and this deployment ships without
+     * it, so a route asserted here would be a test that passes by being wrong.
      *
      * @return array<string, array{string, string}>
      */
@@ -50,6 +49,8 @@ final class AdminPermissionsTest extends TestCase
             'roles.manage' => ['roles.manage', '/admin/roles'],
             'promos.manage' => ['promos.manage', '/admin/publicites'],
             'branding.edit' => ['branding.edit', '/admin/identite'],
+            'launch.control' => ['launch.control', '/admin/lancement'],
+            'push.broadcast' => ['push.broadcast', '/admin/notifications'],
             'audit.view' => ['audit.view', '/admin/journal'],
         ];
     }
@@ -93,25 +94,24 @@ final class AdminPermissionsTest extends TestCase
         $this->actingAs($this->holderOf($other))->get($path)->assertForbidden();
     }
 
-    public function test_the_three_phase_eight_permissions_have_no_row_and_no_screen_yet(): void
+    public function test_the_affiliate_permission_has_no_row_and_no_screen(): void
     {
-        // Stated rather than assumed, so the gap is visible in the suite rather
-        // than only in the roadmap: §13 puts the launch gate, the broadcast and
-        // the affiliate programme in phase 8.
+        // Stated rather than assumed, so the gap is visible in the suite and
+        // not only in the roadmap: §11 calls the affiliate programme optional
+        // for v1, and this deployment ships without it. Its points ledger is
+        // still migrated, so nobody's balance is lost when it does arrive.
         //
         // No menu row either. A row with a 404 behind it is the same objection
         // as a row that 403s — it goes in when the route does.
-        foreach ([Permission::LaunchControl, Permission::PushBroadcast, Permission::AffiliateManage] as $permission) {
-            foreach (AdminNav::items() as $item) {
-                $this->assertNotContains($permission, $item['need'], $permission->value);
-            }
+        foreach (AdminNav::items() as $item) {
+            $this->assertNotContains(Permission::AffiliateManage, $item['need']);
         }
     }
 
     public function test_every_permission_in_the_catalogue_is_accounted_for(): void
     {
         $delivered = array_keys(self::screens());
-        $pending = ['launch.control', 'push.broadcast', 'affiliate.manage'];
+        $pending = ['affiliate.manage'];
 
         $this->assertEqualsCanonicalizing(
             Permission::values(),
