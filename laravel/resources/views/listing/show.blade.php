@@ -104,6 +104,8 @@
                 {{ __('listing.views', ['count' => $listing->view_count]) }}
             </p>
 
+            <x-listing.comments :listing="$listing" />
+
             @if (count($similar) > 0)
                 <section class="mt-12">
                     <h2 class="text-base font-extrabold">{{ __('listing.latest') }}</h2>

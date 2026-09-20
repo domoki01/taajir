@@ -5,12 +5,16 @@ use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\BrowseController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\CommuneController;
+use App\Http\Controllers\Dashboard\ListingController as DashboardListingController;
+use App\Http\Controllers\Dashboard\SavedSearchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\PublishController;
 use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\RequestController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StaticPageController;
@@ -70,6 +74,25 @@ $routes = function (): void {
         Route::get('/publier', [PublishController::class, 'create'])->name('publish');
         Route::post('/publier', [PublishController::class, 'store'])->name('publish.store');
         Route::get('/merci', [PublishController::class, 'thanks'])->name('thanks');
+    });
+
+    /*
+     * The demand feed. Reading is open; posting is not.
+     */
+    Route::get('/demandes', [RequestController::class, 'index'])->name('requests');
+    Route::get('/demandes/nouvelle', [RequestController::class, 'create'])->middleware('auth.session')->name('requests.create');
+    Route::post('/demandes', [RequestController::class, 'store'])->middleware('auth.session')->name('requests.store');
+    Route::get('/demandes/{id}', [RequestController::class, 'show'])->name('requests.show');
+    Route::post('/demandes/{id}/repondre', [RequestController::class, 'reply'])->middleware('auth.session')->name('requests.reply');
+
+    Route::middleware('auth.session')->group(function () {
+        Route::post('/annonce/{listing}/commentaires', [CommentController::class, 'store'])->name('comments.store');
+        Route::delete('/commentaires/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+
+        Route::get('/tableau-de-bord/annonces', [DashboardListingController::class, 'index'])->name('dashboard.listings');
+        Route::get('/tableau-de-bord/alertes', [SavedSearchController::class, 'index'])->name('dashboard.alerts');
+        Route::post('/tableau-de-bord/alertes', [SavedSearchController::class, 'store'])->name('dashboard.alerts.store');
+        Route::delete('/tableau-de-bord/alertes/{savedSearch}', [SavedSearchController::class, 'destroy'])->name('dashboard.alerts.destroy');
     });
 
     /*
