@@ -4,6 +4,7 @@ use App\Enums\Locale;
 use App\Http\Controllers\Admin\ArticleController as AdminArticleController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BrandingController;
+use App\Http\Controllers\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Admin\HomeController as AdminHomeController;
 use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Admin\PromoController;
@@ -199,7 +200,22 @@ $routes = function (): void {
         Route::patch('/articles/{article}', [AdminArticleController::class, 'update'])->name('admin.articles.update');
         Route::delete('/articles/{article}', [AdminArticleController::class, 'destroy'])->name('admin.articles.destroy');
 
+        /*
+         * Comments, across both threads. Hiding keeps the row and takes the
+         * comment off the page; deleting is final and offered anyway, because
+         * some things should not stay on a disk.
+         */
+        Route::get('/commentaires', [AdminCommentController::class, 'index'])->name('admin.comments');
+        Route::post('/commentaires/annonces/{comment}/masquer', [AdminCommentController::class, 'hide'])->name('admin.comments.hide');
+        Route::post('/commentaires/annonces/{comment}/afficher', [AdminCommentController::class, 'show'])->name('admin.comments.show');
+        Route::delete('/commentaires/annonces/{comment}', [AdminCommentController::class, 'destroy'])->name('admin.comments.destroy');
+        Route::post('/commentaires/articles/{comment}/masquer', [AdminCommentController::class, 'hideArticleComment'])->name('admin.comments.article.hide');
+        Route::post('/commentaires/articles/{comment}/afficher', [AdminCommentController::class, 'showArticleComment'])->name('admin.comments.article.show');
+        Route::delete('/commentaires/articles/{comment}', [AdminCommentController::class, 'destroyArticleComment'])->name('admin.comments.article.destroy');
+
         Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
+        // The demand queue rides in the same screen, on its own permission.
+        Route::post('/moderation/demandes/{propertyRequest}', [ModerationController::class, 'decideRequest'])->name('admin.moderation.request');
         Route::post('/moderation/{listing}/approuver', [ModerationController::class, 'approve'])->name('admin.moderation.approve');
         Route::post('/moderation/{listing}/refuser', [ModerationController::class, 'reject'])->name('admin.moderation.reject');
         Route::post('/moderation/{listing}/mettre-en-avant', [ModerationController::class, 'feature'])->name('admin.moderation.feature');

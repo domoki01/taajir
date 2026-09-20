@@ -4,19 +4,10 @@
      likely to give up on the site. Each card carries what the automatic check
      flagged, so nobody has to re-read a paragraph hunting for the problem a
      hundred times a day. --}}
-<x-layout.app :title="__('admin.moderation')">
-    <main class="flex-1 py-6">
-        <x-layout.container max="max-w-3xl">
-            <h1 class="text-xl font-black">{{ __('admin.moderation') }}</h1>
+<x-admin.page :root="false" :title="__('admin.moderation')"
+    :subtitle="__('listing.count', ['count' => $queue->total()])">
 
-            @if (session('status'))
-                <p class="rounded-card bg-success/10 text-success mt-4 px-4 py-3 text-sm font-bold">{{ session('status') }}</p>
-            @endif
-
-            <p class="text-muted ltr-nums mt-1 text-sm font-semibold">
-                {{ __('listing.count', ['count' => $queue->total()]) }}
-            </p>
-
+    @if ($canModerateListings)
             @forelse ($queue as $listing)
                 <article class="rounded-card border-border bg-surface shadow-soft mt-4 border p-4">
                     <div class="flex items-start gap-3">
@@ -70,6 +61,60 @@
             @endforelse
 
             <div class="mt-6">{{ $queue->links() }}</div>
-        </x-layout.container>
-    </main>
-</x-layout.app>
+    @endif
+
+    {{-- The demand queue, on its own permission. A moderator may hold one of
+         the two: the section is absent rather than present and refusing. --}}
+    @if ($canModerateRequests)
+        <section class="{{ $canModerateListings ? 'border-border mt-10 border-t pt-6' : 'mt-4' }}">
+            <h2 class="text-lg font-extrabold">
+                {{ __('admin.requests.queue') }}
+                <span class="text-dim ltr-nums ms-2 text-sm font-bold">{{ $requests->count() }}</span>
+            </h2>
+
+            @forelse ($requests as $demand)
+                <article class="rounded-card border-border bg-surface shadow-soft mt-4 border p-4">
+                    <p class="text-dim text-xs font-bold">
+                        {{ __('community.intent_'.$demand->intent) }} · {{ $demand->placeLabel() }} · {{ $demand->owner_name }}
+                    </p>
+                    <h3 class="mt-1 text-sm font-bold">{{ $demand->title }}</h3>
+
+                    @if ($flag = $flagLabel($demand->policy_rule))
+                        <p class="bg-warning/10 text-warning mt-2 inline-block rounded-full px-2.5 py-1 text-[11px] font-bold">
+                            {{ $flag }}
+                        </p>
+                    @endif
+
+                    <p class="text-muted mt-2 line-clamp-4 text-xs leading-relaxed whitespace-pre-line">{{ $demand->description }}</p>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <form method="POST" action="{{ \App\Support\Nav::href('/admin/moderation/demandes/'.$demand->id) }}">
+                            @csrf
+                            <input type="hidden" name="status" value="visible">
+                            <button class="bg-accent rounded-input px-4 py-2 text-xs font-bold text-white">{{ __('admin.approve') }}</button>
+                        </form>
+
+                        {{-- A refusal carries its reason, the same rule the ad
+                             queue holds: without one the author cannot act on
+                             it and posts the same thing again. --}}
+                        <form method="POST" action="{{ \App\Support\Nav::href('/admin/moderation/demandes/'.$demand->id) }}"
+                            class="flex min-w-0 flex-1 items-center gap-2">
+                            @csrf
+                            <input type="hidden" name="status" value="rejected">
+                            <input name="reason" required minlength="4" maxlength="255"
+                                placeholder="{{ __('admin.reject_reason') }}"
+                                class="rounded-input border-border min-w-0 flex-1 border px-3 py-2 text-xs">
+                            <button class="text-danger rounded-input border-danger/40 border px-4 py-2 text-xs font-bold">
+                                {{ __('admin.reject') }}
+                            </button>
+                        </form>
+                    </div>
+                </article>
+            @empty
+                <p class="rounded-card border-border bg-surface mt-4 border border-dashed px-6 py-10 text-center font-bold">
+                    {{ __('admin.requests.queue_empty') }}
+                </p>
+            @endforelse
+        </section>
+    @endif
+</x-admin.page>

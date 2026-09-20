@@ -67,7 +67,58 @@ return [
                 'unfeature' => 'removed a listing from featured',
                 'archive' => 'archived a listing',
             ],
+            'user' => [
+                'role' => 'changed an account’s role',
+                'ban' => 'suspended an account',
+                'unban' => 'restored an account',
+                'quota' => 'changed a quota',
+                'approve' => 'approved an account',
+                'unapprove' => 'put an account back in the queue',
+            ],
+            'role' => [
+                'save' => 'changed the permissions',
+                'create' => 'added a role',
+                'delete' => 'deleted a role',
+            ],
+            'promo' => [
+                'create' => 'added a banner',
+                'update' => 'updated a banner',
+                'show' => 'showed a banner',
+                'hide' => 'hid a banner',
+                'delete' => 'deleted a banner',
+            ],
+            'article' => [
+                'create' => 'wrote an article',
+                'edit' => 'edited an article',
+                'delete' => 'deleted an article',
+            ],
+            'comment' => [
+                'hide' => 'hid a comment',
+                'show' => 'showed a comment again',
+                'delete' => 'deleted a comment',
+            ],
+            'request' => [
+                'visible' => 'approved a demand',
+                'hidden' => 'hid a demand',
+                'rejected' => 'refused a demand',
+            ],
+            'filter' => [
+                'save' => 'changed the categories and the filter',
+                'type_add' => 'added a property type',
+                'type_delete' => 'deleted a property type',
+                'deal_add' => 'added a deal type',
+                'deal_delete' => 'deleted a deal type',
+                'reset' => 'reset the filter to its defaults',
+            ],
+            'branding' => [
+                'save' => 'changed the site’s identity',
+                'reset' => 'restored the built-in identity',
+            ],
+            'access' => [
+                'approval' => 'changed registration approval',
+            ],
         ],
+
         'targets' => [
             'listing' => 'listing',
             'user' => 'account',
@@ -240,6 +291,28 @@ return [
         'too_many' => 'The maximum is :max banners',
         'bad_title' => 'Write a short description — it doubles as the image’s alt text',
         'bad_link' => 'Not a valid link — it has to start with https:// or with / if it is internal',
+    ],
+
+    'comments' => [
+        'count' => ':count comments · :hidden hidden',
+        'none' => 'No comments here.',
+        'note' => 'Hiding keeps the comment and takes it off the page — better than deleting, because the decision stays reviewable and its author can still see what they wrote. Deleting is final.',
+        'on_listings' => 'On listings',
+        'on_articles' => 'On articles',
+        'hide' => 'Hide',
+        'show' => 'Show again',
+        'delete' => 'Delete',
+        'reason' => 'Reason for hiding (optional)',
+        'hidden' => 'Comment hidden',
+        'shown' => 'Comment shown again',
+        'deleted' => 'Comment deleted',
+    ],
+
+    'requests' => [
+        'queue' => 'Demands awaiting review',
+        'queue_empty' => 'No demands are waiting for review.',
+        'decided' => 'Decision recorded',
+        'needs_reason' => 'Give the reason — without it the author does not know what to fix',
     ],
 
     'moderation' => 'Moderation',

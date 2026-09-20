@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+/*
+    Latin runs inside Arabic prose are wrapped in U+2066 / U+2069 (an isolate).
+    Without them the bidi algorithm reorders the run against the sentence, and
+    a path comes out as "vente/{slug}/alger/" — the slashes migrate. The .ltr-nums
+    class does this job where there is an element to hang it on; inside a lang
+    string there is not, and this is what the characters are for.
+*/
 return [
     'articles' => 'مقالات',
     'meta_description' => 'مقالات عن سوق العقار في الجزائر: كيفاش تكري، كيفاش تبيع، والأوراق اللي تحتاجها.',
@@ -27,7 +34,7 @@ return [
     'excerpt_hint' => 'جملة ولا جوج. يستعملو في نتائج البحث وفي بطاقة المقال.',
     'body' => 'النص',
     'cover' => 'صورة الغلاف',
-    'cover_hint' => 'رابط https ولا مسار داخل الموقع يبدا بـ / .',
+    'cover_hint' => 'رابط ⁦https⁩ ولا مسار داخل الموقع يبدا بـ ⁦/⁩ .',
     'cover_alt' => 'وصف الصورة',
     'tags' => 'الوسوم',
     'tags_placeholder' => 'كراء، الجزائر العاصمة، نصائح',
@@ -43,7 +50,7 @@ return [
     'syntax' => "## عنوان فرعي\n- نقطة في قائمة\n> اقتباس\nأي سطر آخر يولّي فقرة. **نص غليظ** بين نجمتين.",
 
     'too_short' => 'المقال قصير برك — اكتب على الأقل 3 فقرات',
-    'bad_slug' => 'الرابط لازم بحروف لاتينية وشرطات (مثال: marche-immobilier-algerie)',
+    'bad_slug' => 'الرابط لازم بحروف لاتينية وشرطات (مثال: ⁦marche-immobilier-algerie⁩)',
     'reserved_slug' => 'هذا الرابط محجوز، اختر واحد آخر',
     'slug_taken' => 'كاين مقال بنفس الرابط',
     'not_open' => 'ما يمكنش التعليق على هذا المقال',

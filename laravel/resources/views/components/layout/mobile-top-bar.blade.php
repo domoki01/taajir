@@ -35,7 +35,10 @@
             aria-label="{{ __('nav.back') }}"
             class="text-primary grid size-10 place-items-center rounded-full transition-transform active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"
         >
-            <x-icon.chevron-right class="size-6" stroke-width="2.4" />
+            {{-- Mirrored in RTL rather than fixed to one direction: "back" is
+                 right in Arabic and left in French, and the bar is on every
+                 page of all three languages. --}}
+            <x-icon.chevron-left class="size-6 rtl:-scale-x-100" stroke-width="2.4" />
         </button>
     @else
         <x-layout.menu-trigger />

@@ -67,7 +67,58 @@ return [
                 'unfeature' => 'a retiré la mise en avant',
                 'archive' => 'a archivé une annonce',
             ],
+            'user' => [
+                'role' => 'a changé le rôle d’un compte',
+                'ban' => 'a suspendu un compte',
+                'unban' => 'a réactivé un compte',
+                'quota' => 'a modifié un quota',
+                'approve' => 'a approuvé un compte',
+                'unapprove' => 'a remis un compte en attente',
+            ],
+            'role' => [
+                'save' => 'a modifié les permissions',
+                'create' => 'a ajouté un rôle',
+                'delete' => 'a supprimé un rôle',
+            ],
+            'promo' => [
+                'create' => 'a ajouté une bannière',
+                'update' => 'a modifié une bannière',
+                'show' => 'a affiché une bannière',
+                'hide' => 'a masqué une bannière',
+                'delete' => 'a supprimé une bannière',
+            ],
+            'article' => [
+                'create' => 'a écrit un article',
+                'edit' => 'a modifié un article',
+                'delete' => 'a supprimé un article',
+            ],
+            'comment' => [
+                'hide' => 'a masqué un commentaire',
+                'show' => 'a réaffiché un commentaire',
+                'delete' => 'a supprimé un commentaire',
+            ],
+            'request' => [
+                'visible' => 'a approuvé une demande',
+                'hidden' => 'a masqué une demande',
+                'rejected' => 'a refusé une demande',
+            ],
+            'filter' => [
+                'save' => 'a modifié les catégories et le filtre',
+                'type_add' => 'a ajouté un type de bien',
+                'type_delete' => 'a supprimé un type de bien',
+                'deal_add' => 'a ajouté un type d’opération',
+                'deal_delete' => 'a supprimé un type d’opération',
+                'reset' => 'a remis le filtre par défaut',
+            ],
+            'branding' => [
+                'save' => 'a modifié l’identité du site',
+                'reset' => 'a rétabli l’identité d’origine',
+            ],
+            'access' => [
+                'approval' => 'a changé l’approbation des inscriptions',
+            ],
         ],
+
         'targets' => [
             'listing' => 'annonce',
             'user' => 'compte',
@@ -240,6 +291,28 @@ return [
         'too_many' => 'Le maximum est de :max bannières',
         'bad_title' => 'Écrivez une courte description — elle sert aussi de texte alternatif à l’image',
         'bad_link' => 'Lien invalide — il doit commencer par https:// ou par / s’il est interne au site',
+    ],
+
+    'comments' => [
+        'count' => ':count commentaires · :hidden masqués',
+        'none' => 'Aucun commentaire ici.',
+        'note' => 'Masquer conserve le commentaire et le retire de la page — mieux que supprimer, parce que la décision reste révisable et que son auteur voit toujours ce qu’il a écrit. La suppression est définitive.',
+        'on_listings' => 'Sur les annonces',
+        'on_articles' => 'Sur les articles',
+        'hide' => 'Masquer',
+        'show' => 'Réafficher',
+        'delete' => 'Supprimer',
+        'reason' => 'Motif du masquage (facultatif)',
+        'hidden' => 'Commentaire masqué',
+        'shown' => 'Commentaire réaffiché',
+        'deleted' => 'Commentaire supprimé',
+    ],
+
+    'requests' => [
+        'queue' => 'Demandes en attente',
+        'queue_empty' => 'Aucune demande en attente de vérification.',
+        'decided' => 'Décision enregistrée',
+        'needs_reason' => 'Indiquez le motif — sans lui, l’auteur ne sait pas quoi corriger',
     ],
 
     'moderation' => 'Modération',

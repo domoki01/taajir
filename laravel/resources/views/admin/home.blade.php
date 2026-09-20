@@ -53,8 +53,12 @@
                                      you open a screen to find out what it is. --}}
                                 <span class="text-dim block text-xs">{{ __('admin.hints.'.$row['key']) }}</span>
                             </span>
-                            <x-icon.chevron-right class="text-dim size-4 shrink-0 rtl:block ltr:hidden" />
-                            <x-icon.chevron-left class="text-dim size-4 shrink-0 ltr:block rtl:hidden" />
+                            {{-- Forward, so it points the way the page reads:
+                                 right in French, left in Arabic. Mirrored
+                                 rather than swapped for a second icon — one
+                                 element, and it cannot get out of step with
+                                 itself. --}}
+                            <x-icon.chevron-right class="text-dim size-4 shrink-0 rtl:-scale-x-100" />
                         </a>
                     </li>
                 @endforeach

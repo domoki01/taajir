@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\Permission;
+use App\Models\AuditEntry;
 use App\Models\Listing;
 use App\Models\PropertyRequest;
 use App\Models\RequestReply;
@@ -134,5 +136,37 @@ final class RequestService
         }
 
         RateLimiter::hit($key, $seconds);
+    }
+
+    /**
+     * A moderator's decision on a demand.
+     *
+     * Three states and no fourth: visible, hidden with a reason, or refused
+     * with one. Hidden and refused both keep the row and both stay readable to
+     * their author, because a post that vanishes without a word reads as a bug
+     * and gets written again an hour later.
+     */
+    public function moderate(User $actor, PropertyRequest $request, string $status, string $reason = ''): void
+    {
+        abort_unless($actor->hasPermission(Permission::RequestsModerate), 403);
+        abort_unless(in_array($status, ['visible', 'hidden', 'rejected'], true), 422);
+
+        $reason = trim($reason);
+
+        // A refusal with no reason is one the author cannot act on, so they
+        // post the same thing again — the rule the listing queue already holds.
+        if ($status !== 'visible' && $reason === '') {
+            throw ValidationException::withMessages(['reason' => __('admin.requests.needs_reason')]);
+        }
+
+        $request->forceFill([
+            'status' => $status,
+            'hidden_reason' => $status === 'hidden' ? $reason : null,
+            'rejection_reason' => $status === 'rejected' ? $reason : null,
+            'moderated_by' => $actor->uid,
+            'moderated_at' => now(),
+        ])->save();
+
+        AuditEntry::record($actor, 'request.'.$status, 'request', $request->id, $reason === '' ? [] : ['reason' => $reason]);
     }
 }

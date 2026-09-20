@@ -31,6 +31,24 @@ final class Branding
         'accentSoft' => '--color-accent-soft',
     ];
 
+    /**
+     * What the build paints when nothing has been saved.
+     *
+     * Duplicated from the @theme block in app.css, which is the authority —
+     * these exist so the screen's colour wells can show the colour actually in
+     * use. Without them an unset field reads as black, which tells an admin the
+     * site's primary colour is black. Keep the two in step, as with VARIABLES
+     * above; a value that drifts here misinforms the picker and nothing else.
+     */
+    public const DEFAULTS = [
+        'primary' => '#1e293b',
+        'primaryStrong' => '#0f172a',
+        'primarySoft' => '#dde5f0',
+        'accent' => '#059669',
+        'accentStrong' => '#047857',
+        'accentSoft' => '#d1fae5',
+    ];
+
     public const HEX = '/^#[0-9a-f]{6}$/i';
 
     private static ?self $current = null;
@@ -104,5 +122,11 @@ final class Branding
     public static function forget(): void
     {
         self::$current = null;
+    }
+
+    /** The colour in use for one token: the admin's, or the build's. */
+    public function effective(string $key): string
+    {
+        return $this->colors[$key] ?? self::DEFAULTS[$key] ?? '#000000';
     }
 }

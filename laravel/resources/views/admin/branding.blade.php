@@ -55,13 +55,18 @@
                          x-data is on the wrapper: $refs only reaches inside the
                          component that declared them, so declaring it on the
                          well would leave the field out of scope. --}}
-                    <div class="flex items-center gap-3" x-data="{ hex: @js($value) }">
+                    <div class="flex items-center gap-3" x-data="{ hex: @js($value), fallback: @js(\App\Services\Branding::DEFAULTS[$key] ?? '#000000') }">
+                        {{-- An empty field falls back to the build's colour
+                             rather than to black: the well is showing what the
+                             site is painted with right now, and black would
+                             tell an admin their primary colour is black. --}}
                         <input type="color" aria-hidden="true" tabindex="-1"
-                            :value="hex || '#000000'" x-on:input="hex = $event.target.value"
+                            :value="hex || fallback" x-on:input="hex = $event.target.value"
                             class="size-9 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent p-0">
                         <label class="min-w-0 flex-1">
                             <span class="block text-xs font-bold">{{ __('admin.branding.colour_names.'.$key) }}</span>
-                            <input name="colors[{{ $key }}]" x-model="hex" dir="ltr" placeholder="#rrggbb"
+                            <input name="colors[{{ $key }}]" x-model="hex" dir="ltr"
+                                placeholder="{{ \App\Services\Branding::DEFAULTS[$key] ?? '#rrggbb' }}"
                                 pattern="#[0-9a-fA-F]{6}"
                                 class="rounded-input border-border ltr-nums mt-1 w-32 border px-3 py-2 text-start text-xs">
                         </label>

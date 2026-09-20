@@ -29,8 +29,9 @@
             @unless ($root)
                 <a href="{{ \App\Support\Nav::href('/admin') }}"
                     class="text-dim hover:text-primary mb-3 hidden items-center gap-1 text-xs font-bold md:inline-flex">
-                    <x-icon.chevron-right class="size-4 rtl:block ltr:hidden" stroke-width="2.4" />
-                    <x-icon.chevron-left class="size-4 ltr:block rtl:hidden" stroke-width="2.4" />
+                    {{-- Back, so it points against the reading direction:
+                         left in French, right in Arabic. --}}
+                    <x-icon.chevron-left class="size-4 rtl:-scale-x-100" stroke-width="2.4" />
                     {{ __('admin.back_to_panel') }}
                 </a>
             @endunless

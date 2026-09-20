@@ -8,11 +8,14 @@ use App\Enums\ListingStatus;
 use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Models\Listing;
+use App\Models\PropertyRequest;
 use App\Services\ModerationService;
 use App\Services\Policy;
+use App\Services\RequestService;
 use App\Support\Nav;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 /**
@@ -29,7 +32,10 @@ final class ModerationController extends Controller
     // fatal error rather than an unprotected route — but the permission is
     // still checked again on each action below, because reaching a page is
     // never treated as proof of anything.
-    public function __construct(private readonly ModerationService $moderation) {}
+    public function __construct(
+        private readonly ModerationService $moderation,
+        private readonly RequestService $requests,
+    ) {}
 
     private function authorizeAction(Request $request): void
     {
@@ -38,16 +44,38 @@ final class ModerationController extends Controller
 
     public function index(Request $request): View
     {
-        $this->authorizeAction($request);
+        /*
+         * Two permissions reach this screen and each opens half of it. Ads and
+         * demands are different queues judged on different rules, and a role
+         * that holds only requests.moderate has to be able to work its own —
+         * otherwise that permission gates nothing anybody can get to.
+         */
+        $canModerateListings = $request->user()->hasPermission(Permission::ListingsModerate);
+        $canModerateRequests = $request->user()->hasPermission(Permission::RequestsModerate);
 
-        $queue = Listing::query()
-            ->whereIn('status', [ListingStatus::Pending->value, ListingStatus::PendingLaunch->value])
-            ->with('images')
-            ->oldest('created_at')
-            ->paginate(20);
+        abort_unless($canModerateListings || $canModerateRequests, 403);
+
+        $queue = $canModerateListings
+            ? Listing::query()
+                ->whereIn('status', [ListingStatus::Pending->value, ListingStatus::PendingLaunch->value])
+                ->with('images')
+                ->oldest('created_at')
+                ->paginate(20)
+            : new LengthAwarePaginator([], 0, 20);
+
+        $requests = $canModerateRequests
+            ? PropertyRequest::query()
+                ->whereIn('status', ['pending', 'pendingLaunch'])
+                ->oldest('created_at')
+                ->limit(50)
+                ->get()
+            : collect();
 
         return view('admin.moderation', [
             'queue' => $queue,
+            'canModerateListings' => $canModerateListings,
+            'requests' => $requests,
+            'canModerateRequests' => $canModerateRequests,
             // The check has already read each one and said what bothered it.
             // Re-reading a paragraph hunting for the problem is the slow way to
             // do this a hundred times.
@@ -95,5 +123,28 @@ final class ModerationController extends Controller
         $this->moderation->archive($request->user(), $listing);
 
         return redirect()->to(Nav::href('/admin/moderation'))->with('status', __('admin.archived'));
+    }
+
+    /**
+     * A demand's decision. Its own permission, checked here and again in the
+     * service: listings.moderate does not carry requests.moderate.
+     */
+    public function decideRequest(Request $request, PropertyRequest $propertyRequest): RedirectResponse
+    {
+        abort_unless($request->user()?->hasPermission(Permission::RequestsModerate) === true, 403);
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:visible,hidden,rejected'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $this->requests->moderate(
+            $request->user(),
+            $propertyRequest,
+            $validated['status'],
+            (string) ($validated['reason'] ?? ''),
+        );
+
+        return back()->with('status', __('admin.requests.decided'));
     }
 }
