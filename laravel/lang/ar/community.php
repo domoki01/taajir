@@ -23,6 +23,7 @@ return [
     'reply_placeholder' => 'ردّ على الطلب…',
     'attach_listing' => 'ارفق إعلان من إعلاناتك',
     'no_requests' => 'ما كاين حتى طلب.',
+    'alert_title' => 'إعلان جديد: :label',
     'alerts' => 'تنبيهاتي',
     'no_alerts' => 'ما عندك حتى تنبيه محفوظ.',
     'save_search' => 'احفظ هذا البحث',

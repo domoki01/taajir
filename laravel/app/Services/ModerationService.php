@@ -23,7 +23,7 @@ final class ModerationService
 {
     public function approve(User $actor, Listing $listing): Listing
     {
-        return DB::transaction(function () use ($actor, $listing) {
+        $listing = DB::transaction(function () use ($actor, $listing) {
             // During the pre-launch hold, approving does NOT publish. The ad
             // stays invisible and is cleared for the batch instead; reusing
             // `published` here would put it on the site the moment this button
@@ -53,6 +53,21 @@ final class ModerationService
 
             return $listing;
         });
+
+        /*
+         * The moment the ad becomes visible, and the only one worth alerting
+         * on: telling people at submission would leak unmoderated content, and
+         * an ad later refused would already have been announced.
+         *
+         * Guarded on the status rather than on reaching this line, because
+         * approving during the launch hold clears the ad for the batch without
+         * publishing it — alerting there would announce an ad nobody can open.
+         */
+        if ($listing->status()->isPublic()) {
+            app(SavedSearchAlerts::class)->notify($listing);
+        }
+
+        return $listing;
     }
 
     public function reject(User $actor, Listing $listing, string $reason): Listing

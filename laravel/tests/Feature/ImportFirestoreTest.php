@@ -54,7 +54,7 @@ final class ImportFirestoreTest extends TestCase
         // Every file the command reads has to exist, or each absence is its own
         // reported problem and the assertions drown in them.
         foreach (['settings', 'users', 'listings', 'comments', 'requests', 'replies',
-            'savedSearches', 'articles', 'articleComments', 'promos', 'adminAudit'] as $name) {
+            'savedSearches', 'articles', 'articleComments', 'promos', 'adminAudit', 'pointsLedger'] as $name) {
             if (! File::exists("{$this->path}/{$name}.json")) {
                 File::put("{$this->path}/{$name}.json", '[]');
             }
@@ -102,6 +102,46 @@ final class ImportFirestoreTest extends TestCase
             'publishedAt' => 1700000100000,
             ...$overrides,
         ];
+    }
+
+    public function test_the_points_balance_is_recomputed_from_the_ledger(): void
+    {
+        // §10 point 6. A cache is only ever as good as its last write, and the
+        // one number here that somebody would notice being wrong is the one
+        // that buys them free ads.
+        $this->export([
+            'users' => [$this->user(['pointsBalance' => 9999])],
+            'pointsLedger' => [
+                ['id' => 'l1', 'uid' => 'uid000000000000000000000001', 'delta' => 50, 'reason' => 'referral', 'at' => 1700000000000],
+                ['id' => 'l2', 'uid' => 'uid000000000000000000000001', 'delta' => -20, 'reason' => 'spend', 'at' => 1700000100000],
+            ],
+        ]);
+
+        $this->assertSame(0, $this->import());
+
+        $this->assertSame(2, DB::table('points_ledger')->count());
+        $this->assertSame(30, (int) DB::table('users')->value('points_balance'));
+    }
+
+    public function test_an_account_with_no_ledger_rows_has_no_balance(): void
+    {
+        // A stale number copied across would be free ads nobody earned.
+        $this->export(['users' => [$this->user(['pointsBalance' => 500])]]);
+
+        $this->import();
+
+        $this->assertSame(0, (int) DB::table('users')->value('points_balance'));
+    }
+
+    public function test_a_ledger_row_for_a_missing_account_is_skipped(): void
+    {
+        $this->export([
+            'users' => [$this->user()],
+            'pointsLedger' => [['id' => 'l1', 'uid' => 'uid-gone', 'delta' => 10, 'reason' => 'referral', 'at' => 1700000000000]],
+        ]);
+
+        $this->assertSame(1, $this->import());
+        $this->assertSame(0, DB::table('points_ledger')->count());
     }
 
     public function test_it_imports_a_user_and_a_listing(): void

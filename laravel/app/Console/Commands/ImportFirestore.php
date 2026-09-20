@@ -121,6 +121,7 @@ final class ImportFirestore extends Command
         $steps = [
             'settings' => fn () => $this->importSettings(),
             'users' => fn () => $this->importUsers(),
+            'pointsLedger' => fn () => $this->importPointsLedger(),
             'listings' => fn () => $this->importListings(),
             'comments' => fn () => $this->importComments(),
             'requests' => fn () => $this->importRequests(),
@@ -234,6 +235,64 @@ final class ImportFirestore extends Command
             if ($dangling > 0) {
                 $this->problems[] = "{$dangling} referral(s) pointed at an account that is not in the export — cleared";
             }
+        }
+    }
+
+    /**
+     * The referral points, and the balances recomputed from them.
+     *
+     * §10 point 6: the ledger first, then `users.points_balance` from it —
+     * never the cached balance in the export. A cache is only ever as good as
+     * its last write, and the one number in this system that somebody would
+     * notice being wrong is the one that buys them free ads.
+     *
+     * The rest of the affiliate programme is not ported (§11), so nothing here
+     * spends or awards. This is the record arriving ahead of the feature that
+     * will read it.
+     */
+    private function importPointsLedger(): void
+    {
+        $holders = $this->keysOf('users', 'uid', 'users');
+
+        foreach ($this->rows('pointsLedger') as $row) {
+            $uid = $this->text($row['uid'] ?? null, 28);
+
+            if ($uid === null || ! isset($holders[$uid])) {
+                $this->skip('pointsLedger', "a ledger row for {$uid}, who is not in the export");
+
+                continue;
+            }
+
+            $this->write('points_ledger', [
+                'uid' => $uid,
+                'reason' => $this->text($row['reason'] ?? null, 32) ?? '',
+                'ref_uid' => $this->text($row['refUid'] ?? null, 28),
+                'created_at' => $this->time($row['at'] ?? null) ?? now(),
+            ], [
+                'delta' => (int) ($row['delta'] ?? 0),
+                'campaign_id' => $this->text($row['campaignId'] ?? null, 32),
+                'note' => $this->text($row['note'] ?? null, 255),
+            ]);
+        }
+
+        if ($this->dry) {
+            return;
+        }
+
+        /*
+         * Recomputed for everyone, including the accounts with no rows: an
+         * account whose ledger is empty has a balance of zero, and a stale
+         * number copied from the export would be free ads nobody earned.
+         */
+        $totals = DB::table('points_ledger')
+            ->selectRaw('uid, sum(delta) as total')
+            ->groupBy('uid')
+            ->pluck('total', 'uid');
+
+        DB::table('users')->update(['points_balance' => 0]);
+
+        foreach ($totals as $uid => $total) {
+            DB::table('users')->where('uid', $uid)->update(['points_balance' => max(0, (int) $total)]);
         }
     }
 

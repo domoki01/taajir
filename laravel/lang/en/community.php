@@ -23,6 +23,7 @@ return [
     'reply_placeholder' => 'Reply to this request…',
     'attach_listing' => 'Attach one of your listings',
     'no_requests' => 'No requests yet.',
+    'alert_title' => 'New listing: :label',
     'alerts' => 'My alerts',
     'no_alerts' => 'You have no saved alerts.',
     'save_search' => 'Save this search',

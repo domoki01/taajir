@@ -120,9 +120,16 @@ destinations.
     * * * * * cd /home/USER/taajir-app && php artisan schedule:run >/dev/null 2>&1
     ```
 
-    That one line covers the launch job, listing expiry at 60 days, saved-search
-    alerts and the queue. Nothing needs it yet — it is the scheduler the later
-    phases assume, and it is easier to set up now than to remember later.
+    That one line drives everything in `routes/console.php`:
+
+    | | |
+    | --- | --- |
+    | `taajir:launch --if-due` | hourly — opens the site only if an admin both held it and set a countdown that has elapsed, and even then publishes only the ads a moderator approved |
+    | `taajir:expire-listings` | nightly at 03:20 — takes down ads past 60 days and frees their owners' quota |
+    | `queue:work --stop-when-empty` | every five minutes — drains the queue and exits, rather than holding a PHP process open on a host with nowhere to keep a daemon |
+
+    A host where each job needs its own cron form is a host where one of them is
+    eventually forgotten, which is why they all hang off this single entry.
 
 10. **Permissions.** `storage/` and `bootstrap/cache/` must be writable by the
     PHP user. `chmod -R 775` on both, and nothing wider.

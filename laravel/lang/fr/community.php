@@ -23,6 +23,7 @@ return [
     'reply_placeholder' => 'Répondre à la demande…',
     'attach_listing' => 'Joindre une de vos annonces',
     'no_requests' => 'Aucune demande.',
+    'alert_title' => 'Nouvelle annonce : :label',
     'alerts' => 'Mes alertes',
     'no_alerts' => 'Vous n\'avez aucune alerte enregistrée.',
     'save_search' => 'Enregistrer cette recherche',

@@ -42,6 +42,9 @@ const kCollections = [
   { name: "articles", sub: [{ name: "articleComments", parentKey: "articleId" }] },
   { name: "promos" },
   { name: "adminAudit" },
+  // The affiliate programme is not ported (§11), but its ledger is: §11
+  // point 3 says migrate it anyway so nobody's balance is lost.
+  { name: "pointsLedger" },
 ];
 
 // Bucket prefixes worth pulling down. Everything else in the bucket is either

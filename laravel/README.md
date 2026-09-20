@@ -120,10 +120,14 @@ Against the phases in §13 of the roadmap:
       gate one, each checked on the route, in the controller and again in the
       service. The three that do not are phase 8's own — see
       `../docs/laravel-port.md`.
-- [ ] **8 — Launch gate and notifications** (plus the affiliate programme, which
-      §11 says is legitimately optional for v1). The three ungated permissions
-      and the `points_ledger`, `campaigns`, `short_links` and `devices` tables
-      arrive here.
+- [x] **8 — Launch gate and notifications.** The hold, the countdown page and
+      its poll, the admin switch, the bearer-token cron and the scheduled
+      `--if-due` job; saved-search alerts; and an outbox that records who should
+      be told and sends nothing, because no channel is wired. Per §11 this is
+      the smaller v1 on both open questions: the affiliate programme stays out,
+      and its `points_ledger` is migrated anyway so no balance is lost.
+      Thirteen of the fourteen permissions now gate a screen; `affiliate.manage`
+      is the one that does not, and that is a decision rather than a gap.
 - [ ] **9 — Data migration and cut-over.** The tooling is written and tested —
       `tools/export-firestore.mjs` and `php artisan taajir:import` — and
       `docs/migration.md` is the runbook. What is missing is the export itself,

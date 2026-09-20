@@ -40,7 +40,7 @@ final class ListingService
             throw ValidationException::withMessages(['description' => $verdict['reason']]);
         }
 
-        return DB::transaction(function () use ($user, $input, $images, $verdict): Listing {
+        $listing = DB::transaction(function () use ($user, $input, $images, $verdict): Listing {
             /*
              * The lock is the whole point of §4.4.
              *
@@ -91,6 +91,19 @@ final class ListingService
 
             return $listing;
         });
+
+        /*
+         * Alerts go out after the transaction, not inside it. They are a
+         * side-effect of the ad being visible, and a publish that rolled back
+         * because a notification failed would be the wrong trade in both
+         * directions — the seller loses their ad, and nobody is any better
+         * informed.
+         */
+        if ($listing->status()->isPublic()) {
+            app(SavedSearchAlerts::class)->notify($listing);
+        }
+
+        return $listing;
     }
 
     /**

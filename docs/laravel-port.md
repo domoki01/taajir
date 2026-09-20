@@ -738,6 +738,46 @@ Two things the phase picked up on the way, neither of them admin work:
   fails silently: the file serves 200 and nothing in it is ever crawled.
 
 
+
+### Phase 8, as built
+
+Both §11 questions were settled the smaller way, and the reasons are worth
+keeping.
+
+**Notifications queue rather than send.** No SMTP, no SMS provider, and — the
+one that is a decision rather than an absence — no FCM: sending a push needs a
+Firebase service-account credential on the web host, and keeping that off the
+host is the whole reason §5 verifies ID tokens with php-jwt instead of the
+Admin SDK. So `launch_outbox` records who should be told, on which address, and
+what it would have said. Wiring a provider later is one adapter and a pass over
+the table; reconstructing months afterwards who should have heard is not
+possible at all.
+
+**The affiliate programme stays out**, per §11.3 — and `points_ledger` is
+migrated regardless, with every `users.points_balance` recomputed from it
+rather than copied. That is §10 point 6, and it is the reason the table comes
+across ahead of the feature that will read it.
+
+`affiliate.manage` is therefore the one permission in §6.2 with no screen. It
+has no menu row either, and `AdminPermissionsTest` asserts both, so the gap is
+a decision the suite states rather than an oversight.
+
+Two rules the gate holds that are easy to lose:
+
+- **The default is `active`.** The site is live; defaulting to held would mean
+  the deploy shipping this feature closes the site on every visitor, and a
+  transient database error would close it again later. Locking the public out
+  takes a decision, never an absence and never a failure.
+- **An elapsed countdown publishes nothing by itself.** It says "the wait is
+  over" and stops. Even the unattended cron publishes only what a moderator
+  approved; every other held ad falls into the review queue.
+
+One divergence from the Next app, on purpose: its launch nulled `published_at`
+on every requeued ad. Phase 5 settled the opposite for the same column on
+rejection — `status` decides visibility, `published_at` is a historical fact —
+and erasing it would shuffle a month-old ad to the top of "الأحدث" the day
+somebody re-approves it.
+
 ---
 
 ## 14. Rules that must not be lost in translation
