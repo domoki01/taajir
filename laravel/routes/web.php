@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\Locale;
+use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\HomeController as AdminHomeController;
 use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SessionController;
@@ -96,11 +98,19 @@ $routes = function (): void {
     });
 
     /*
-     * Moderation. The permission is checked on the group AND again inside each
-     * action: reaching a page is never treated as proof of anything, which was
-     * true of the Server Actions these replace and is true of these.
+     * The admin section.
+     *
+     * Two guards on the group and a third inside every action. `staff` only
+     * asks whether this account holds any permission at all; each controller
+     * asks for the one its screen needs, and asks again at the point of doing
+     * the thing rather than once at the door. Reaching a page is never treated
+     * as proof of anything — that was true of the Server Actions these replace
+     * and it is true of these.
      */
-    Route::middleware('auth.session')->prefix('/admin')->group(function () {
+    Route::middleware(['auth.session', 'staff'])->prefix('/admin')->group(function () {
+        Route::get('/', AdminHomeController::class)->name('admin');
+        Route::get('/journal', AuditController::class)->name('admin.audit');
+
         Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
         Route::post('/moderation/{listing}/approuver', [ModerationController::class, 'approve'])->name('admin.moderation.approve');
         Route::post('/moderation/{listing}/refuser', [ModerationController::class, 'reject'])->name('admin.moderation.reject');

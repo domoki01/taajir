@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAccountIsActive;
+use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\RedirectIfUnauthenticated;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -21,7 +22,14 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
         // Named rather than global: most of this site is readable signed out,
         // and that is deliberate — browsing needs no account.
-        $middleware->alias(['auth.session' => RedirectIfUnauthenticated::class]);
+        $middleware->alias([
+            'auth.session' => RedirectIfUnauthenticated::class,
+            // The door to /admin, and nothing more: it asks whether this
+            // account holds any permission at all. Which screens it may open
+            // is decided per screen, and again by every action behind every
+            // button.
+            'staff' => EnsureStaff::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

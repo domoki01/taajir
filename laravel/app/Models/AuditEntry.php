@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Lang;
 
 /**
  * @property string $actor_uid
@@ -38,5 +39,36 @@ class AuditEntry extends Model
             'detail' => $detail === [] ? null : $detail,
             'created_at' => now(),
         ]);
+    }
+
+    /**
+     * What this row says, in words.
+     *
+     * A missing translation falls back to the stored action string rather than
+     * printing a lang key. The log outlives the release that wrote it: an
+     * action name that has since left the code still has to render as
+     * *something* a human can read and search for.
+     */
+    public function actionLabel(): string
+    {
+        return $this->translate('admin.audit.actions.'.$this->action, $this->action);
+    }
+
+    public function targetLabel(): string
+    {
+        return $this->translate('admin.audit.targets.'.$this->target_type, $this->target_type);
+    }
+
+    /** The one free-text detail worth showing in a list: why. */
+    public function note(): ?string
+    {
+        $note = $this->detail['reason'] ?? $this->detail['note'] ?? null;
+
+        return is_string($note) && $note !== '' ? $note : null;
+    }
+
+    private function translate(string $key, string $fallback): string
+    {
+        return Lang::has($key) ? (string) __($key) : $fallback;
     }
 }
