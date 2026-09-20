@@ -64,6 +64,27 @@ define('TAAJIR_PUBLIC_PATH', __DIR__);
 require $base.'/vendor/autoload.php';
 
 /*
+ * The writable tree, created before the application boots — which is the whole
+ * point of where these four lines sit.
+ *
+ * `view.compiled` is resolved with realpath() during bootstrap, and realpath()
+ * returns false for a directory that is not there. Creating the folders after
+ * boot therefore fixes nothing: the config has already been resolved to false,
+ * and view:cache still dies with "View path not found", which names neither
+ * storage nor a directory. storage/ is server-owned and so is never in an
+ * upload, which makes this the normal state of a fresh one.
+ */
+foreach (['app/public', 'framework/cache/data', 'framework/sessions', 'framework/views', 'logs'] as $directory) {
+    if (! is_dir($base.'/storage/'.$directory)) {
+        @mkdir($base.'/storage/'.$directory, 0775, true);
+    }
+}
+
+if (! is_dir($base.'/bootstrap/cache')) {
+    @mkdir($base.'/bootstrap/cache', 0775, true);
+}
+
+/*
  * The caches are cleared before the application boots, not after.
  *
  * A config:cache written by the previous version is read during bootstrap, so
@@ -109,24 +130,6 @@ $fail = function (string $message): never {
 };
 
 // ── What has to be true before anything is written ───────────────────────────
-
-/*
- * The writable tree, which is server-owned and so is never in an upload.
- *
- * Laravel resolves view.compiled with realpath(), which returns false for a
- * directory that is not there — so a missing storage/framework/views surfaces
- * as "View path not found" from inside view:cache rather than as anything
- * about a directory. Creating the skeleton is cheaper than explaining that.
- */
-foreach (['app/public', 'framework/cache/data', 'framework/sessions', 'framework/views', 'logs'] as $directory) {
-    if (! is_dir($base.'/storage/'.$directory)) {
-        @mkdir($base.'/storage/'.$directory, 0775, true);
-    }
-}
-
-if (! is_dir($base.'/bootstrap/cache')) {
-    @mkdir($base.'/bootstrap/cache', 0775, true);
-}
 
 foreach (['storage', 'bootstrap/cache'] as $writable) {
     if (! is_writable($base.'/'.$writable)) {
