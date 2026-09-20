@@ -710,6 +710,34 @@ Each phase ends in something you can open in a browser.
 
 Phases 1–5 are the site. 6–8 are what make it the same site.
 
+### Phase 7, as built
+
+Eleven of the fourteen permissions in §6.2 now gate a screen, and each one is
+checked three times: on the route group, again in the controller, and again in
+the service that does the work. Reaching a page is never proof of anything.
+
+`AdminPermissionsTest` is the phase's acceptance criterion written down. For
+every delivered permission it asserts both halves — that holding it alone opens
+the screen, and that somebody who is staff but lacks it is refused — and it
+fails if a permission is ever added to the catalogue without either a screen or
+a line saying which phase brings one.
+
+Three are deliberately still open, and they are phase 8's row above:
+`launch.control`, `push.broadcast` and `affiliate.manage`. They have no menu
+row either. A row with a 404 behind it is the same objection as a row that
+403s, which is the rule `AdminNav` is written around, so they go in with the
+routes rather than before them.
+
+Two things the phase picked up on the way, neither of them admin work:
+
+- Both image services called Intervention's v3 API (`read`, `toWebp`), removed
+  in v4. That is a fatal at the moment a seller attaches a photo, and no test
+  caught it because every publish test posted a listing with no photos.
+- The sitemap declared its namespace as `sitemap.org` rather than
+  `sitemaps.org`. A sitemap with the wrong namespace is rejected whole, and it
+  fails silently: the file serves 200 and nothing in it is ever crawled.
+
+
 ---
 
 ## 14. Rules that must not be lost in translation
