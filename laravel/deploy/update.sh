@@ -29,8 +29,38 @@ $PHP -m | grep -qx intl || {
     exit 1
 }
 
+# The writable tree, which is server-owned and therefore never in a push.
+#
+# Laravel resolves view.compiled with realpath(), which returns false for a
+# directory that does not exist — so a missing storage/framework/views does not
+# produce "no such directory" but "View path not found" from deep inside
+# view:clear, and the deploy stops there. Creating the skeleton is cheaper than
+# explaining that sentence.
+echo "→ writable tree"
+for d in app/public framework/cache/data framework/sessions framework/views logs; do
+    mkdir -p "$APP/storage/$d"
+done
+mkdir -p "$APP/bootstrap/cache"
+chmod -R 775 "$APP/storage" "$APP/bootstrap/cache" 2>/dev/null || true
+
 echo "→ dependencies"
+# Named before it is run. Composer is frequently not on PATH on a shared
+# account — it is a composer.phar in $HOME — and "command not found" partway
+# through a deploy is a worse sentence than this one.
+command -v "$COMPOSER" >/dev/null 2>&1 || [ -f "$COMPOSER" ] || {
+    echo "!! Composer not found at '$COMPOSER'. Set COMPOSER_BIN, e.g. COMPOSER_BIN=\"php \$HOME/composer.phar\"" >&2
+    exit 1
+}
+
 $COMPOSER install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+# Every artisan call below needs this file. Without the check the next line is
+# a raw PHP fatal about failing to open vendor/autoload.php, which says nothing
+# about the install that did not happen.
+[ -f "$APP/vendor/autoload.php" ] || {
+    echo "!! vendor/autoload.php is missing — composer install did not complete." >&2
+    exit 1
+}
 
 # Cleared before migrating, not after: a config cache written by the previous
 # version is read on every boot, so an update that added a config key would run

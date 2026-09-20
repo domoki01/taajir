@@ -110,6 +110,24 @@ $fail = function (string $message): never {
 
 // ── What has to be true before anything is written ───────────────────────────
 
+/*
+ * The writable tree, which is server-owned and so is never in an upload.
+ *
+ * Laravel resolves view.compiled with realpath(), which returns false for a
+ * directory that is not there — so a missing storage/framework/views surfaces
+ * as "View path not found" from inside view:cache rather than as anything
+ * about a directory. Creating the skeleton is cheaper than explaining that.
+ */
+foreach (['app/public', 'framework/cache/data', 'framework/sessions', 'framework/views', 'logs'] as $directory) {
+    if (! is_dir($base.'/storage/'.$directory)) {
+        @mkdir($base.'/storage/'.$directory, 0775, true);
+    }
+}
+
+if (! is_dir($base.'/bootstrap/cache')) {
+    @mkdir($base.'/bootstrap/cache', 0775, true);
+}
+
 foreach (['storage', 'bootstrap/cache'] as $writable) {
     if (! is_writable($base.'/'.$writable)) {
         $fail("المجلد {$writable} غير قابل للكتابة. اضبط صلاحياته على 775 من File Manager.");
