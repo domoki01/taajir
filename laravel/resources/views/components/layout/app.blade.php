@@ -10,8 +10,13 @@
 
 @php
     $locale = \App\Enums\Locale::current();
-    $siteName = __('brand.name');
-    $tagline = __('brand.tagline');
+
+    // The name and the tagline come from the branding screen when an admin has
+    // saved it, and from the lang files otherwise — a failed or empty read
+    // leaves the site named rather than blank.
+    $branding = \App\Services\Branding::current();
+    $siteName = $branding->siteName;
+    $tagline = $branding->tagline;
     $description ??= __('brand.description');
 
     // A page's own title is suffixed with the site name, and the home page
@@ -78,6 +83,18 @@
 
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- The admin's palette, layered over the build's rather than replacing it:
+         only the tokens they actually changed are emitted, and nothing at all
+         when they changed none, so the common case costs no bytes.
+
+         Safe to print unescaped — every value has been matched against
+         `#rrggbb` both on the way in and on the way out, so no quote, brace or
+         angle bracket can reach the document. After @vite, or the stylesheet
+         would redefine the tokens this overrides. --}}
+    @if ($style = $branding->style())
+        <style>{!! $style !!}</style>
+    @endif
 </head>
 <body class="flex min-h-full flex-col">
     <x-layout.mobile-top-bar />

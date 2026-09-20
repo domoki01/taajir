@@ -2,9 +2,11 @@
 
 use App\Enums\Locale;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\HomeController as AdminHomeController;
 use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\TaxonomyController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SessionController;
@@ -130,6 +132,24 @@ $routes = function (): void {
         Route::post('/roles', [RoleController::class, 'save'])->name('admin.roles.save');
         Route::post('/roles/nouveau', [RoleController::class, 'store'])->name('admin.roles.store');
         Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('admin.roles.destroy');
+
+        /*
+         * The categories and the filter. Hiding is a presentation decision and
+         * stops at the dropdown; deleting a custom category refuses while
+         * anything is still filed under it.
+         */
+        Route::get('/filtre', [TaxonomyController::class, 'index'])->name('admin.taxonomy');
+        Route::post('/filtre', [TaxonomyController::class, 'save'])->name('admin.taxonomy.save');
+        Route::post('/filtre/categorie', [TaxonomyController::class, 'addProperty'])->name('admin.taxonomy.add_property');
+        Route::post('/filtre/operation', [TaxonomyController::class, 'addDeal'])->name('admin.taxonomy.add_deal');
+        Route::delete('/filtre/defaut', [TaxonomyController::class, 'reset'])->name('admin.taxonomy.reset');
+        Route::delete('/filtre/{kind}/{slug}', [TaxonomyController::class, 'destroy'])->name('admin.taxonomy.destroy');
+
+        // The name, the tagline, the logo and six brand colours. A save
+        // repaints the site on the next request, with no deploy.
+        Route::get('/identite', [BrandingController::class, 'index'])->name('admin.branding');
+        Route::post('/identite', [BrandingController::class, 'save'])->name('admin.branding.save');
+        Route::delete('/identite/defaut', [BrandingController::class, 'reset'])->name('admin.branding.reset');
 
         Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
         Route::post('/moderation/{listing}/approuver', [ModerationController::class, 'approve'])->name('admin.moderation.approve');

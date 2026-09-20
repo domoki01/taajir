@@ -52,8 +52,8 @@
     >
         <div class="border-border flex items-start gap-2 border-b px-4 py-4">
             <div class="min-w-0 flex-1">
-                <p class="text-lg leading-tight font-black">{{ __('brand.name') }}</p>
-                <p class="text-dim mt-0.5 text-xs leading-snug">{{ __('brand.tagline') }}</p>
+                <p class="text-lg leading-tight font-black">{{ \App\Services\Branding::current()->siteName }}</p>
+                <p class="text-dim mt-0.5 text-xs leading-snug">{{ \App\Services\Branding::current()->tagline }}</p>
             </div>
             <button
                 type="button"

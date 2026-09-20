@@ -41,5 +41,5 @@
         <x-layout.menu-trigger />
     @endif
 
-    <a href="{{ \App\Support\Nav::href('/') }}" class="text-sm font-extrabold tracking-tight">{{ __('brand.name') }}</a>
+    <a href="{{ \App\Support\Nav::href('/') }}" class="text-sm font-extrabold tracking-tight">{{ \App\Services\Branding::current()->siteName }}</a>
 </div>

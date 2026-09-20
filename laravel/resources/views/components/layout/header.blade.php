@@ -13,11 +13,21 @@
              destinations; the panel is everything else the site has. --}}
         <x-layout.menu-trigger class="-ms-2" />
 
+        {{-- The name and the mark come from the branding screen when an admin
+             has saved one, and from the build otherwise. The legal pages keep
+             the lang-file name on purpose: those are prose about a named
+             entity, and renaming the site should not silently rewrite the
+             terms somebody agreed to. --}}
+        @php($branding = \App\Services\Branding::current())
         <a href="{{ \App\Support\Nav::href('/') }}" class="flex items-center gap-2">
-            <span class="bg-primary grid size-9 place-items-center rounded-[12px] text-white">
-                <x-icon.building-2 class="size-5" stroke-width="2.4" />
-            </span>
-            <span class="text-lg font-extrabold tracking-tight">{{ __('brand.name') }}</span>
+            @if ($branding->logoUrl)
+                <img src="{{ $branding->logoUrl }}" alt="" class="size-9 rounded-[12px] object-contain">
+            @else
+                <span class="bg-primary grid size-9 place-items-center rounded-[12px] text-white">
+                    <x-icon.building-2 class="size-5" stroke-width="2.4" />
+                </span>
+            @endif
+            <span class="text-lg font-extrabold tracking-tight">{{ $branding->siteName }}</span>
         </a>
 
         <nav aria-label="{{ __('nav.navigation') }}" class="text-muted ms-auto flex items-center gap-6 text-sm font-semibold">
