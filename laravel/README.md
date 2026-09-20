@@ -85,8 +85,9 @@ It stays in whatever language it was written in, as it must.
 
 ## Deploying
 
-`docs/deploy-directadmin.md` for the layout and the one-time setup, and
-`docs/deploy-git.md` for pushing over Git with `deploy/post-receive`. Read the
+`docs/deploy-directadmin.md` for the layout and the one-time setup,
+`docs/deploy-git.md` for pushing over Git with `deploy/post-receive`, and
+`docs/migration.md` for moving the live data off Firestore. Read the
 certificate section first — the Next app
 has been sending a two-year HSTS header, so a new host without a valid
 certificate for the domain is a hard block for returning visitors, not a
@@ -106,10 +107,24 @@ Against the phases in §13 of the roadmap:
       the permissions from phase 3.
 - [x] **French and English**, added out of sequence on request. Arabic keeps
       every URL it had; the other two live behind a prefix.
-- [ ] **3 — Auth**
-- [ ] **4 — Listings read path**
-- [ ] **5 — Listings write path**
-- [ ] **6 — Community**
-- [ ] **7 — Admin**
-- [ ] **8 — Launch gate and notifications**
-- [ ] **9 — Data migration and cut-over**
+- [x] **3 — Auth.** Firebase sign-in, the `/auth/session` exchange verified
+      server-side with php-jwt and no service-account key on the host, the users
+      table, and the permission gates.
+- [x] **4 — Listings read path.** Browse, search, the listing page, JSON-LD, the
+      sitemap and the OG tags.
+- [x] **5 — Listings write path.** The publish wizard, uploads, the quota
+      transaction, the policy check and the moderation queue.
+- [x] **6 — Community.** Comments, property requests and replies, saved
+      searches, and the dashboard behind them.
+- [x] **7 — Admin.** Eleven screens; eleven of the fourteen permissions in §6.2
+      gate one, each checked on the route, in the controller and again in the
+      service. The three that do not are phase 8's own — see
+      `../docs/laravel-port.md`.
+- [ ] **8 — Launch gate and notifications** (plus the affiliate programme, which
+      §11 says is legitimately optional for v1). The three ungated permissions
+      and the `points_ledger`, `campaigns`, `short_links` and `devices` tables
+      arrive here.
+- [ ] **9 — Data migration and cut-over.** The tooling is written and tested —
+      `tools/export-firestore.mjs` and `php artisan taajir:import` — and
+      `docs/migration.md` is the runbook. What is missing is the export itself,
+      which only you can produce.
