@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\Locale;
+use App\Models\Article;
 use App\Models\Listing;
 use App\Services\Geo;
 use App\Services\Taxonomy;
@@ -49,10 +50,21 @@ final class SitemapController extends Controller
         }
 
         $xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
-        $xml[] = '<urlset xmlns="http://www.sitemap.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">';
+        // sitemaps.org, with the s. The namespace is the schema's identity,
+        // not a link anyone follows, and a sitemap declaring a namespace that
+        // is not the one in the spec is rejected whole — which is a silent
+        // failure: the file serves 200 and nothing in it is ever crawled.
+        $xml[] = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">';
 
         foreach ($paths as $path) {
             $xml[] = $this->url($path);
+        }
+
+        // The masthead. These are the pages that answer a question rather
+        // than offer a property, so they are the ones most likely to be the
+        // entry point from a search.
+        foreach (Article::query()->public()->select(['slug', 'published_at'])->get() as $article) {
+            $xml[] = $this->url($article->path(), $article->published_at?->toAtomString());
         }
 
         // Chunked: this is every published ad, and holding them all in memory

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Locale;
+use App\Http\Controllers\Admin\ArticleController as AdminArticleController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\HomeController as AdminHomeController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Admin\PromoController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TaxonomyController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\ArticleController as PublicArticleController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\BrowseController;
@@ -81,6 +83,27 @@ $routes = function (): void {
         Route::get('/publier', [PublishController::class, 'create'])->name('publish');
         Route::post('/publier', [PublishController::class, 'store'])->name('publish.store');
         Route::get('/merci', [PublishController::class, 'thanks'])->name('thanks');
+    });
+
+    /*
+     * The masthead. These pages exist for a reason that is not editorial: a
+     * classifieds site with nothing but listings has almost no text a search
+     * engine can index against a question.
+     *
+     * Fixed before the catch-all, and /articles/{slug} takes a slug pattern so
+     * it cannot swallow the admin editor's own paths.
+     */
+    Route::get('/articles', [PublicArticleController::class, 'index'])->name('articles');
+    Route::get('/articles/{slug}', [PublicArticleController::class, 'show'])
+        ->where('slug', '[a-z0-9-]+')
+        ->name('articles.show');
+
+    Route::middleware('auth.session')->group(function () {
+        Route::post('/articles/{slug}/commentaires', [PublicArticleController::class, 'comment'])
+            ->where('slug', '[a-z0-9-]+')
+            ->name('articles.comment');
+        Route::delete('/articles/commentaires/{comment}', [PublicArticleController::class, 'destroyComment'])
+            ->name('articles.comment.destroy');
     });
 
     /*
@@ -163,6 +186,18 @@ $routes = function (): void {
         Route::post('/publicites/{promo}/visibilite', [PromoController::class, 'toggle'])->name('admin.promos.toggle');
         Route::post('/publicites/{promo}/ordre', [PromoController::class, 'move'])->name('admin.promos.move');
         Route::delete('/publicites/{promo}', [PromoController::class, 'destroy'])->name('admin.promos.destroy');
+
+        /*
+         * The editor. The body is typed as text and stored as blocks: nothing
+         * an editor writes ever becomes markup, which is why there is no rich
+         * text field here and no HTML column behind it.
+         */
+        Route::get('/articles', [AdminArticleController::class, 'index'])->name('admin.articles');
+        Route::get('/articles/nouveau', [AdminArticleController::class, 'create'])->name('admin.articles.create');
+        Route::post('/articles', [AdminArticleController::class, 'store'])->name('admin.articles.store');
+        Route::get('/articles/{article}/modifier', [AdminArticleController::class, 'edit'])->name('admin.articles.edit');
+        Route::patch('/articles/{article}', [AdminArticleController::class, 'update'])->name('admin.articles.update');
+        Route::delete('/articles/{article}', [AdminArticleController::class, 'destroy'])->name('admin.articles.destroy');
 
         Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
         Route::post('/moderation/{listing}/approuver', [ModerationController::class, 'approve'])->name('admin.moderation.approve');
