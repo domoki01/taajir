@@ -143,5 +143,49 @@ Alpine.data("signIn", (next) => ({
     },
 }));
 
+// ── THE PUBLISH WIZARD ───────────────────────────────────────────────────────
+// The steps are a presentation of one form: nothing between them needs the
+// server, so the whole thing posts once. What does need the server is the
+// commune list, which is fetched per wilaya rather than embedded — all 1541 of
+// them is a quarter of a megabyte nobody on a phone should download to pick one.
+Alpine.data("publishWizard", () => ({
+    step: 1,
+    total: 4,
+    wilaya: "",
+    commune: "",
+    communes: [],
+    price: "",
+    priceOnRequest: false,
+    photoCount: 0,
+
+    async loadCommunes() {
+        this.communes = [];
+        this.commune = "";
+        if (!this.wilaya) return;
+
+        const response = await fetch(`/api/communes/${encodeURIComponent(this.wilaya)}`, {
+            headers: { Accept: "application/json" },
+        });
+        if (response.ok) this.communes = await response.json();
+    },
+
+    /**
+     * What the typed dinars are in the unit the market speaks.
+     *
+     * Shown, never submitted. The input is dinars and the column is dinars; an
+     * input that accepted ملايين is the 10 000x error waiting to happen.
+     */
+    get millions() {
+        const dinars = Number(this.price);
+        if (!dinars) return "";
+        const m = dinars / 10000;
+        return m >= 1 ? `${m >= 10 ? Math.round(m) : Math.round(m * 10) / 10} مليون` : "";
+    },
+
+    countPhotos(event) {
+        this.photoCount = event.target.files?.length ?? 0;
+    },
+}));
+
 window.Alpine = Alpine;
 Alpine.start();

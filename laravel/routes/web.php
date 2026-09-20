@@ -1,12 +1,15 @@
 <?php
 
 use App\Enums\Locale;
+use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\BrowseController;
+use App\Http\Controllers\CommuneController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ListingController;
+use App\Http\Controllers\PublishController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SitemapController;
@@ -63,6 +66,25 @@ $routes = function (): void {
     Route::post('/auth/session', [SessionController::class, 'store'])->name('session.store');
     Route::delete('/auth/session', [SessionController::class, 'destroy'])->name('session.destroy');
 
+    Route::middleware('auth.session')->group(function () {
+        Route::get('/publier', [PublishController::class, 'create'])->name('publish');
+        Route::post('/publier', [PublishController::class, 'store'])->name('publish.store');
+        Route::get('/merci', [PublishController::class, 'thanks'])->name('thanks');
+    });
+
+    /*
+     * Moderation. The permission is checked on the group AND again inside each
+     * action: reaching a page is never treated as proof of anything, which was
+     * true of the Server Actions these replace and is true of these.
+     */
+    Route::middleware('auth.session')->prefix('/admin')->group(function () {
+        Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
+        Route::post('/moderation/{listing}/approuver', [ModerationController::class, 'approve'])->name('admin.moderation.approve');
+        Route::post('/moderation/{listing}/refuser', [ModerationController::class, 'reject'])->name('admin.moderation.reject');
+        Route::post('/moderation/{listing}/mettre-en-avant', [ModerationController::class, 'feature'])->name('admin.moderation.feature');
+        Route::post('/moderation/{listing}/archiver', [ModerationController::class, 'archive'])->name('admin.moderation.archive');
+    });
+
     Route::get('/tableau-de-bord', DashboardController::class)
         ->middleware('auth.session')
         ->name('dashboard');
@@ -95,6 +117,10 @@ Route::get('/'.Locale::default()->value.'/{rest}', fn (string $rest) => redirect
  * redirects rather than rendering anything.
  */
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+
+// Unlocalised: it returns data the form reads, and the commune names come back
+// in whatever language the request is in anyway.
+Route::get('/api/communes/{wilaya}', CommuneController::class)->name('api.communes');
 
 Route::get('/r/{code}', ReferralController::class)
     ->where('code', '[A-Z0-9]{6}')
