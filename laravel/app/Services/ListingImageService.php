@@ -8,6 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
 
 /**
@@ -66,7 +67,14 @@ final class ListingImageService
         $directory = "listings/{$ownerUid}/{$listingId}";
         $name = Str::random(16);
 
-        $image = $this->manager->read($file->getRealPath());
+        /*
+         * decodePath(), not read(): Intervention 4.3 dropped read() and
+         * toWebp() in favour of decodePath() and encode(). Both were
+         * method-not-found fatals at the moment somebody attached a photo, and
+         * nothing caught it because the publish tests posted no file — which is
+         * why PublishImageTest now uploads a real one.
+         */
+        $image = $this->manager->decodePath($file->getRealPath());
 
         // Orientation first: a photo taken sideways on a phone carries the
         // rotation in EXIF, and every resize below would bake in the wrong one.
@@ -75,17 +83,19 @@ final class ListingImageService
         $widest = null;
         $widestDimensions = [0, 0];
 
-        foreach (self::WIDTHS as $width) {
-            // Never upscale. A 600px photo rendered at 1600 is a blurrier file
-            // that costs more to download than the original.
-            if ($image->width() < $width && $widest !== null) {
-                continue;
-            }
-
+        /*
+         * Never upscale: a 600px photo rendered at 1600 is a blurrier file that
+         * costs more to download than the original. scaleDown does that part —
+         * what this loop decides is when to stop, which is the first width that
+         * already covers the source. Going further would write the same pixels
+         * again under a larger name, and the srcset would then claim a width
+         * the file does not have.
+         */
+        foreach (self::widthsFor($image->width()) as $width) {
             $resized = (clone $image)->scaleDown(width: $width);
             $path = "{$directory}/{$name}-{$width}.webp";
 
-            Storage::disk('public')->put($path, (string) $resized->toWebp(quality: 82));
+            Storage::disk('public')->put($path, (string) $resized->encode(new WebpEncoder(quality: 82)));
 
             $widest = $path;
             $widestDimensions = [$resized->width(), $resized->height()];
@@ -107,18 +117,46 @@ final class ListingImageService
     }
 
     /**
-     * The `srcset` for one stored image.
+     * The widths actually written for a source this wide.
      *
-     * Built from the widest path by substitution rather than stored per width:
-     * the three files differ by one number, and a table row per size would be
-     * three rows to keep in step for no information the name does not carry.
+     * Every step below the source, plus the one that first covers it. A photo
+     * narrower than 1600 is the common case — most are — so emitting all three
+     * unconditionally would name two files that were never written.
+     *
+     * @return list<int>
      */
-    public static function srcset(string $url): string
+    private static function widthsFor(int $source): array
     {
         $out = [];
 
         foreach (self::WIDTHS as $width) {
-            $out[] = preg_replace('/-\d+\.webp$/', "-{$width}.webp", $url)." {$width}w";
+            $out[] = $width;
+            if ($width >= $source) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The `srcset` for one stored image, given the width recorded on its row.
+     *
+     * Built from the widest path by substitution rather than stored per width:
+     * the files differ by one number, and a table row per size would be rows to
+     * keep in step for no information the name does not carry.
+     *
+     * The descriptor is the file's real width, not the name's. The largest file
+     * of a 600px upload is called `-800.webp` because 800 is the step that
+     * covered it, but it is 600 pixels across, and a browser told otherwise
+     * picks the wrong file on a narrow screen.
+     */
+    public static function srcset(string $url, int $width): string
+    {
+        $out = [];
+
+        foreach (self::widthsFor($width) as $step) {
+            $out[] = preg_replace('/-\d+\.webp$/', "-{$step}.webp", $url).' '.min($step, $width).'w';
         }
 
         return implode(', ', $out);

@@ -3,6 +3,8 @@
 
     <main class="flex-1 py-6">
         <x-layout.container>
+            <x-promo-carousel :promos="$promos" />
+
             @if (count($featured) > 0)
                 <section>
                     <h2 class="text-lg font-extrabold">{{ __('listing.featured_listings') }}</h2>

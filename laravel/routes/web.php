@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\HomeController as AdminHomeController;
 use App\Http\Controllers\Admin\ModerationController;
+use App\Http\Controllers\Admin\PromoController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TaxonomyController;
 use App\Http\Controllers\Admin\UserController;
@@ -150,6 +151,18 @@ $routes = function (): void {
         Route::get('/identite', [BrandingController::class, 'index'])->name('admin.branding');
         Route::post('/identite', [BrandingController::class, 'save'])->name('admin.branding.save');
         Route::delete('/identite/defaut', [BrandingController::class, 'reset'])->name('admin.branding.reset');
+
+        /*
+         * The home-page carousel. A banner is the one thing on the home page
+         * every visitor sees, so its link is validated to http(s) or a
+         * site-relative path before it is ever written.
+         */
+        Route::get('/publicites', [PromoController::class, 'index'])->name('admin.promos');
+        Route::post('/publicites', [PromoController::class, 'store'])->name('admin.promos.store');
+        Route::patch('/publicites/{promo}', [PromoController::class, 'update'])->name('admin.promos.update');
+        Route::post('/publicites/{promo}/visibilite', [PromoController::class, 'toggle'])->name('admin.promos.toggle');
+        Route::post('/publicites/{promo}/ordre', [PromoController::class, 'move'])->name('admin.promos.move');
+        Route::delete('/publicites/{promo}', [PromoController::class, 'destroy'])->name('admin.promos.destroy');
 
         Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
         Route::post('/moderation/{listing}/approuver', [ModerationController::class, 'approve'])->name('admin.moderation.approve');
