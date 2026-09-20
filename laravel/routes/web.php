@@ -4,6 +4,8 @@ use App\Enums\Locale;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\HomeController as AdminHomeController;
 use App\Http\Controllers\Admin\ModerationController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\BrowseController;
@@ -110,6 +112,24 @@ $routes = function (): void {
     Route::middleware(['auth.session', 'staff'])->prefix('/admin')->group(function () {
         Route::get('/', AdminHomeController::class)->name('admin');
         Route::get('/journal', AuditController::class)->name('admin.audit');
+
+        /*
+         * Accounts. Two permissions reach the screen — users.manage and
+         * users.approve — and each action asks for its own inside the service,
+         * so a front-desk role that may only approve registrations gets the
+         * queue and nothing else.
+         */
+        Route::get('/utilisateurs', [UserController::class, 'index'])->name('admin.users');
+        Route::post('/utilisateurs/approbation', [UserController::class, 'requireApproval'])->name('admin.users.require_approval');
+        Route::post('/utilisateurs/{user}/role', [UserController::class, 'role'])->name('admin.users.role');
+        Route::post('/utilisateurs/{user}/suspension', [UserController::class, 'ban'])->name('admin.users.ban');
+        Route::post('/utilisateurs/{user}/quota', [UserController::class, 'quota'])->name('admin.users.quota');
+        Route::post('/utilisateurs/{user}/approbation', [UserController::class, 'approve'])->name('admin.users.approve');
+
+        Route::get('/roles', [RoleController::class, 'index'])->name('admin.roles');
+        Route::post('/roles', [RoleController::class, 'save'])->name('admin.roles.save');
+        Route::post('/roles/nouveau', [RoleController::class, 'store'])->name('admin.roles.store');
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('admin.roles.destroy');
 
         Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
         Route::post('/moderation/{listing}/approuver', [ModerationController::class, 'approve'])->name('admin.moderation.approve');
