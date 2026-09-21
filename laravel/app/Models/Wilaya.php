@@ -78,9 +78,25 @@ class Wilaya extends Model
         return $this->hasMany(Commune::class, 'wilaya_code', 'code');
     }
 
+    /*
+     * The integer columns are cast, and that is not decoration.
+     *
+     * Without a cast the attribute is whatever the driver hands back. SQLite
+     * returns a native int; MySQL returns a string, because PDO does. The
+     * docblock above this class has always said `@property int $code`, which
+     * is what made it invisible: the reader believes it, static analysis
+     * believes it, and the tests believe it because they run on SQLite.
+     *
+     * It surfaced in production as a 500 on the publish form's commune list —
+     * Geo::communes(int $wilayaCode) refusing the string MySQL had just
+     * returned, under strict_types, on a page that worked perfectly here.
+     */
     protected function casts(): array
     {
         return [
+            'code' => 'integer',
+            'code58' => 'integer',
+            'commune_count' => 'integer',
             'aliases' => 'array',
             'is_new_2026' => 'boolean',
         ];

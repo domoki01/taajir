@@ -51,6 +51,11 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            // Integers first, and for the driver's sake rather than for
+            // tidiness: see the note in Listing::casts().
+            'listing_quota' => 'integer',
+            'points_balance' => 'integer',
+            'wilaya_code' => 'integer',
             'email_verified' => 'boolean',
             'approved' => 'boolean',
             'is_banned' => 'boolean',

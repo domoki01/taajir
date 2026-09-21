@@ -24,6 +24,22 @@ class Commune extends Model
 
     protected $guarded = [];
 
+    /*
+     * Same reason as Wilaya: without a cast, wilaya_code is an int on SQLite
+     * and a string on MySQL, and every typed signature it is passed to is a
+     * 500 waiting for the production driver. lat and lng stay strings — the
+     * column is a decimal and the docblock says string, which is what Laravel
+     * returns for one; making them floats here would be a different change
+     * with rounding in it.
+     */
+    protected function casts(): array
+    {
+        return [
+            'id' => 'integer',
+            'wilaya_code' => 'integer',
+        ];
+    }
+
     /** The name in the language being rendered; see Wilaya::name(). */
     public function name(): string
     {

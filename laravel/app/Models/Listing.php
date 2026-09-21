@@ -43,7 +43,26 @@ class Listing extends Model
     protected function casts(): array
     {
         return [
+            /*
+             * Every integer column, not just the interesting ones.
+             *
+             * Uncast, an attribute is whatever the driver returns — a native
+             * int on SQLite, a string on MySQL, because PDO returns strings.
+             * The whole suite runs on SQLite, so a missing cast is invisible
+             * here and a 500 there; that is exactly how the publish form's
+             * commune list broke in production while passing every test.
+             *
+             * price most of all: it is whole dinars, and a price that arrives
+             * as a string is the comparison and the arithmetic this project
+             * treats as a 10 000× error waiting to happen.
+             */
             'price' => 'integer',
+            'area_built' => 'integer',
+            'area_land' => 'integer',
+            'bathrooms' => 'integer',
+            'floor' => 'integer',
+            'wilaya_code' => 'integer',
+            'view_count' => 'integer',
             'price_on_request' => 'boolean',
             'is_negotiable' => 'boolean',
             'show_phone' => 'boolean',
