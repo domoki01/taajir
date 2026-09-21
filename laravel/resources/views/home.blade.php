@@ -5,8 +5,22 @@
         <x-layout.container>
             <x-promo-carousel :promos="$promos" />
 
+            {{-- The search, at the top of the page, under the paid slots.
+
+                 This is what people come here to do. It used to live only on
+                 /recherche, reachable through a link in the menu, which asked a
+                 visitor to know the site had a search before they could use it.
+                 It submits to /recherche: the home page keeps one canonical URL
+                 and the results live on the page that is noindex for exactly
+                 that reason.
+
+                 The listings stay below it. Most people look before they
+                 search, and a home page that is only a form tells a visitor
+                 nothing about what is on the site. --}}
+            <x-search-form :heading="__('listing.search_title')" class="mt-4" />
+
             @if (count($featured) > 0)
-                <section>
+                <section class="mt-10">
                     <h2 class="text-lg font-extrabold">{{ __('listing.featured_listings') }}</h2>
                     <div class="mt-3">
                         <x-listing.grid :listings="$featured" />
@@ -14,7 +28,7 @@
                 </section>
             @endif
 
-            <section class="{{ count($featured) > 0 ? 'mt-10' : '' }}">
+            <section class="mt-10">
                 <h2 class="text-lg font-extrabold">{{ __('listing.latest') }}</h2>
                 <div class="mt-3">
                     <x-listing.grid :listings="$latest" />
