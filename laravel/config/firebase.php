@@ -25,8 +25,30 @@
  *
  * A blank is the absence of an answer, not an answer. Pointing this install at
  * another project is a value; so is fail-closed, if a made-up id is ever wanted.
+ *
+ * So does a redacted paste. Google Cloud Console shows an API key partly
+ * hidden, and copying what is on screen gives back the mask rather than the
+ * key: AIza, eight real characters, then thirty-one U+2022 bullets. That is not
+ * blank, so it reads as a deliberate value, and it fails a long way from here —
+ * Google answers API_KEY_INVALID, the browser SDK reports a generic failure,
+ * and the server log stays empty because no request ever reached it. This
+ * install lost an evening to exactly that.
+ *
+ * All five of these values are ASCII by construction: ids, a domain, a sender
+ * number, and a key Google documents as [A-Za-z0-9_-]. A byte above 0x7E is
+ * therefore never something a person meant to type — it is a mask, a smart
+ * quote, or an en-dash a chat client substituted for the hyphen. Treating it as
+ * unset puts the working default back rather than passing the damage on.
  */
-$or = fn (string $key, string $default): string => env($key) ?: $default;
+$or = function (string $key, string $default): string {
+    $value = env($key);
+
+    if (! is_string($value) || $value === '' || preg_match('/[^\x20-\x7E]/', $value) === 1) {
+        return $default;
+    }
+
+    return $value;
+};
 
 return [
 

@@ -98,6 +98,41 @@ final class FirebaseConfigTest extends TestCase
         $this->assertSame('newmokit', $config['project_id']);
     }
 
+    public function test_a_key_copied_from_the_console_mask_is_treated_as_unset(): void
+    {
+        // What the live install actually had. Google Cloud Console shows the key
+        // partly hidden and copying the screen gives back the mask: AIza, eight
+        // real characters, thirty-one bullets. Exactly 39 characters, the right
+        // prefix, and rejected by Google with API_KEY_INVALID — while the
+        // browser shows a generic "try again" and the server log stays empty.
+        $masked = 'AIzaSyAK'.str_repeat("\u{2022}", 31);
+        $this->assertSame(39, mb_strlen($masked), 'the mask is the length of a real key, which is why it fools everything');
+
+        $this->set('FIREBASE_API_KEY', $masked);
+
+        $this->assertSame('AIzaSyAKonS-qRWyhWOi_sK7chdOf14SiQklTz4', $this->config()['api_key']);
+    }
+
+    public function test_a_hyphen_a_chat_client_turned_into_a_dash_is_treated_as_unset(): void
+    {
+        // The same failure by another route: the key travels through a message,
+        // something substitutes an en-dash for the hyphen, and it is pasted in
+        // looking correct. Every one of these five values is ASCII by
+        // construction, so a byte above 0x7E was never typed on purpose.
+        $this->set('FIREBASE_API_KEY', 'AIzaSyAKonS'."\u{2013}".'qRWyhWOi_sK7chdOf14SiQklTz4');
+
+        $this->assertSame('AIzaSyAKonS-qRWyhWOi_sK7chdOf14SiQklTz4', $this->config()['api_key']);
+    }
+
+    public function test_a_legitimate_ascii_value_is_not_mistaken_for_damage(): void
+    {
+        // The guard must not swallow the case it exists to protect: a real key
+        // for another project, hyphens, underscores and all.
+        $this->set('FIREBASE_API_KEY', 'AIzaSyB1_cD-efGH2ijKLmn3OpQR4stUV5wXyZ6a');
+
+        $this->assertSame('AIzaSyB1_cD-efGH2ijKLmn3OpQR4stUV5wXyZ6a', $this->config()['api_key']);
+    }
+
     public function test_a_real_value_still_wins(): void
     {
         // The whole point of the env vars: pointing this install at another
