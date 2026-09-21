@@ -12,12 +12,27 @@
 # afterthought: what is not in the archive cannot overwrite anything.
 #
 # Built here and not on the host because the host has neither node nor a
-# composer that can resolve a lock file inside a memory limit. vendor/ is the
-# one exception to the rule above — it is server-owned, so a release that
-# changes composer.lock needs `composer install --no-dev` run there afterwards.
-# The script says so at the end rather than pretending it handled it.
+# composer that can resolve a lock file inside a memory limit. vendor/ is
+# normally the one exception — server-owned, installed there by composer — and
+# `--with-vendor` overrides that for a host where composer cannot run at all,
+# which is the case on a shared account with proc_open disabled.
+#
+# The vendor tree is built fresh into a scratch directory rather than copied
+# from this checkout: a working tree installed --prefer-source carries a .git
+# inside every package, which here came to 4.1 GB against 128 MB for the same
+# packages installed --no-dev --prefer-dist.
 
 set -eu
+
+# --with-vendor ships the dependency tree inside the release. Off by default:
+# vendor/ is server-owned, and a 30 MB upload for a one-line view change is a
+# bad trade. On for a host that cannot run composer at all, or any release that
+# moves composer.lock.
+WITH_VENDOR=no
+if [ "${1:-}" = "--with-vendor" ]; then
+    WITH_VENDOR=yes
+    shift
+fi
 
 OUT="${1:-$(pwd)/taajir-release-$(date +%Y%m%d-%H%M).zip}"
 case "$OUT" in /*) ;; *) OUT="$(pwd)/$OUT" ;; esac
@@ -63,6 +78,21 @@ cp deploy/public_html/*.php "$DOC/"
 # duplicated in the docroot.
 rm -rf "$APP/tests" "$APP/deploy/public_html" "$APP/node_modules" "$APP/.github"
 
+if [ "$WITH_VENDOR" = yes ]; then
+    echo "→ vendor (production, fresh)"
+    VEND="$STAGE/.composer-build"
+    mkdir -p "$VEND"
+    cp composer.json composer.lock "$VEND/"
+    ( cd "$VEND" && composer install --no-dev --prefer-dist --optimize-autoloader \
+        --no-scripts --no-interaction --quiet )
+    # Packages resolved from source bring a full .git each; nothing on the
+    # server reads them and they dwarf the code.
+    find "$VEND/vendor" -name .git -type d -prune -exec rm -rf {} + 2>/dev/null || true
+    mv "$VEND/vendor" "$APP/vendor"
+    rm -rf "$VEND"
+    echo "  $(du -sh "$APP/vendor" | cut -f1)"
+fi
+
 echo "→ zip"
 rm -f "$OUT"
 (cd "$STAGE" && zip -qr "$OUT" taajir-app public_html)
@@ -72,5 +102,12 @@ echo "✓ $OUT"
 echo "  $(du -h "$OUT" | cut -f1), $(cd "$STAGE" && find . -type f | wc -l | tr -d ' ') files"
 echo
 echo "  Built from $(git rev-parse --short HEAD) on $(git rev-parse --abbrev-ref HEAD)."
-echo "  If composer.lock changed since the last release, run"
-echo "  'composer install --no-dev --optimize-autoloader' on the server after applying."
+if [ "$WITH_VENDOR" = yes ]; then
+    echo "  Includes vendor/ — the installer replaces the server's copy."
+    echo "  Delete taajir-app/bootstrap/cache/*.php afterwards if anything fails to boot:"
+    echo "  the package manifest can still name a dev provider this tree does not have."
+else
+    echo "  No vendor/. If composer.lock changed since the last release, run"
+    echo "  'composer install --no-dev --optimize-autoloader' on the server,"
+    echo "  or rebuild with --with-vendor where composer cannot run."
+fi

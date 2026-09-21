@@ -103,7 +103,7 @@ final class AdminUpdateTest extends TestCase
     {
         [$app, $docroot] = $this->fakeInstall();
 
-        // The four that would take the site down if a deploy replaced them.
+        // The ones that would take the site down if a deploy replaced them.
         File::put($app.'/.env', 'APP_KEY=the-real-one');
         File::ensureDirectoryExists($app.'/storage/app');
         File::put($app.'/storage/app/photo.webp', 'an upload');
@@ -115,10 +115,11 @@ final class AdminUpdateTest extends TestCase
         File::ensureDirectoryExists($app.'/app');
         File::put($app.'/app/Thing.php', 'old');
 
+        // No vendor/ in this release, which is the ordinary case: the tree is
+        // built on the server and a release has no business carrying it.
         $zip = $this->zipOf([
             'taajir-app/app/Thing.php' => 'new',
             'taajir-app/.env' => 'APP_KEY=from-the-zip',
-            'taajir-app/vendor/autoload.php' => 'from the zip',
             'taajir-app/storage/app/photo.webp' => 'from the zip',
             'public_html/index.php' => 'the generic front controller',
             'public_html/robots.txt' => 'new robots',
@@ -133,6 +134,42 @@ final class AdminUpdateTest extends TestCase
         $this->assertSame('an upload', File::get($app.'/storage/app/photo.webp'));
         $this->assertSame('installed by composer', File::get($app.'/vendor/autoload.php'));
         $this->assertSame('the tuned front controller', File::get($docroot.'/index.php'));
+    }
+
+    public function test_a_release_that_ships_vendor_replaces_it(): void
+    {
+        /*
+         * The exception, and the reason it exists: this host has no SSH and no
+         * proc_open, so composer cannot run on it at all. A release that adds a
+         * dependency and then steps around vendor/ leaves the site throwing
+         * "Class not found" at whoever reaches the new code first — which is
+         * exactly what happened when intervention/image landed and a seller
+         * attaching a photo got a 500.
+         *
+         * Carrying vendor/ is the whole point of such a release, so a release
+         * that carries one replaces it.
+         */
+        [$app, $docroot] = $this->fakeInstall();
+
+        File::put($app.'/.env', 'APP_KEY=the-real-one');
+        File::ensureDirectoryExists($app.'/vendor');
+        File::put($app.'/vendor/autoload.php', 'the old tree, missing a package');
+
+        $zip = $this->zipOf([
+            'taajir-app/vendor/autoload.php' => 'the new tree',
+            'taajir-app/vendor/intervention/image/src/ImageManager.php' => 'the package that was missing',
+            'public_html/robots.txt' => 'x',
+        ]);
+
+        (new ReleaseInstaller($app, $docroot))->apply($zip);
+
+        $this->assertSame('the new tree', File::get($app.'/vendor/autoload.php'));
+        $this->assertSame(
+            'the package that was missing',
+            File::get($app.'/vendor/intervention/image/src/ImageManager.php'),
+        );
+        // The rule widened for vendor only. .env is the installation itself.
+        $this->assertSame('APP_KEY=the-real-one', File::get($app.'/.env'));
     }
 
     public function test_a_nested_file_named_env_is_not_the_one_that_is_protected(): void

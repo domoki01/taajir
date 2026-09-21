@@ -33,11 +33,33 @@ use ZipArchive;
  */
 final class ReleaseInstaller implements InstallsReleases
 {
-    /** @var list<string> kept out of the copy, top level only */
-    private const KEEP_IN_APP = ['.env', 'storage', 'vendor', 'node_modules'];
+    /**
+     * Never replaced, whatever a release carries, matched at the top level only.
+     *
+     * These are the installation rather than the code: the credentials, the
+     * uploads, the logs, and the front controller that knows where this
+     * particular host put everything. A release that shipped one would be
+     * overwriting the server with a developer's machine.
+     *
+     * @var list<string>
+     */
+    private const NEVER_REPLACED_IN_APP = ['.env', 'storage'];
 
     /** @var list<string> */
-    private const KEEP_IN_DOCROOT = ['index.php', 'storage'];
+    private const NEVER_REPLACED_IN_DOCROOT = ['index.php', 'storage'];
+
+    /**
+     * Kept only because a release usually does not carry them.
+     *
+     * vendor/ is server-owned in the ordinary case — built there by composer,
+     * left alone here. But this host has no SSH and no proc_open, so composer
+     * cannot run on it at all, and a release that adds a dependency leaves the
+     * site throwing "Class not found" at whoever touches the new code first.
+     * When a release does ship one of these, shipping it is the point.
+     *
+     * @var list<string>
+     */
+    private const KEPT_UNLESS_SHIPPED = ['vendor', 'node_modules'];
 
     public function __construct(
         private readonly string $appPath,
@@ -59,8 +81,8 @@ final class ReleaseInstaller implements InstallsReleases
         $staging = $this->unpack($zipPath);
 
         try {
-            $app = $this->mirror($staging.'/taajir-app', $this->appPath, self::KEEP_IN_APP);
-            $docroot = $this->mirror($staging.'/public_html', $this->docroot, self::KEEP_IN_DOCROOT);
+            $app = $this->mirror($staging.'/taajir-app', $this->appPath, $this->keepInApp($staging.'/taajir-app'));
+            $docroot = $this->mirror($staging.'/public_html', $this->docroot, self::NEVER_REPLACED_IN_DOCROOT);
         } finally {
             File::deleteDirectory($staging);
         }
@@ -128,6 +150,28 @@ final class ReleaseInstaller implements InstallsReleases
         }
 
         return $staging;
+    }
+
+    /**
+     * What this particular release must not overwrite.
+     *
+     * Everything in NEVER_REPLACED_IN_APP, plus whichever of the
+     * KEPT_UNLESS_SHIPPED trees the release left out. A release that carries
+     * vendor/ replaces vendor/; one that does not, leaves it standing.
+     *
+     * @return list<string>
+     */
+    private function keepInApp(string $from): array
+    {
+        $keep = self::NEVER_REPLACED_IN_APP;
+
+        foreach (self::KEPT_UNLESS_SHIPPED as $tree) {
+            if (! is_dir($from.'/'.$tree)) {
+                $keep[] = $tree;
+            }
+        }
+
+        return $keep;
     }
 
     /**

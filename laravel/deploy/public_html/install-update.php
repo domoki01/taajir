@@ -194,7 +194,26 @@ $mirror = function (string $from, string $to, array $skip = []) use (&$mirror): 
 };
 
 echo "→ مجلّد التطبيق\n";
-$copied = $mirror($staging.'/taajir-app', $base, ['.env', 'storage', 'vendor', 'node_modules']);
+/*
+ * .env and storage are the installation, not the code, and are never replaced.
+ *
+ * vendor and node_modules are kept only because a release usually leaves them
+ * out — they are built on the server in the ordinary case. This account has no
+ * SSH and no proc_open, so composer cannot run on it at all; when a release
+ * does carry vendor/, carrying it is the entire point, and skipping it would
+ * leave the site throwing "Class not found" at whoever reaches the new code
+ * first.
+ */
+$keep = ['.env', 'storage'];
+foreach (['vendor', 'node_modules'] as $tree) {
+    if (! is_dir($staging.'/taajir-app/'.$tree)) {
+        $keep[] = $tree;
+    }
+}
+if (is_dir($staging.'/taajir-app/vendor')) {
+    echo "  الحزمة فيها vendor — يتبدّل كامل\n";
+}
+$copied = $mirror($staging.'/taajir-app', $base, $keep);
 echo "✔ {$copied} ملف\n";
 
 echo "→ الـdocument root\n";
