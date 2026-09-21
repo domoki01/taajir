@@ -115,6 +115,7 @@ Alpine.data("signIn", (next) => ({
 
     messageFor(status, code) {
         if (code === "password-disabled") return window.taajirMessages.passwordDisabled;
+        if (code === "phone-disabled") return window.taajirMessages.phoneDisabled;
         if (code === "account-banned") return window.taajirMessages.banned;
         if (status === 429) return window.taajirMessages.tooMany;
         return window.taajirMessages.failed;

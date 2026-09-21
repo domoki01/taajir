@@ -144,6 +144,33 @@ final class ImportFirestoreTest extends TestCase
         $this->assertSame(0, DB::table('points_ledger')->count());
     }
 
+    public function test_it_refuses_to_strand_the_phone_only_accounts_quietly(): void
+    {
+        // Their only door is the phone. Importing them while that door is shut
+        // gives them no way in at all, and the day it matters is the one day
+        // nobody is looking at a config flag.
+        config(['taajir.phone_signin_enabled' => false]);
+
+        $this->export(['users' => [
+            $this->user(['email' => null, 'phone' => '+213550112233']),
+            $this->user(['id' => 'uid000000000000000000000002', 'email' => 'b@example.dz']),
+        ]]);
+
+        // Non-zero, so a scripted migration stops rather than carrying on.
+        $this->assertSame(1, $this->import());
+        // Imported all the same: the account is not the thing that was wrong.
+        $this->assertSame(2, DB::table('users')->count());
+    }
+
+    public function test_it_says_nothing_when_the_phone_door_is_open(): void
+    {
+        config(['taajir.phone_signin_enabled' => true]);
+
+        $this->export(['users' => [$this->user(['email' => null, 'phone' => '+213550112233'])]]);
+
+        $this->assertSame(0, $this->import());
+    }
+
     public function test_it_imports_a_user_and_a_listing(): void
     {
         $this->export([

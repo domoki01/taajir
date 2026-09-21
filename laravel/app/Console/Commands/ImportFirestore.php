@@ -220,6 +220,27 @@ final class ImportFirestore extends Command
         }
 
         /*
+         * Accounts whose only door is the phone.
+         *
+         * They have no email and no password — thirty-five of them on the live
+         * site — so with phone sign-in switched off, importing them strands
+         * every one. Counted rather than assumed, and reported rather than
+         * fixed: turning the door back on is a product decision, and this is
+         * the moment it stops being hypothetical.
+         */
+        $phoneOnly = 0;
+        foreach ($this->rows('users') as $row) {
+            if (($row['email'] ?? null) === null && ($row['phone'] ?? null) !== null) {
+                $phoneOnly++;
+            }
+        }
+
+        if ($phoneOnly > 0 && ! config('taajir.phone_signin_enabled')) {
+            $this->problems[] = "{$phoneOnly} account(s) have a phone and no email, and phone sign-in is off"
+                .' — they will have no way in. Set TAAJIR_PHONE_SIGNIN=on.';
+        }
+
+        /*
          * referred_by points at users, and the person who invited you may well
          * have signed up after you in document-id order. Rather than sort the
          * file, the column is filled above and the danglers are cleared here —

@@ -41,6 +41,21 @@ return [
     'phone_signup_enabled' => env('TAAJIR_PHONE_SIGNUP', 'off') !== 'off',
 
     /*
+     * Whether the phone door exists at all.
+     *
+     * Off, so the sign-in page offers Google and nothing else. That is a
+     * product decision and it has one consequence worth naming here rather than
+     * in a commit message: the Firestore data holds thirty-five accounts with a
+     * phone and no email, and for them this is the only door there is. While
+     * the new database is empty that costs nobody anything — and the day those
+     * accounts migrate, leaving this off strands every one of them.
+     *
+     * `taajir:import` counts them and says so, so the switch cannot be
+     * forgotten on the one day it matters.
+     */
+    'phone_signin_enabled' => env('TAAJIR_PHONE_SIGNIN', 'off') !== 'off',
+
+    /*
      * The picture a shared link shows when the thing being shared has none.
      *
      * Demands never have a photo and plenty of ads are posted without one. A link

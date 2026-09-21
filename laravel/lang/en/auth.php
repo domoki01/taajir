@@ -13,6 +13,7 @@ return [
     'phone_signup_closed' => 'Creating a new account by phone is paused for now. If you already have an account on your number, you can still sign in with it.',
     'failed' => 'Sign-in failed. Please try again.',
     'password_disabled' => 'This site does not use passwords. Sign in with Google or with your phone number.',
+    'phone_disabled' => 'Signing in by phone is closed for now. Use a Google account.',
     'banned' => 'This account is suspended.',
     'too_many' => 'Too many attempts. Wait a moment and try again.',
     'phone_label' => 'Phone number',

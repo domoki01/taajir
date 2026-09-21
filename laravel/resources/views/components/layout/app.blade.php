@@ -133,6 +133,7 @@
         $scriptMessages = [
             'failed' => __('auth.failed'),
             'passwordDisabled' => __('auth.password_disabled'),
+            'phoneDisabled' => __('auth.phone_disabled'),
             'banned' => __('auth.banned'),
             'tooMany' => __('auth.too_many'),
         ];

@@ -13,6 +13,7 @@ return [
     'phone_signup_closed' => "La création d'un compte par téléphone est momentanément suspendue. Si vous avez déjà un compte avec votre numéro, vous pouvez vous connecter normalement.",
     'failed' => 'La connexion a échoué. Réessayez.',
     'password_disabled' => "Ce site n'utilise pas de mot de passe. Connectez-vous avec Google ou avec votre numéro de téléphone.",
+    'phone_disabled' => 'La connexion par téléphone est fermée pour le moment. Utilisez un compte Google.',
     'banned' => 'Ce compte est suspendu.',
     'too_many' => 'Trop de tentatives. Patientez un instant et réessayez.',
     'phone_label' => 'Numéro de téléphone',

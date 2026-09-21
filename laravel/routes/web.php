@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Admin\PromoController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TaxonomyController;
+use App\Http\Controllers\Admin\UpdateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ArticleController as PublicArticleController;
 use App\Http\Controllers\Auth\AuthController;
@@ -245,6 +246,13 @@ $routes = function (): void {
         // Speaking to everybody at once, behind its own permission.
         Route::get('/notifications', [BroadcastController::class, 'index'])->name('admin.broadcast');
         Route::post('/notifications', [BroadcastController::class, 'store'])->name('admin.broadcast.store');
+
+        /*
+         * Applying a release. Gated on the super-admin role rather than a
+         * permission — uploading a zip means uploading PHP, and PHP runs.
+         */
+        Route::get('/mise-a-jour', [UpdateController::class, 'index'])->name('admin.update');
+        Route::post('/mise-a-jour', [UpdateController::class, 'store'])->name('admin.update.store');
 
         Route::get('/moderation', [ModerationController::class, 'index'])->name('admin.moderation');
         // The demand queue rides in the same screen, on its own permission.

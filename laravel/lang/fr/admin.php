@@ -33,6 +33,7 @@ return [
         'push' => 'Notification générale',
         'launch' => 'Lancement',
         'branding' => 'Identité',
+        'update' => 'Mise à jour',
         'audit' => 'Journal',
     ],
 
@@ -48,6 +49,7 @@ return [
         'push' => 'Envoyer une notification à tout le monde',
         'launch' => 'Fermeture du site, compte à rebours et ouverture',
         'branding' => 'Le nom, le logo et les couleurs',
+        'update' => 'Envoyer une version et l’appliquer',
         'audit' => 'Chaque décision, avec son auteur et son heure',
     ],
 

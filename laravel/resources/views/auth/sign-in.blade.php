@@ -6,10 +6,12 @@
      is done. A server round trip in the middle would break the popup and buy
      nothing.
 
-     Both providers are on this one page. Signing *up* by phone can be switched
-     off (TAAJIR_PHONE_SIGNUP), but signing *in* by phone is never hidden:
-     thirty-five accounts have no email and no password, and hiding their only
-     door would strand them. --}}
+     Google is the only door that is drawn by default. The phone half is still
+     here, behind TAAJIR_PHONE_SIGNIN, because thirty-five accounts in the
+     Firestore export have a number and no email: the day they are imported
+     that switch has to go on or every one of them is locked out, and
+     `taajir:import` counts them and says so. TAAJIR_PHONE_SIGNUP is the
+     narrower switch inside it — sign in, but no new numbers. --}}
 @php
     // Same reason as the layout: a multi-line array inside a Blade directive is
     // a parse error, so the JSON is built before the script block.
@@ -45,7 +47,13 @@
                         class="bg-accent rounded-input w-full py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     >{{ __('auth.with_google') }}</button>
 
-                    @if ($signUp && ! config('taajir.phone_signup_enabled'))
+                    {{-- The phone door is drawn only when it is open. With it
+                         shut this page is one button, which is the whole point:
+                         the sign-up step that asked people to read a choice
+                         they did not have was costing more than it explained. --}}
+                    @if (! config('taajir.phone_signin_enabled'))
+                        {{-- Nothing. Google is the only way in. --}}
+                    @elseif ($signUp && ! config('taajir.phone_signup_enabled'))
                         <p class="text-muted mt-5 text-xs leading-relaxed">{{ __('auth.phone_signup_closed') }}</p>
                         <a href="{{ \App\Support\Nav::href('/connexion') }}" class="text-primary mt-2 inline-block text-sm font-bold">
                             {{ __('auth.sign_in') }}

@@ -85,6 +85,21 @@ final class SessionController extends Controller
             );
         }
 
+        /*
+         * The phone door, when it is shut.
+         *
+         * Checked here and not only in the view, because hiding a form does not
+         * close a door: a token minted anywhere — another tab, a copy of the
+         * page, the SDK from a console — posts to this endpoint just the same.
+         * A switch the server does not honour is a switch that means nothing.
+         */
+        if ($provider === 'phone' && ! config('taajir.phone_signin_enabled')) {
+            return response()->json(
+                ['error' => 'provider disabled', 'code' => 'phone-disabled'],
+                Response::HTTP_FORBIDDEN,
+            );
+        }
+
         $user = $this->account($claims, $provider, $request);
 
         // A banned account must not get a session at all. Everything else —

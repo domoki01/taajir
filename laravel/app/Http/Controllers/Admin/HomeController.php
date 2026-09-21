@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\AuditEntry;
 use App\Services\AdminStats;
@@ -28,7 +29,10 @@ final class HomeController extends Controller
 
         return view('admin.home', [
             'stats' => AdminStats::all(),
-            'groups' => collect(AdminNav::visibleTo($user->permissions()))->groupBy('group'),
+            'groups' => collect(AdminNav::visibleTo(
+                $user->permissions(),
+                $user->role_id === Role::Admin->value,
+            ))->groupBy('group'),
             // Six, not the whole log: this is "what just happened", and the
             // screen that answers "what happened" is one row further down.
             'recent' => $this->recent(),

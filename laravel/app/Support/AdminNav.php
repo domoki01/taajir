@@ -73,6 +73,13 @@ final class AdminNav
 
             ['href' => '/admin/identite', 'key' => 'branding', 'icon' => 'palette', 'group' => self::PLATFORM, 'need' => [Permission::BrandingEdit]],
             ['href' => '/admin/journal', 'key' => 'audit', 'icon' => 'scroll-text', 'group' => self::PLATFORM, 'need' => [Permission::AuditView]],
+            /*
+             * The one row not driven by a permission. Uploading a release means
+             * uploading PHP, so it belongs to the role that already holds
+             * everything by code rather than to a box in the roles matrix —
+             * `need` is empty and visibleTo() is handed the super-admin flag.
+             */
+            ['href' => '/admin/mise-a-jour', 'key' => 'update', 'icon' => 'rocket', 'group' => self::PLATFORM, 'need' => [], 'admin' => true],
         ];
     }
 
@@ -86,7 +93,7 @@ final class AdminNav
      * @param  list<Permission>  $held
      * @return list<array{href: string, key: string, icon: string, group: string, need: list<Permission>}>
      */
-    public static function visibleTo(array $held): array
+    public static function visibleTo(array $held, bool $isSuperAdmin = false): array
     {
         return array_values(array_filter(
             self::items(),
@@ -94,8 +101,10 @@ final class AdminNav
             // a backed enum has no string cast — which is a fatal error rather
             // than a wrong answer, but only on the first request that renders
             // the menu.
-            fn (array $item) => $item['need'] === []
-                || array_any($item['need'], fn (Permission $need) => in_array($need, $held, true)),
+            fn (array $item) => ($item['admin'] ?? false)
+                ? $isSuperAdmin
+                : $item['need'] === []
+                    || array_any($item['need'], fn (Permission $need) => in_array($need, $held, true)),
         ));
     }
 }

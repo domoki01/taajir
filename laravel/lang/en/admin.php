@@ -33,6 +33,7 @@ return [
         'push' => 'Broadcast',
         'launch' => 'Launch',
         'branding' => 'Branding',
+        'update' => 'Update',
         'audit' => 'Audit log',
     ],
 
@@ -48,6 +49,7 @@ return [
         'push' => 'Send a notification to everyone',
         'launch' => 'Holding the site closed, the countdown and the switch',
         'branding' => 'The name, the logo and the colours',
+        'update' => 'Upload a release and apply it',
         'audit' => 'Every decision, with who made it and when',
     ],
 

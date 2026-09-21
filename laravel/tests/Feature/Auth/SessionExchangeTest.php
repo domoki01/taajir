@@ -141,8 +141,36 @@ final class SessionExchangeTest extends TestCase
         $this->assertFalse(Auth::check());
     }
 
+    public function test_the_phone_door_is_shut_by_default(): void
+    {
+        /*
+         * Hiding the form does not close a door: a token minted anywhere —
+         * another tab, a copy of the page, the SDK from a console — posts to
+         * this endpoint just the same. A switch the server does not honour is a
+         * switch that means nothing.
+         */
+        $this->assertFalse(config('taajir.phone_signin_enabled'));
+
+        $this->tokenReturns([
+            'sub' => 'uid-phone-00000000000000009',
+            'phone_number' => '+213555000999',
+            'firebase' => (object) ['sign_in_provider' => 'phone'],
+        ]);
+
+        $this->postJson('/auth/session', ['idToken' => 'x'])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'phone-disabled');
+
+        $this->assertNull(User::find('uid-phone-00000000000000009'));
+    }
+
     public function test_a_phone_account_gets_a_name_and_keeps_its_number(): void
     {
+        // This test is about what happens *after* a phone token is accepted,
+        // so it opens the door it depends on rather than inheriting the
+        // default — which is shut.
+        config(['taajir.phone_signin_enabled' => true]);
+
         $this->tokenReturns([
             'sub' => 'uid-phone-00000000000000001',
             'phone_number' => '+213555000111',
@@ -170,6 +198,11 @@ final class SessionExchangeTest extends TestCase
 
     public function test_approval_holds_a_phone_signup_when_the_switch_is_on(): void
     {
+        // This test is about what happens *after* a phone token is accepted,
+        // so it opens the door it depends on rather than inheriting the
+        // default — which is shut.
+        config(['taajir.phone_signin_enabled' => true]);
+
         Setting::create(['key' => 'access', 'value' => ['requireApproval' => true]]);
 
         // Phone proves a number, not a person, and one SIM is cheap enough to
@@ -186,6 +219,11 @@ final class SessionExchangeTest extends TestCase
 
     public function test_everyone_is_approved_when_the_switch_is_off(): void
     {
+        // This test is about what happens *after* a phone token is accepted,
+        // so it opens the door it depends on rather than inheriting the
+        // default — which is shut.
+        config(['taajir.phone_signin_enabled' => true]);
+
         $this->tokenReturns([
             'sub' => 'uid-phone-00000000000000001',
             'phone_number' => '+213555000111',
