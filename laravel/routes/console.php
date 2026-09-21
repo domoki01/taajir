@@ -23,7 +23,27 @@ Artisan::command('inspire', function () {
 | where each job needs its own cron form is a host where one of them is
 | eventually forgotten.
 |
+| Every job runs inside this process, through Artisan::call, rather than
+| through Schedule::command.
+|
+| Schedule::command does not call the command. It builds a shell line and
+| spawns `php artisan …` through Symfony's Process — not only under
+| runInBackground(), which is the easy thing to assume, but always. Shared
+| hosts routinely disable proc_open, and this one does: once the cron line was
+| finally correct, every tick logged "The Process class relies on proc_open,
+| which is not available on your PHP installation" and nothing ran. The
+| scheduler was firing exactly on time and achieving nothing, which is the
+| failure that looks most like success.
+|
+| Schedule::call runs the closure here, with no second PHP to start.
+| withoutOverlapping keeps working — it is a cache lock, not a process check —
+| but it needs a name of its own, because a closure has no command line to be
+| named after.
+|
 */
+
+/** Run an Artisan command in this process rather than spawning one. */
+$inProcess = fn (string $command): Closure => fn () => Artisan::call($command);
 
 /*
  * The unattended launch.
@@ -38,7 +58,10 @@ Artisan::command('inspire', function () {
  * a site that opens within the hour of a date nobody was watching is opening on
  * time.
  */
-Schedule::command('taajir:launch --if-due')->hourly()->withoutOverlapping();
+Schedule::call($inProcess('taajir:launch --if-due'))
+    ->name('taajir:launch')
+    ->hourly()
+    ->withoutOverlapping();
 
 /*
  * Ads reach the end of their life at 60 days (config('taajir.listing_lifetime_days')).
@@ -47,12 +70,20 @@ Schedule::command('taajir:launch --if-due')->hourly()->withoutOverlapping();
  * cutoff and moves its owner's quota counter, which is not work to do while
  * people are browsing.
  */
-Schedule::command('taajir:expire-listings')->dailyAt('03:20')->withoutOverlapping();
+Schedule::call($inProcess('taajir:expire-listings'))
+    ->name('taajir:expire-listings')
+    ->dailyAt('03:20')
+    ->withoutOverlapping();
 
 /*
  * The queue, drained by the same cron rather than a daemon a shared host has
  * nowhere to keep. `--stop-when-empty` is what makes that safe: the worker
  * finishes what is there and exits, instead of holding a PHP process open for
- * the next hour.
+ * the next hour. --max-time bounds it as well, which matters more now that the
+ * worker runs inside the scheduler: without it, a queue that keeps refilling
+ * would hold this tick open until the next cron arrived on top of it.
  */
-Schedule::command('queue:work --stop-when-empty --tries=3')->everyFiveMinutes()->withoutOverlapping();
+Schedule::call($inProcess('queue:work --stop-when-empty --tries=3 --max-time=50'))
+    ->name('queue:work')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
