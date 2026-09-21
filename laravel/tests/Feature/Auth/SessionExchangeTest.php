@@ -164,6 +164,42 @@ final class SessionExchangeTest extends TestCase
         $this->assertNull(User::find('uid-phone-00000000000000009'));
     }
 
+    public function test_the_same_address_on_another_uid_is_a_409_not_a_500(): void
+    {
+        /*
+         * What a Firebase project move looks like from inside a sign-in.
+         *
+         * A uid is minted per project, so newmokit → taajir-a11c4 gives
+         * everyone a new one, while users.email stays unique and the row they
+         * left behind still holds their address. Unhandled, the insert is a
+         * constraint violation: a 500, a stack trace, and a visitor told
+         * nothing at all.
+         *
+         * It is refused, not resolved — joining the rows means re-keying an
+         * account across every table that references a uid, which is not a
+         * decision to take silently on someone's behalf mid-sign-in.
+         */
+        User::create([
+            'uid' => 'uid-google-0000000000000099',
+            'display_name' => 'The same person, last project',
+            'email' => 'someone@example.com',
+            'role_id' => 'user',
+            'referral_code' => ReferralCode::mint(),
+            'created_at' => now(),
+        ]);
+
+        $this->tokenReturns($this->googleClaims());
+
+        $this->postJson('/auth/session', ['idToken' => 'x'])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'email-claimed');
+
+        $this->assertNull(User::find('uid-google-0000000000000001'));
+        $this->assertFalse(Auth::check());
+        // The row that was already there is untouched.
+        $this->assertSame('The same person, last project', User::find('uid-google-0000000000000099')->display_name);
+    }
+
     public function test_a_phone_account_gets_a_name_and_keeps_its_number(): void
     {
         // This test is about what happens *after* a phone token is accepted,

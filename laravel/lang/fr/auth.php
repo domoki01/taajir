@@ -14,6 +14,7 @@ return [
     'failed' => 'La connexion a échoué. Réessayez.',
     'password_disabled' => "Ce site n'utilise pas de mot de passe. Connectez-vous avec Google ou avec votre numéro de téléphone.",
     'phone_disabled' => 'La connexion par téléphone est fermée pour le moment. Utilisez un compte Google.',
+    'email_claimed' => 'Cette adresse est liée à un ancien compte. Contactez l’administration pour la rattacher au nouveau.',
     'banned' => 'Ce compte est suspendu.',
     'too_many' => 'Trop de tentatives. Patientez un instant et réessayez.',
     'phone_label' => 'Numéro de téléphone',

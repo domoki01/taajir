@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Auth\EmailAlreadyClaimed;
 use App\Services\Auth\InvalidIdToken;
 use App\Services\Auth\VerifiesIdTokens;
 use App\Support\ReferralCode;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -100,7 +102,34 @@ final class SessionController extends Controller
             );
         }
 
-        $user = $this->account($claims, $provider, $request);
+        try {
+            $user = $this->account($claims, $provider, $request);
+        } catch (EmailAlreadyClaimed $e) {
+            /*
+             * The address is on an account with a different uid.
+             *
+             * A uid is minted per Firebase project, so moving projects gives
+             * everyone a new one while users.email stays unique — and the same
+             * person signing in again collides with the row they left behind.
+             * Left alone this is an unhandled constraint violation: a 500, a
+             * stack trace in the log, and a visitor told nothing.
+             *
+             * Refused rather than resolved. Adopting the old row means re-keying
+             * it across seven tables that reference a uid, and doing that
+             * silently, inside a sign-in, on data nobody has looked at, is not a
+             * thing to decide on a visitor's behalf. taajir:adopt-account is
+             * where that decision belongs.
+             */
+            Log::warning('sign-in blocked: email already on another uid', [
+                'uid' => $claims['sub'] ?? null,
+                'existing_uid' => $e->existingUid,
+            ]);
+
+            return response()->json(
+                ['error' => 'email already claimed', 'code' => 'email-claimed'],
+                Response::HTTP_CONFLICT,
+            );
+        }
 
         // A banned account must not get a session at all. Everything else —
         // waiting on approval included — signs in fine and is gated at the
@@ -173,9 +202,23 @@ final class SessionController extends Controller
                 return $user;
             }
 
+            $email = $claims['email'] ?? null;
+
+            // users.email is unique. Checked here rather than left to the
+            // constraint so the caller gets a named failure with the uid that
+            // holds the address, instead of a QueryException it would have to
+            // parse a driver message out of.
+            if ($email !== null) {
+                $holder = User::query()->where('email', $email)->first();
+
+                if ($holder !== null) {
+                    throw new EmailAlreadyClaimed($holder->uid, (string) $email);
+                }
+            }
+
             return User::create([
                 'uid' => $uid,
-                'email' => $claims['email'] ?? null,
+                'email' => $email,
                 'display_name' => $this->displayName($claims),
                 'photo_url' => $claims['picture'] ?? null,
                 // Present only for accounts created through phone sign-in. It

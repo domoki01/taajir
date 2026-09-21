@@ -134,6 +134,7 @@
             'failed' => __('auth.failed'),
             'passwordDisabled' => __('auth.password_disabled'),
             'phoneDisabled' => __('auth.phone_disabled'),
+            'emailClaimed' => __('auth.email_claimed'),
             'banned' => __('auth.banned'),
             'tooMany' => __('auth.too_many'),
         ];

@@ -14,6 +14,7 @@ return [
     'failed' => 'Sign-in failed. Please try again.',
     'password_disabled' => 'This site does not use passwords. Sign in with Google or with your phone number.',
     'phone_disabled' => 'Signing in by phone is closed for now. Use a Google account.',
+    'email_claimed' => 'This address belongs to an older account. Contact the site to have it reattached.',
     'banned' => 'This account is suspended.',
     'too_many' => 'Too many attempts. Wait a moment and try again.',
     'phone_label' => 'Phone number',
