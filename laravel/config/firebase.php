@@ -1,6 +1,15 @@
 <?php
 
 // ── FIREBASE ─────────────────────────────────────────────────────────────────
+// The project is taajir-a11c4, which replaced newmokit — a project this site
+// shared with an unrelated one, carrying its Hosting, its Analytics and its
+// accounts. Sign-in is all that was kept.
+//
+// Accounts do not cross between Firebase projects. A uid is minted per project,
+// so everyone who signed in under newmokit gets a new one here, and the users
+// row keyed by the old uid is not theirs any more — it is unreachable. That is
+// a migration, not a config change; see docs/laravel-port.md §9.
+//
 // The only thing this application still asks of Firebase is proving who someone
 // is. There is no service-account key here and no Admin SDK: §5 of the roadmap
 // takes the lean path, because verifying a login needs nothing but Google's
@@ -61,15 +70,15 @@ return [
      * over before it ever reaches us. That is a bad hour to spend, and it is
      * spent for a value Firebase ships inside every client bundle anyway.
      */
-    'project_id' => $or('FIREBASE_PROJECT_ID', 'newmokit'),
+    'project_id' => $or('FIREBASE_PROJECT_ID', 'taajir-a11c4'),
 
     // What the browser SDK needs to run the sign-in widget.
-    'api_key' => $or('FIREBASE_API_KEY', 'AIzaSyAKonS-qRWyhWOi_sK7chdOf14SiQklTz4'),
-    'auth_domain' => $or('FIREBASE_AUTH_DOMAIN', 'newmokit.firebaseapp.com'),
-    // Must match a web app that actually exists in the project — the "Taajir"
-    // one. Auth keys off apiKey and projectId and would not notice a wrong id;
-    // App Check and FCM mint per app and do.
-    'app_id' => $or('FIREBASE_APP_ID', '1:224868230062:web:8f2342346aa6ca0bd9de3f'),
-    'messaging_sender_id' => $or('FIREBASE_MESSAGING_SENDER_ID', '224868230062'),
+    'api_key' => $or('FIREBASE_API_KEY', 'AIzaSyAgaUBu1Bl7Ss-vSZdEey2eGzGBJRskWEE'),
+    'auth_domain' => $or('FIREBASE_AUTH_DOMAIN', 'taajir-a11c4.firebaseapp.com'),
+    // Must match a web app that actually exists in the project. Auth keys off
+    // apiKey and projectId and would not notice a wrong id; App Check and FCM
+    // mint per app and do.
+    'app_id' => $or('FIREBASE_APP_ID', '1:366248199365:web:87e33d265dfed019145cac'),
+    'messaging_sender_id' => $or('FIREBASE_MESSAGING_SENDER_ID', '366248199365'),
 
 ];

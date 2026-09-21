@@ -68,6 +68,33 @@ final class FirebaseConfigTest extends TestCase
         return require __DIR__.'/../../config/firebase.php';
     }
 
+    /**
+     * The config as an .env that says nothing about Firebase resolves it.
+     *
+     * Tests compare against this rather than against the project's literal
+     * values: which Firebase project the site uses is a decision that changes —
+     * newmokit became taajir-a11c4 — and a test that hardcodes it fails for the
+     * one reason that is not a bug, while testing nothing about the guard.
+     *
+     * @return array<string, string>
+     */
+    private function defaults(): array
+    {
+        $saved = [];
+        foreach (self::KEYS as $key) {
+            $saved[$key] = getenv($key);
+            $this->set($key, null);
+        }
+
+        $config = $this->config();
+
+        foreach (self::KEYS as $key) {
+            $this->set($key, $saved[$key] === false ? null : $saved[$key]);
+        }
+
+        return $config;
+    }
+
     public function test_an_env_that_never_mentions_firebase_still_signs_people_in(): void
     {
         foreach (self::KEYS as $key) {
@@ -76,9 +103,11 @@ final class FirebaseConfigTest extends TestCase
 
         $config = $this->config();
 
-        $this->assertSame('newmokit', $config['project_id']);
-        $this->assertNotSame('', $config['api_key']);
-        $this->assertNotSame('', $config['app_id']);
+        foreach ($config as $name => $value) {
+            $this->assertNotSame('', $value, "{$name} has no usable default");
+        }
+        // Shape, not identity: a web API key is AIza plus 35 more.
+        $this->assertMatchesRegularExpression('/^AIza[0-9A-Za-z_-]{35}$/', $config['api_key']);
     }
 
     public function test_a_key_present_but_empty_is_treated_as_unset(): void
@@ -95,7 +124,7 @@ final class FirebaseConfigTest extends TestCase
         foreach ($config as $name => $value) {
             $this->assertNotSame('', $value, "{$name} came out empty; the sign-in widget cannot start");
         }
-        $this->assertSame('newmokit', $config['project_id']);
+        $this->assertSame($this->defaults(), $config);
     }
 
     public function test_a_key_copied_from_the_console_mask_is_treated_as_unset(): void
@@ -110,7 +139,7 @@ final class FirebaseConfigTest extends TestCase
 
         $this->set('FIREBASE_API_KEY', $masked);
 
-        $this->assertSame('AIzaSyAKonS-qRWyhWOi_sK7chdOf14SiQklTz4', $this->config()['api_key']);
+        $this->assertSame($this->defaults()['api_key'], $this->config()['api_key']);
     }
 
     public function test_a_hyphen_a_chat_client_turned_into_a_dash_is_treated_as_unset(): void
@@ -119,9 +148,9 @@ final class FirebaseConfigTest extends TestCase
         // something substitutes an en-dash for the hyphen, and it is pasted in
         // looking correct. Every one of these five values is ASCII by
         // construction, so a byte above 0x7E was never typed on purpose.
-        $this->set('FIREBASE_API_KEY', 'AIzaSyAKonS'."\u{2013}".'qRWyhWOi_sK7chdOf14SiQklTz4');
+        $this->set('FIREBASE_API_KEY', 'AIzaSyAgaUBu1Bl7Ss'."\u{2013}".'vSZdEey2eGzGBJRskWEE');
 
-        $this->assertSame('AIzaSyAKonS-qRWyhWOi_sK7chdOf14SiQklTz4', $this->config()['api_key']);
+        $this->assertSame($this->defaults()['api_key'], $this->config()['api_key']);
     }
 
     public function test_a_legitimate_ascii_value_is_not_mistaken_for_damage(): void
