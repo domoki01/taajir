@@ -1,5 +1,8 @@
 <?php
 
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\DB;
+
 /*
  * Diagnostic. Answers "why is it a 500?" without turning APP_DEBUG on.
  *
@@ -136,8 +139,82 @@ echo is_file($configCache)
     ? "موجودة. إن عدّلت .env بعدها، احذف bootstrap/cache/config.php\n"
     : "غير موجودة\n";
 
+// ── Everything the framework knows about itself ──────────────────────────────
+/*
+ * Booted, deliberately, after the checks above have already answered the
+ * questions that survive a broken boot.
+ *
+ * This section exists because every question asked from a distance costs a
+ * round trip, and a round trip here is a person at a File Manager. Each block
+ * below is a thing that was actually guessed at, wrongly, at some point: which
+ * Firebase project the site really serves, whether geography was ever seeded,
+ * whether the scheduler can spawn anything, whether the class a 500 named is on
+ * disk. One page, pasted once, instead of six exchanges.
+ */
+echo "\n──────────────────────────────\nالإطار:\n\n";
+
+try {
+    require $base.'/vendor/autoload.php';
+    $app = require $base.'/bootstrap/app.php';
+    $app->make(Kernel::class)->bootstrap();
+
+    // Firebase, resolved — not what .env says, what the site actually serves.
+    // A masked key pasted from a console reads as a real value everywhere else.
+    $key = (string) config('firebase.api_key');
+    printf("Firebase project: %s\n", config('firebase.project_id') ?: '(فارغ)');
+    printf("Firebase authDomain: %s\n", config('firebase.auth_domain') ?: '(فارغ)');
+    printf(
+        "Firebase apiKey: %s…%s  (%d حرفاً)%s\n",
+        mb_substr($key, 0, 8),
+        mb_substr($key, -4),
+        mb_strlen($key),
+        preg_match('/^AIza[0-9A-Za-z_-]{35}$/', $key) === 1 ? '  ✔' : '  ✖ الشكل غير صحيح',
+    );
+    printf("APP_URL: %s\n", config('app.url'));
+    printf("اللغة: %s | الكاش: %s | الجلسات: %s\n", config('app.locale'), config('cache.default'), config('session.driver'));
+
+    // Row counts. "The communes are missing" is either an empty table or a
+    // broken page, and nothing else distinguishes them from outside.
+    echo "\nالجداول:\n";
+    foreach (['wilayas', 'communes', 'users', 'listings', 'roles', 'settings'] as $table) {
+        try {
+            printf("  %-12s %s\n", $table, number_format(DB::table($table)->count()));
+        } catch (Throwable $e) {
+            printf("  %-12s ✖ %s\n", $table, mb_substr($e->getMessage(), 0, 90));
+        }
+    }
+
+    // Classes a 500 has already named once. Cheaper to check than to read a
+    // stack trace for.
+    echo "\nالمكتبات:\n";
+    foreach ([
+        'Intervention\Image\ImageManager' => 'معالجة الصور',
+        'Firebase\JWT\JWT' => 'التحقّق من التوكن',
+    ] as $class => $what) {
+        printf("  %-14s %s\n", $what, class_exists($class) ? '✔' : '✖ ناقصة — vendor قديم');
+    }
+
+    echo "\nالكاش:\n";
+    foreach (['config' => 'الإعدادات', 'routes-v7' => 'المسارات', 'packages' => 'الحزم'] as $file => $what) {
+        printf("  %-10s %s\n", $what, is_file($base."/bootstrap/cache/{$file}.php") ? 'مبني' : '—');
+    }
+} catch (Throwable $e) {
+    echo '✖ الإطار ما قلعش: '.$e->getMessage()."\n";
+    echo '   '.$e->getFile().':'.$e->getLine()."\n";
+}
+
+// proc_open: the scheduler spawns `php artisan` through it, so without it every
+// scheduled job dies at the spawn while the cron reports success.
+printf(
+    "\nproc_open: %s\n",
+    function_exists('proc_open') && ! in_array('proc_open', array_map('trim', explode(',', (string) ini_get('disable_functions'))), true)
+        ? '✔ متاح'
+        : '✖ مطفي — المهامّ المجدولة لازم تخدم داخل العملية',
+);
+printf("رفع الملفات: upload_max_filesize=%s  post_max_size=%s\n", ini_get('upload_max_filesize'), ini_get('post_max_size'));
+
 // ── The actual error ─────────────────────────────────────────────────────────
-echo "\n──────────────────────────────\nآخر خطأ في السجلّ:\n\n";
+echo "\n──────────────────────────────\nآخر الأخطاء:\n\n";
 
 $log = $base.'/storage/logs/laravel.log';
 if (! is_file($log)) {
@@ -145,16 +222,45 @@ if (! is_file($log)) {
     exit;
 }
 
-// The last entry only, and only its first lines: a Laravel stack trace is
-// hundreds of lines of framework internals and the message is the first one.
-$lines = file($log, FILE_IGNORE_NEW_LINES);
-$start = 0;
-foreach ($lines as $i => $line) {
+/*
+ * The last entries' first lines, deduplicated.
+ *
+ * One entry was what this printed before, and it was repeatedly the wrong one:
+ * the error a person notices is often several behind the newest, and a page
+ * that 500s twice fills the tail with the same line. A Laravel stack trace is
+ * hundreds of lines of framework internals, so only the message matters — the
+ * first line of each entry.
+ */
+$lines = file($log, FILE_IGNORE_NEW_LINES) ?: [];
+$entries = [];
+foreach ($lines as $line) {
     if (preg_match('/^\[\d{4}-\d{2}-\d{2}/', $line) === 1) {
-        $start = $i;
+        $entries[] = mb_substr($line, 0, 300);
     }
 }
 
-foreach (array_slice($lines, $start, 6) as $line) {
-    echo mb_substr($line, 0, 400)."\n";
+if ($entries === []) {
+    echo "السجلّ فارغ.\n";
+    exit;
+}
+
+$recent = array_slice($entries, -40);
+$seen = [];
+$shown = 0;
+foreach (array_reverse($recent) as $entry) {
+    // Same message, different timestamp, is one problem — count it, print once.
+    $body = preg_replace('/^\[[^\]]+\]\s*/', '', $entry);
+    if (isset($seen[$body])) {
+        $seen[$body]++;
+
+        continue;
+    }
+    $seen[$body] = 1;
+}
+
+foreach ($seen as $body => $count) {
+    if ($shown++ >= 8) {
+        break;
+    }
+    printf("%s%s\n\n", $body, $count > 1 ? "   ×{$count}" : '');
 }
