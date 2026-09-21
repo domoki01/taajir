@@ -210,6 +210,34 @@ final class AdminUpdateTest extends TestCase
         $this->assertSame('an upload', File::get($docroot.'/storage/photo.webp'));
     }
 
+    public function test_the_docroot_comes_from_the_front_controller_not_public_path(): void
+    {
+        /*
+         * public_path() is only right once index.php has said so. In the split
+         * layout the docroot is a sibling of the application; from the console
+         * nothing has set it, so public_path() answers <app>/public — a
+         * directory the web server never reads.
+         *
+         * This was not theoretical: every docroot file of several releases went
+         * there during testing. The install reported its files copied and the
+         * site kept serving the previous stylesheet, which is the worst way for
+         * a deploy to be wrong — it looks like it worked.
+         */
+        [$app, $docroot] = $this->fakeInstall();
+
+        config(['app.env' => 'testing']);
+        putenv('TAAJIR_DOCROOT='.$docroot);
+
+        $installer = ReleaseInstaller::forThisInstall();
+
+        $reflected = new \ReflectionProperty($installer, 'docroot');
+
+        $this->assertSame($docroot, $reflected->getValue($installer));
+        $this->assertNotSame(public_path(), $reflected->getValue($installer));
+
+        putenv('TAAJIR_DOCROOT');
+    }
+
     public function test_a_nested_file_named_env_is_not_the_one_that_is_protected(): void
     {
         // Matching by name at every depth would quietly refuse to update

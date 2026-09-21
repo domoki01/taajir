@@ -68,7 +68,37 @@ final class ReleaseInstaller implements InstallsReleases
 
     public static function forThisInstall(): self
     {
-        return new self(base_path(), public_path());
+        return new self(base_path(), self::docroot());
+    }
+
+    /**
+     * Where the document root actually is.
+     *
+     * public_path() is only right when the front controller has already said
+     * so. In the split layout the docroot is a sibling of the application, and
+     * index.php sets it per request; from the console nothing has, so
+     * public_path() answers <app>/public — a directory the web server never
+     * reads. An update run from there reports its files copied and changes
+     * nothing a visitor can see, which is the worst way to be wrong.
+     *
+     * TAAJIR_PUBLIC_PATH is what index.php defines, and TAAJIR_DOCROOT is the
+     * same value for a console run, the variable deploy/update.sh already
+     * uses. public_path() stays as the last resort, correct for an ordinary
+     * single-directory install.
+     */
+    private static function docroot(): string
+    {
+        if (defined('TAAJIR_PUBLIC_PATH')) {
+            return (string) constant('TAAJIR_PUBLIC_PATH');
+        }
+
+        $fromEnv = env('TAAJIR_DOCROOT');
+
+        if (is_string($fromEnv) && $fromEnv !== '' && is_dir($fromEnv)) {
+            return rtrim($fromEnv, '/');
+        }
+
+        return public_path();
     }
 
     /**
