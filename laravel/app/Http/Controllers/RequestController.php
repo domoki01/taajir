@@ -26,7 +26,9 @@ final class RequestController extends Controller
     public function index(): View
     {
         return view('requests.index', [
-            'requests' => PropertyRequest::query()->visible()->latest('created_at')->paginate(20),
+            // The author is eager-loaded because the name is a link now: without
+            // it, a page of twenty demands is twenty-one queries.
+            'requests' => PropertyRequest::query()->visible()->with('owner')->latest('created_at')->paginate(20),
         ]);
     }
 
@@ -52,7 +54,7 @@ final class RequestController extends Controller
 
     public function show(Request $request, string $id): View
     {
-        $propertyRequest = PropertyRequest::query()->with('replies.listing')->findOrFail($id);
+        $propertyRequest = PropertyRequest::query()->with(['owner', 'replies.listing', 'replies.author'])->findOrFail($id);
 
         // Every non-visible state stays readable to its author, so nobody is
         // left wondering where their post went.

@@ -8,6 +8,7 @@ use App\Enums\Permission;
 use App\Services\Geo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -34,6 +35,12 @@ class PropertyRequest extends Model
     protected function casts(): array
     {
         return ['created_at' => 'datetime', 'moderated_at' => 'datetime'];
+    }
+
+    /** The account that posted it, when it still exists. */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_uid', 'uid');
     }
 
     public function replies(): HasMany

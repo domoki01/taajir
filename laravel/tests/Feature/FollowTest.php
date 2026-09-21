@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\ListingStatus;
+use App\Models\Comment;
 use App\Models\Listing;
 use App\Models\Notification;
+use App\Models\PropertyRequest;
 use App\Models\User;
 use App\Services\Follows;
 use App\Support\ListingId;
@@ -14,6 +16,7 @@ use App\Support\ReferralCode;
 use Database\Seeders\GeographySeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -108,6 +111,116 @@ final class FollowTest extends TestCase
         // The URL is keyed on public_id. The uid is Firebase's, it is what the
         // auth layer is keyed on, and it changes when the project moves.
         $this->get('/vendeur/'.$this->seller->uid)->assertNotFound();
+    }
+
+    public function test_the_publisher_name_on_an_ad_links_to_their_page(): void
+    {
+        // The page carried a phone number and no name at all. A buyer decides
+        // whether to call partly on who is asking, and this is how they find
+        // out whether it is one flat or forty.
+        $listing = $this->listing($this->seller);
+
+        $this->get('/annonce/'.$listing->id.'/'.$listing->slug)
+            ->assertOk()
+            ->assertSee('/vendeur/'.$this->seller->public_id, escape: false)
+            ->assertSee('بائع');
+    }
+
+    public function test_a_commenter_name_links_to_their_page(): void
+    {
+        $listing = $this->listing($this->seller);
+        Comment::create([
+            'listing_id' => $listing->id,
+            'author_uid' => $this->fan->uid,
+            'author_name' => $this->fan->display_name,
+            'text' => 'تعليق',
+            'status' => 'visible',
+            'created_at' => now(),
+        ]);
+
+        $this->get('/annonce/'.$listing->id.'/'.$listing->slug)
+            ->assertOk()
+            ->assertSee('/vendeur/'.$this->fan->public_id, escape: false);
+    }
+
+    public function test_a_name_whose_account_is_gone_is_not_a_broken_link(): void
+    {
+        /*
+         * Names are stored denormalised beside the row precisely so a comment
+         * keeps reading correctly after its author deletes their account. A
+         * link built from a relation that is now null would be an anchor to
+         * nowhere, which is worse than plain text.
+         */
+        $listing = $this->listing($this->seller);
+        Comment::create([
+            'listing_id' => $listing->id,
+            'author_uid' => 'uid-deleted-000000000000001',
+            'author_name' => 'حساب محذوف',
+            'text' => 'تعليق',
+            'status' => 'visible',
+            'created_at' => now(),
+        ]);
+
+        $this->get('/annonce/'.$listing->id.'/'.$listing->slug)
+            ->assertOk()
+            ->assertSee('حساب محذوف')
+            ->assertDontSee('/vendeur/uid-deleted', escape: false);
+    }
+
+    public function test_a_banned_authors_name_is_not_a_link(): void
+    {
+        // Their page is a 404, so linking to it sends people nowhere.
+        $listing = $this->listing($this->seller);
+        $this->fan->update(['is_banned' => true]);
+
+        Comment::create([
+            'listing_id' => $listing->id,
+            'author_uid' => $this->fan->uid,
+            'author_name' => $this->fan->display_name,
+            'text' => 'تعليق',
+            'status' => 'visible',
+            'created_at' => now(),
+        ]);
+
+        $this->get('/annonce/'.$listing->id.'/'.$listing->slug)
+            ->assertOk()
+            ->assertDontSee('/vendeur/'.$this->fan->public_id, escape: false);
+    }
+
+    public function test_the_demands_feed_does_not_query_once_per_author(): void
+    {
+        /*
+         * The name became a link, and a link needs the author row. Without the
+         * eager load that is one query per demand on a page of twenty — the
+         * classic way a feature that reads fine in review makes a list page
+         * slow, and it never shows up in a test that only checks the HTML.
+         */
+        foreach (range(1, 8) as $n) {
+            $author = $this->user('uid-asker-'.str_pad((string) $n, 17, '0', STR_PAD_LEFT), "سائل {$n}");
+            PropertyRequest::create([
+                'id' => ListingId::mint(),
+                'owner_uid' => $author->uid,
+                'owner_name' => $author->display_name,
+                'intent' => 'vente',
+                'title' => "طلب {$n}",
+                'description' => 'وصف',
+                'wilaya_slug' => 'alger',
+                'status' => 'visible',
+                'created_at' => now(),
+            ]);
+        }
+
+        $queries = 0;
+        DB::listen(function () use (&$queries): void {
+            $queries++;
+        });
+
+        $this->get('/demandes')->assertOk();
+
+        // Comfortably under one-per-row: the point is that it does not scale
+        // with the number of demands, not an exact count that breaks whenever
+        // the page gains a query.
+        $this->assertLessThan(8, $queries, "the demands feed ran {$queries} queries for 8 demands");
     }
 
     public function test_following_and_unfollowing(): void

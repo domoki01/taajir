@@ -15,6 +15,7 @@ return [
     'sign_in_to_follow' => 'Connectez-vous pour suivre',
     'notify_listing' => ':name a publié une annonce',
     'notify_request' => ':name a publié une demande',
+    'see_all' => 'Voir toutes ses annonces',
     'notifications_title' => 'Notifications',
     'notifications_empty' => 'Aucune notification. Suivez des vendeurs pour voir leurs nouvelles annonces ici.',
     'mark_read' => 'Tout marquer comme lu',

@@ -15,6 +15,7 @@ return [
     'sign_in_to_follow' => 'Sign in to follow',
     'notify_listing' => ':name posted a new ad',
     'notify_request' => ':name posted a new request',
+    'see_all' => 'See all their ads',
     'notifications_title' => 'Notifications',
     'notifications_empty' => 'Nothing yet. Follow someone to see their new ads here.',
     'mark_read' => 'Mark all as read',

@@ -25,7 +25,7 @@ final class ListingController extends Controller
     public function show(string $id, string $slug): View|RedirectResponse
     {
         $listing = Listing::query()
-            ->with(['images', 'amenities', 'owner'])
+            ->with(['images', 'amenities', 'owner', 'comments.author'])
             ->find($id);
 
         // Unpublished is indistinguishable from absent, deliberately: a 403

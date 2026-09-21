@@ -26,6 +26,19 @@ class Comment extends Model
         return ['is_owner' => 'boolean', 'created_at' => 'datetime', 'edited_at' => 'datetime'];
     }
 
+    /**
+     * The account that wrote it, when it still exists.
+     *
+     * author_name is kept denormalised beside this — a comment has to keep
+     * reading correctly after the account is deleted, and the list is read far
+     * more often than it is written. The relation is only what turns the name
+     * into a link.
+     */
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_uid', 'uid');
+    }
+
     public function listing(): BelongsTo
     {
         return $this->belongsTo(Listing::class);

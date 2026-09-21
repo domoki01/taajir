@@ -19,6 +19,12 @@ class RequestReply extends Model
         return ['is_owner' => 'boolean', 'created_at' => 'datetime'];
     }
 
+    /** The account that wrote it, when it still exists; see Comment::author(). */
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_uid', 'uid');
+    }
+
     public function request(): BelongsTo
     {
         return $this->belongsTo(PropertyRequest::class, 'request_id');

@@ -94,6 +94,31 @@
                 <p class="text-muted mt-2 leading-loose whitespace-pre-line">{{ $listing->description }}</p>
             </section>
 
+            {{-- Who posted it.
+
+                 The page carried a phone number and no name at all, which is
+                 the wrong way round: a buyer decides whether to call partly on
+                 who is asking, and "كل إعلانات هذا الناشر" is how they find out
+                 whether this is one flat or forty. --}}
+            <a href="{{ \App\Support\Nav::href($listing->owner?->profileUrl() ?? '/') }}"
+               @class(['rounded-card border-border bg-surface mt-6 flex items-center gap-3 border p-4', 'pointer-events-none' => ! $listing->owner])>
+                @if ($listing->owner?->photo_url)
+                    <img src="{{ $listing->owner->photo_url }}" alt="" width="40" height="40"
+                         class="h-10 w-10 rounded-full object-cover" loading="lazy">
+                @else
+                    <span class="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-full text-sm font-black">
+                        {{ mb_substr($listing->owner_name, 0, 1) }}
+                    </span>
+                @endif
+
+                <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm font-bold">{{ $listing->owner_name }}</span>
+                    @if ($listing->owner)
+                        <span class="text-dim mt-0.5 block text-xs">{{ __('follow.see_all') }}</span>
+                    @endif
+                </span>
+            </a>
+
             <p class="rounded-card bg-warning/10 text-warning mt-6 px-4 py-3 text-sm leading-relaxed font-semibold">
                 {{ __('listing.safety_note') }}
             </p>

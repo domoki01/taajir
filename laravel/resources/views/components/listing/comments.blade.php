@@ -30,7 +30,9 @@
             @continue(! $comment->visibleTo($user))
             <li class="border-border border-b pb-4 last:border-0">
                 <div class="flex items-center gap-2">
-                    <p class="text-sm font-bold">{{ $comment->author_name }}</p>
+                    <p class="text-sm font-bold">
+                        <x-user.link :name="$comment->author_name" :user="$comment->author" />
+                    </p>
                     @if ($comment->is_owner)
                         {{-- So a reader can tell the seller from everyone else
                              without cross-referencing names. --}}

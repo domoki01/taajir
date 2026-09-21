@@ -11,7 +11,7 @@
 
             <p class="text-dim text-xs font-bold">{{ __('community.intent_'.$request->intent) }}</p>
             <h1 class="mt-1 text-xl font-black">{{ $request->title }}</h1>
-            <p class="text-dim mt-1 text-xs">{{ $request->placeLabel() }} · {{ $request->owner_name }}</p>
+            <p class="text-dim mt-1 text-xs">{{ $request->placeLabel() }} · <x-user.link :name="$request->owner_name" :user="$request->owner" /></p>
             <p class="text-muted mt-3 leading-loose whitespace-pre-line">{{ $request->description }}</p>
 
             <section class="mt-8">
@@ -47,7 +47,9 @@
                         @continue(! $reply->visibleTo($user))
                         <li class="border-border border-b pb-4 last:border-0">
                             <div class="flex items-center gap-2">
-                                <p class="text-sm font-bold">{{ $reply->author_name }}</p>
+                                <p class="text-sm font-bold">
+                                    <x-user.link :name="$reply->author_name" :user="$reply->author" />
+                                </p>
                                 @if ($reply->is_owner)
                                     <span class="bg-primary-soft text-primary rounded-full px-2 py-0.5 text-[11px] font-bold">
                                         {{ __('community.owner_badge') }}

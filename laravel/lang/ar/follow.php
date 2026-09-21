@@ -19,6 +19,7 @@ return [
     'notify_listing' => "\u{2066}:name\u{2069} نشر إعلان جديد",
     'notify_request' => "\u{2066}:name\u{2069} نشر طلب جديد",
 
+    'see_all' => 'شوف كل إعلاناتو',
     'notifications_title' => 'الإشعارات',
     'notifications_empty' => 'ما كاين حتى إشعار. تابع ناس باش توصلك إعلاناتهم الجديدة.',
     'mark_read' => 'علّمهم كامل مقروئين',

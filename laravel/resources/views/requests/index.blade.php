@@ -15,7 +15,7 @@
                         <a href="{{ \App\Support\Nav::href($item->path()) }}" class="block">
                             <p class="text-dim text-xs font-bold">{{ __('community.intent_'.$item->intent) }}</p>
                             <h2 class="mt-0.5 text-sm font-bold">{{ $item->title }}</h2>
-                            <p class="text-dim mt-1 text-xs">{{ $item->placeLabel() }} · {{ $item->owner_name }}</p>
+                            <p class="text-dim mt-1 text-xs">{{ $item->placeLabel() }} · <x-user.link :name="$item->owner_name" :user="$item->owner" /></p>
                             <p class="text-muted ltr-nums mt-2 text-xs font-semibold">{{ $item->reply_count }}</p>
                         </a>
                     </li>
