@@ -65,6 +65,9 @@ final class ModerationService
          */
         if ($listing->status()->isPublic()) {
             app(SavedSearchAlerts::class)->notify($listing);
+            // Same moment, same guard: a follower hears about an ad when it
+            // becomes openable, not when it is written.
+            app(Follows::class)->announceListing($listing);
         }
 
         return $listing;

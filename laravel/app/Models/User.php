@@ -6,8 +6,10 @@ namespace App\Models;
 
 use App\Enums\Permission;
 use App\Services\Permissions;
+use App\Support\ListingId;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -47,6 +49,38 @@ class User extends Authenticatable
     protected $guarded = [];
 
     protected $hidden = ['referral_code', 'remember_token'];
+
+    /**
+     * Their ads.
+     *
+     * Used to refresh the denormalised owner_name after a rename: it is copied
+     * onto every listing so a page of cards is one query, and this is where
+     * that copy is kept honest.
+     */
+    public function listings(): HasMany
+    {
+        return $this->hasMany(Listing::class, 'owner_uid', 'uid');
+    }
+
+    /**
+     * The id this account is addressed by in public.
+     *
+     * Minted on demand for rows written before the column existed, so a
+     * profile link never has to cope with a null — and once, not per view.
+     */
+    public function publicId(): string
+    {
+        if ($this->public_id === null) {
+            $this->forceFill(['public_id' => ListingId::mint()])->save();
+        }
+
+        return $this->public_id;
+    }
+
+    public function profileUrl(): string
+    {
+        return '/vendeur/'.$this->publicId();
+    }
 
     protected function casts(): array
     {

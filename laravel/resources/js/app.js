@@ -145,6 +145,53 @@ Alpine.data("signIn", (next) => ({
     },
 }));
 
+// ── THE FOLLOW BUTTON ────────────────────────────────────────────────────────
+// Posts rather than navigates: following is a decision about the next ad, not a
+// reason to lose your place on the page you are reading. The count updates from
+// the server's answer, not by adding one locally — two tabs, or a stale page,
+// would otherwise drift apart and never come back.
+Alpine.data("followButton", (publicId, initial, count, signedIn) => ({
+    following: initial,
+    followers: count,
+    busy: false,
+    error: "",
+
+    async toggle() {
+        // A signed-out visitor gets sent to sign in, not a failed request:
+        // the route is behind auth and would answer 401 with nothing useful.
+        if (!signedIn) {
+            window.location.href = `/connexion?next=${encodeURIComponent(window.location.pathname)}`;
+            return;
+        }
+
+        this.busy = true;
+        this.error = "";
+
+        try {
+            const response = await fetch(`/vendeur/${encodeURIComponent(publicId)}/suivre`, {
+                method: this.following ? "DELETE" : "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content ?? "",
+                    Accept: "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(String(response.status));
+            }
+
+            const body = await response.json();
+            this.following = body.following;
+            this.followers = body.followers;
+        } catch {
+            this.error = window.taajirMessages.failed;
+        } finally {
+            this.busy = false;
+        }
+    },
+}));
+
 // ── THE PUBLISH WIZARD ───────────────────────────────────────────────────────
 // The steps are a presentation of one form: nothing between them needs the
 // server, so the whole thing posts once. What does need the server is the

@@ -60,12 +60,21 @@ final class Nav
      */
     public static function accountLinks(): array
     {
+        /*
+         * Every entry here must have a route. NavLinksTest asserts it.
+         *
+         * Three of these did not. /tableau-de-bord/profil was reported as a
+         * 404 by the site's owner, and checking the rest turned up
+         * /publications and /parrainage in the same state — links to pages
+         * nobody had written, which read as a broken feature rather than an
+         * absent one. profil is built; the other two are not, so they are not
+         * offered. A menu that lies is worse than a short menu.
+         */
         return [
             ['href' => '/tableau-de-bord', 'label' => __('nav.account_links.dashboard')],
-            ['href' => '/tableau-de-bord/publications', 'label' => __('nav.account_links.posts')],
             ['href' => '/tableau-de-bord/annonces', 'label' => __('nav.account_links.listings')],
+            ['href' => '/tableau-de-bord/notifications', 'label' => __('nav.account_links.notifications')],
             ['href' => '/tableau-de-bord/alertes', 'label' => __('nav.account_links.alerts')],
-            ['href' => '/tableau-de-bord/parrainage', 'label' => __('nav.account_links.referral')],
             ['href' => '/tableau-de-bord/profil', 'label' => __('nav.account_links.profile')],
         ];
     }

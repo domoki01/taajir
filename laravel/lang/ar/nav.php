@@ -39,6 +39,7 @@ return [
         'listings' => 'إعلاناتي',
         'alerts' => 'تنبيهاتي',
         'referral' => 'ادعُ أصحابك',
+        'notifications' => 'الإشعارات',
         'profile' => 'معلوماتي',
     ],
 

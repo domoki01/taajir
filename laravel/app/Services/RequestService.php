@@ -52,7 +52,7 @@ final class RequestService
             throw ValidationException::withMessages(['description' => $verdict['reason']]);
         }
 
-        return PropertyRequest::create([
+        $demand = PropertyRequest::create([
             'id' => ListingId::mint(),
             'owner_uid' => $owner->uid,
             // From the verified session, never from the request body.
@@ -68,6 +68,14 @@ final class RequestService
             'reply_count' => 0,
             'created_at' => now(),
         ]);
+
+        // Only when it is actually on the page: a demand held for moderation
+        // would otherwise be announced to everyone before anyone could open it.
+        if ($demand->status === 'visible') {
+            app(Follows::class)->announceRequest($demand);
+        }
+
+        return $demand;
     }
 
     /**

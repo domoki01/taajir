@@ -37,6 +37,7 @@ return [
         'listings' => 'Mes annonces',
         'alerts' => 'Mes alertes',
         'referral' => 'Invitez vos proches',
+        'notifications' => 'Notifications',
         'profile' => 'Mes informations',
     ],
 

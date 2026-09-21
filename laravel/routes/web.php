@@ -21,8 +21,11 @@ use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\CommuneController;
 use App\Http\Controllers\Dashboard\ListingController as DashboardListingController;
+use App\Http\Controllers\Dashboard\NotificationController;
+use App\Http\Controllers\Dashboard\ProfileController;
 use App\Http\Controllers\Dashboard\SavedSearchController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FollowController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LaunchController;
 use App\Http\Controllers\ListingController;
@@ -30,6 +33,7 @@ use App\Http\Controllers\PublishController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SellerController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StaticPageController;
 use Illuminate\Support\Facades\Route;
@@ -137,9 +141,28 @@ $routes = function (): void {
     Route::get('/demandes/{id}', [RequestController::class, 'show'])->middleware('launched')->name('requests.show');
     Route::post('/demandes/{id}/repondre', [RequestController::class, 'reply'])->middleware('auth.session')->name('requests.reply');
 
+    // Public: a seller's page is something you send to someone, so it must
+    // open without an account.
+    Route::get('/vendeur/{publicId}', SellerController::class)->name('seller');
+
     Route::middleware('auth.session')->group(function () {
         Route::post('/annonce/{listing}/commentaires', [CommentController::class, 'store'])->name('comments.store');
         Route::delete('/commentaires/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+
+        /*
+         * "معلوماتي". The account menu has linked here since it was written
+         * and the route was not, so the link was a 404 — which reads as a
+         * broken feature rather than an absent one.
+         */
+        Route::get('/tableau-de-bord/profil', [ProfileController::class, 'edit'])->name('dashboard.profile');
+        Route::post('/tableau-de-bord/profil', [ProfileController::class, 'update'])->name('dashboard.profile.update');
+
+        Route::get('/tableau-de-bord/notifications', [NotificationController::class, 'index'])->name('dashboard.notifications');
+        Route::post('/tableau-de-bord/notifications/lues', [NotificationController::class, 'readAll'])->name('dashboard.notifications.read');
+
+        // Following needs an account; the profile page itself does not.
+        Route::post('/vendeur/{publicId}/suivre', [FollowController::class, 'store'])->name('seller.follow');
+        Route::delete('/vendeur/{publicId}/suivre', [FollowController::class, 'destroy'])->name('seller.unfollow');
 
         Route::get('/tableau-de-bord/annonces', [DashboardListingController::class, 'index'])->name('dashboard.listings');
         Route::get('/tableau-de-bord/alertes', [SavedSearchController::class, 'index'])->name('dashboard.alerts');
