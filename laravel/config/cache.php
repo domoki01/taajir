@@ -15,7 +15,23 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    /*
+     * `file`, not Laravel's `database` default, because this application has
+     * no cache table.
+     *
+     * The framework's skeleton ships a create_cache_table migration; this
+     * project dropped it, having nothing that wanted a cache in the database.
+     * The default in this file kept pointing at it anyway, and .env.example
+     * writing CACHE_STORE=file was the only thing standing between an install
+     * and "no such table: cache" — so any .env that omitted the line, or any
+     * deploy that read this file without one, broke every throttled action:
+     * posting a demand, replying to one, `cache:clear`.
+     *
+     * A default that only works because a template happens to override it is
+     * not a default. file works on any host with a writable storage/, which is
+     * a requirement already.
+     */
+    'default' => env('CACHE_STORE', 'file'),
 
     /*
     |--------------------------------------------------------------------------

@@ -83,6 +83,7 @@ final class ReleaseInstaller implements InstallsReleases
         try {
             $app = $this->mirror($staging.'/taajir-app', $this->appPath, $this->keepInApp($staging.'/taajir-app'));
             $docroot = $this->mirror($staging.'/public_html', $this->docroot, self::NEVER_REPLACED_IN_DOCROOT);
+            $this->linkStorage();
         } finally {
             File::deleteDirectory($staging);
         }
@@ -150,6 +151,32 @@ final class ReleaseInstaller implements InstallsReleases
         }
 
         return $staging;
+    }
+
+    /**
+     * The uploads symlink, if it is not already there.
+     *
+     * `artisan storage:link` cannot make this one: it writes to public/storage,
+     * and in the split layout the document root is somewhere else entirely.
+     * setup.php and install-update.php both create it; this did not, so an
+     * install only ever updated from the admin screen never got one — and
+     * because the docroot's `storage` is on the never-replaced list, nothing
+     * else was going to make it either. Every listing photo 404s until it
+     * exists, which looks like a broken image pipeline rather than a missing
+     * symlink.
+     *
+     * Silent when it fails: some hosts forbid symlink(), and a release that
+     * otherwise applied cleanly should not be reported as a failure over this.
+     */
+    private function linkStorage(): void
+    {
+        $link = $this->docroot.'/storage';
+
+        if (file_exists($link)) {
+            return;
+        }
+
+        @symlink($this->appPath.'/storage/app/public', $link);
     }
 
     /**

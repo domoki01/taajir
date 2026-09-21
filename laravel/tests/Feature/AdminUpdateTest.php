@@ -172,6 +172,44 @@ final class AdminUpdateTest extends TestCase
         $this->assertSame('APP_KEY=the-real-one', File::get($app.'/.env'));
     }
 
+    public function test_it_creates_the_uploads_symlink_when_there_is_none(): void
+    {
+        /*
+         * artisan storage:link cannot make this one — it writes to
+         * public/storage, and the document root is elsewhere in this layout.
+         * setup.php and install-update.php both create it; this did not, so an
+         * install only ever updated from the admin screen had every listing
+         * photo 404ing, which reads as a broken image pipeline rather than a
+         * missing symlink.
+         */
+        [$app, $docroot] = $this->fakeInstall();
+        File::ensureDirectoryExists($app.'/storage/app/public');
+
+        (new ReleaseInstaller($app, $docroot))->apply($this->zipOf([
+            'taajir-app/app/Thing.php' => 'new',
+            'public_html/robots.txt' => 'x',
+        ]));
+
+        $this->assertTrue(is_link($docroot.'/storage'), 'no uploads symlink was created');
+        $this->assertSame($app.'/storage/app/public', readlink($docroot.'/storage'));
+    }
+
+    public function test_an_existing_uploads_path_is_left_alone(): void
+    {
+        // A host that forbids symlinks may have a real directory here, and
+        // replacing it would delete whatever is inside.
+        [$app, $docroot] = $this->fakeInstall();
+        File::ensureDirectoryExists($docroot.'/storage');
+        File::put($docroot.'/storage/photo.webp', 'an upload');
+
+        (new ReleaseInstaller($app, $docroot))->apply($this->zipOf([
+            'taajir-app/app/Thing.php' => 'new',
+            'public_html/robots.txt' => 'x',
+        ]));
+
+        $this->assertSame('an upload', File::get($docroot.'/storage/photo.webp'));
+    }
+
     public function test_a_nested_file_named_env_is_not_the_one_that_is_protected(): void
     {
         // Matching by name at every depth would quietly refuse to update
