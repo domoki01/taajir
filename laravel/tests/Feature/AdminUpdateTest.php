@@ -225,8 +225,9 @@ final class AdminUpdateTest extends TestCase
          */
         [$app, $docroot] = $this->fakeInstall();
 
-        config(['app.env' => 'testing']);
-        putenv('TAAJIR_DOCROOT='.$docroot);
+        // Through config, which is how it survives config:cache — env() answers
+        // null on any install whose config is cached, which is this one.
+        config(['taajir.docroot' => $docroot]);
 
         $installer = ReleaseInstaller::forThisInstall();
 
@@ -234,8 +235,6 @@ final class AdminUpdateTest extends TestCase
 
         $this->assertSame($docroot, $reflected->getValue($installer));
         $this->assertNotSame(public_path(), $reflected->getValue($installer));
-
-        putenv('TAAJIR_DOCROOT');
     }
 
     public function test_a_nested_file_named_env_is_not_the_one_that_is_protected(): void

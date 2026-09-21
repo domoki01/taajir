@@ -19,6 +19,16 @@ return [
      * Laravel's own APP_URL is the same value, kept separate so a future
      * split (app on a subdomain, canonical on the apex) stays expressible.
      */
+    /*
+     * The document root, when it is not <app>/public.
+     *
+     * Only the split layout needs this: the app lives above the web root and
+     * index.php sets the path per request. A console run — the release
+     * installer, a cron — has no front controller to learn it from, and
+     * public_path() would answer with a directory the web server never reads.
+     */
+    'docroot' => env('TAAJIR_DOCROOT'),
+
     'site_url' => env('TAAJIR_SITE_URL', env('APP_URL', 'http://localhost:8000')),
 
     /*

@@ -92,10 +92,20 @@ final class ReleaseInstaller implements InstallsReleases
             return (string) constant('TAAJIR_PUBLIC_PATH');
         }
 
-        $fromEnv = env('TAAJIR_DOCROOT');
-
-        if (is_string($fromEnv) && $fromEnv !== '' && is_dir($fromEnv)) {
-            return rtrim($fromEnv, '/');
+        /*
+         * config() first, then the raw environment — and never env().
+         *
+         * Laravel skips loading .env entirely once bootstrap/cache/config.php
+         * exists, which it does on this host, so env() answers null for
+         * everything there. A fallback that only works on an uncached install
+         * is a fallback that never works in production. The config value is
+         * baked in at cache time; getenv() covers a value passed to a single
+         * console run, after the cache was built.
+         */
+        foreach ([config('taajir.docroot'), getenv('TAAJIR_DOCROOT')] as $candidate) {
+            if (is_string($candidate) && $candidate !== '' && is_dir($candidate)) {
+                return rtrim($candidate, '/');
+            }
         }
 
         return public_path();
