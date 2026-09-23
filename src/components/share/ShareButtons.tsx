@@ -12,7 +12,7 @@
 // because "WhatsApp" as a labelled target is faster to hit than a sheet.
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Send, Share2 } from "lucide-react";
+import { Check, Copy, Send } from "lucide-react";
 import { shareHref, shareUrl, type ShareTarget } from "@/lib/share";
 import { shortLinkUrl } from "@/lib/shortlink";
 import { shareInfo } from "@/server/actions/affiliate";
@@ -116,53 +116,59 @@ export function ShareButtons({
   }
 
   return (
-    <section className="rounded-card border-border bg-surface border p-4">
-      <p className="flex items-center gap-2 text-sm font-extrabold">
-        <Share2 className="size-4" />
-        شارك
-      </p>
+    // Four icons, one line. This began as a bordered panel with a heading and
+    // four full-width buttons — about 190px on a phone, which on a demand was
+    // the composer and the sign-up button pushed off the bottom of the screen.
+    // Dropping the labels is what makes the row fit at any width instead of
+    // nearly fitting at 360px: a green circle carrying WhatsApp's own mark is
+    // read faster than the word beside it, and these are targets people
+    // recognise by logo, never by name.
+    <section aria-label="شارك" className="flex flex-wrap items-center gap-2">
+      {kTargets.map(({ id, label, Mark, tone }) => (
+        <a
+          key={id}
+          href={shareHref(id, url, text)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`شارك على ${label}`}
+          title={label}
+          className={`rounded-input grid size-10 place-items-center transition-opacity active:opacity-90 ${tone}`}
+        >
+          <Mark />
+        </a>
+      ))}
+
+      <button
+        type="button"
+        onClick={native}
+        aria-label="شارك في تطبيق آخر"
+        title="تطبيق آخر"
+        className="rounded-input border-border bg-surface hover:border-primary grid size-10 place-items-center border transition-colors"
+      >
+        <Send className="size-5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={copied ? "تنسخ الرابط" : "انسخ الرابط"}
+        title={copied ? "تنسخ" : "انسخ الرابط"}
+        className={`rounded-input grid size-10 place-items-center border transition-colors ${
+          copied
+            ? "border-success text-success"
+            : "border-border bg-surface hover:border-primary"
+        }`}
+      >
+        {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
+      </button>
+
+      {/* Only ever shown to somebody whose link actually earns them something,
+          so it costs a signed-out reader no height at all. */}
       {earns && (
-        <p className="text-muted mt-1 text-xs leading-relaxed">
+        <p className="text-muted w-full text-xs leading-relaxed">
           الرابط متاعك يحسب — كل واحد يسجّل منّو ينضاف لنقاطك.
         </p>
       )}
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {kTargets.map(({ id, label, Mark, tone }) => (
-          <a
-            key={id}
-            href={shareHref(id, url, text)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`rounded-input flex items-center gap-2 px-3.5 py-2.5 text-sm font-bold transition-opacity active:opacity-90 ${tone}`}
-          >
-            <Mark />
-            {label}
-          </a>
-        ))}
-
-        <button
-          type="button"
-          onClick={native}
-          className="rounded-input border-border bg-surface hover:border-primary flex items-center gap-2 border px-3.5 py-2.5 text-sm font-bold transition-colors"
-        >
-          <Send className="size-4" />
-          تطبيق آخر
-        </button>
-
-        <button
-          type="button"
-          onClick={copy}
-          className={`rounded-input flex items-center gap-2 border px-3.5 py-2.5 text-sm font-bold transition-colors ${
-            copied
-              ? "border-success text-success"
-              : "border-border bg-surface hover:border-primary"
-          }`}
-        >
-          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-          {copied ? "تنسخ" : "انسخ الرابط"}
-        </button>
-      </div>
     </section>
   );
 }

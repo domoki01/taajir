@@ -19,7 +19,8 @@
     "deploy:indexes": "node scripts/deploy-indexes.mjs",
     "deploy:rules": "node scripts/deploy-rules.mjs",
     "test:affiliate": "firebase emulators:exec --only firestore --project demo-taajir \"vitest run tests/integration --no-file-parallelism\"",
-    "seed:articles": "node scripts/seed-articles.mjs"
+    "seed:articles": "node scripts/seed-articles.mjs",
+    "export:emails": "node scripts/export-emails.mjs"
   },
   "dependencies": {
     "clsx": "2.1.1",

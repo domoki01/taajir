@@ -12,7 +12,7 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { kFreeListingQuota } from "@/lib/constants";
 import { can, type Permission } from "@/lib/permissions";
 import { permissionsForRole } from "@/server/permissions";
-import { getAccessSettings } from "@/server/access";
+import { getAccessSettings, skipsApprovalQueue } from "@/server/access";
 
 /** Firebase Hosting's CDN forwards exactly one cookie name, so use it. */
 export const kSessionCookie = "__session";
@@ -139,6 +139,12 @@ export async function ensureUserDoc(
     phone?: string | null;
     /** Proven by the provider, never by the account holder typing it. */
     emailVerified?: boolean;
+    /**
+     * Firebase's `sign_in_provider`, straight off the verified token. Decides
+     * whether this account waits in the approval queue — see
+     * kSelfApprovingProviders.
+     */
+    provider?: string | null;
     /** The uid behind the invite link this visitor arrived through, if any. */
     referredBy?: string | null;
   },
@@ -161,14 +167,21 @@ export async function ensureUserDoc(
   }
 
   // A new account is approved on the spot unless the admin has switched
-  // registration approval on. Written at creation rather than read live so the
-  // publish gate is one field lookup, and so flipping the switch later never
-  // retroactively mutes anybody — approveEveryone() handles the existing ones.
+  // registration approval on — and even then, a provider that already proved
+  // the person walks straight through. Written at creation rather than read
+  // live so the publish gate is one field lookup, and so flipping the switch
+  // later never retroactively mutes anybody — approveEveryone() handles the
+  // existing ones.
+  //
+  // Creation-only is also what keeps `setUserApproved(uid, false)` meaningful:
+  // re-deciding this on every sign-in would hand a Google account back its
+  // approval the next morning and quietly undo the moderator who took it away.
   const { requireApproval } = await getAccessSettings();
+  const approved = !requireApproval || skipsApprovalQueue(data.provider);
 
   await ref.set({
     uid,
-    approved: !requireApproval,
+    approved,
     email: data.email,
     displayName: data.name || "مستخدم",
     photoURL: data.photoURL,

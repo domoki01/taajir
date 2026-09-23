@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { editListing } from "@/server/actions/moderation";
 import { fromDinars } from "@/lib/price";
 import type { Listing } from "@/types/listing";
+import { cn } from "@/lib/utils";
+import { PriceReadout } from "@/components/listing/PriceReadout";
 
 const field =
   "rounded-input border-border w-full border bg-white px-4 py-3 text-base outline-none focus:border-primary";
@@ -123,7 +125,10 @@ export function EditForm({ listing }: { listing: Listing }) {
             value={priceAmount}
             onChange={(e) => setPriceAmount(e.target.value)}
             aria-label="السعر"
-            className={`${field} text-start disabled:opacity-50`}
+            className={cn(
+              field,
+              "w-auto min-w-0 flex-1 text-start disabled:opacity-50",
+            )}
           />
           <select
             value={priceUnitInput}
@@ -132,12 +137,18 @@ export function EditForm({ listing }: { listing: Listing }) {
             }
             disabled={priceOnRequest}
             aria-label="وحدة السعر"
-            className={`${field} w-32 disabled:opacity-50`}
+            className={cn(field, "w-32 shrink-0 disabled:opacity-50")}
           >
             <option value="million">مليون</option>
             <option value="dzd">دج</option>
           </select>
         </div>
+
+        <PriceReadout
+          amount={priceAmount}
+          unit={priceUnitInput}
+          hidden={priceOnRequest}
+        />
 
         <div className="mt-3 space-y-2">
           <label className="flex items-start gap-2 text-sm font-semibold">

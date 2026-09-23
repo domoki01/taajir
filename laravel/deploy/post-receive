@@ -1,0 +1,97 @@
+#!/bin/sh
+#
+# Deploy hook for a bare repository on a DirectAdmin account.
+#
+# Install it as hooks/post-receive inside the bare repo and chmod +x. It runs on
+# the server after every push: check the branch out, lay the two halves of the
+# tree where they belong, and hand the rest to deploy/update.sh.
+#
+# That hand-off is the point. Everything that happens *after* new code lands —
+# dependencies, the schema, the seeds, the image link, the caches — is the same
+# whether the code arrived by push, by SFTP or by a browser. Keeping it in one
+# script is what stops the three paths drifting into three different deploys,
+# which is how one of them ends up skipping a step nobody notices for a month.
+#
+# Edit the four settings below. Everything else should need no changes.
+
+set -eu
+
+# ── Settings ─────────────────────────────────────────────────────────────────
+APP="$HOME/taajir-app"                           # the app tree, above the docroot
+DOCROOT="$HOME/domains/taajirdz.com/public_html" # what the web server serves
+BRANCH="main"                                    # the branch that deploys
+PHP="${PHP_BIN:-php}"                            # e.g. /usr/local/php84/bin/php
+COMPOSER="${COMPOSER_BIN:-composer}"             # often $HOME/composer.phar
+
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+
+while read -r _old _new ref; do
+    [ "$ref" = "refs/heads/$BRANCH" ] || continue
+
+    WORK="$(mktemp -d)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '$WORK'" EXIT
+
+    git --git-dir="$REPO" --work-tree="$WORK" checkout -f "$BRANCH"
+
+    SRC="$WORK/laravel"
+    if [ ! -d "$SRC" ]; then
+        echo "!! no laravel/ directory in this push — nothing deployed" >&2
+        exit 1
+    fi
+
+    mkdir -p "$APP" "$DOCROOT"
+
+    echo "→ application tree"
+    # rsync --delete so a file removed in git is removed on the server. The
+    # excludes are the things that live on the server and are not in git: the
+    # real .env, the writable storage tree, and vendor/ (installed by
+    # update.sh rather than pushed). rsync will not delete an excluded path.
+    #
+    # Not every shared account has rsync. The fallback copies without deleting,
+    # which is a correct deploy of everything in the push and leaves behind any
+    # file the push removed — said out loud rather than left as a surprise,
+    # because a stale controller that still routes is a confusing bug.
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete \
+            --exclude '.env' \
+            --exclude 'storage/' \
+            --exclude 'vendor/' \
+            --exclude 'node_modules/' \
+            --exclude 'public/' \
+            "$SRC/" "$APP/"
+    else
+        echo "!  no rsync — copying without --delete; files removed in git stay on the server"
+        (cd "$SRC" && tar --exclude=.env --exclude=storage --exclude=vendor \
+            --exclude=node_modules --exclude=public -cf - .) | (cd "$APP" && tar xf -)
+    fi
+
+    echo "→ document root"
+    # No --delete here: the document root also holds index.php (the split-layout
+    # front controller, which is NOT the one in git), build/ (the compiled CSS,
+    # JS and fonts, which git does not carry — see docs/deploy-git.md) and the
+    # storage symlink. Wiping those on every push is a site with no styling.
+    #
+    # build/ is not excluded: if a push does carry it, it should win.
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a --exclude 'index.php' "$SRC/public/" "$DOCROOT/"
+    else
+        (cd "$SRC/public" && tar --exclude=./index.php -cf - .) | (cd "$DOCROOT" && tar xf -)
+    fi
+
+    # The three scripts the split layout needs, which are not in public/: the
+    # front controller that walks up to find the app, the updater, and the
+    # health page. index.php is copied only when it is missing — overwriting a
+    # working one on every push is how a hand-tuned APP_BASE gets lost.
+    [ -f "$DOCROOT/index.php" ] || cp "$SRC/deploy/public_html/index.php" "$DOCROOT/"
+    cp "$SRC/deploy/public_html/update.php" "$DOCROOT/"
+    cp "$SRC/deploy/public_html/health.php" "$DOCROOT/"
+
+    echo "→ update"
+    # Everything after the code: composer, the schema, the seeds, the image
+    # link and the caches. One script, shared with the SFTP and no-SSH paths.
+    TAAJIR_APP="$APP" TAAJIR_DOCROOT="$DOCROOT" PHP_BIN="$PHP" COMPOSER_BIN="$COMPOSER" \
+        sh "$APP/deploy/update.sh"
+
+    echo "✓ deployed $BRANCH"
+done

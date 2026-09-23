@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -24,8 +25,42 @@ import {
 } from "@/lib/enums";
 import { getCommunes, kWilayas } from "@/lib/geo";
 import { shrinkImage } from "@/lib/image";
+import { cn } from "@/lib/utils";
+import { PriceReadout } from "@/components/listing/PriceReadout";
+import {
+  clearDraft,
+  kListingDraftKey,
+  readDraft,
+  writeDraft,
+} from "@/lib/draft";
+import { kDealParam, readDeal } from "@/lib/funnel";
 
 type Img = { url: string; w: number; h: number };
+
+/** Everything the wizard collects — the draft is exactly this and nothing else. */
+type Values = {
+  transactionType: string;
+  propertyType: string;
+  title: string;
+  description: string;
+  priceAmount: string;
+  priceUnitInput: "dzd" | "million";
+  priceOnRequest: boolean;
+  isNegotiable: boolean;
+  areaBuilt: string;
+  areaLand: string;
+  roomsCode: string;
+  bathrooms: string;
+  floor: string;
+  condition: string;
+  paperwork: string;
+  amenities: string[];
+  wilayaSlug: string;
+  communeSlug: string;
+  contactPhone: string;
+  allowWhatsapp: boolean;
+  images: Img[];
+};
 
 const field =
   "rounded-input border-border w-full border bg-white px-4 py-3.5 text-base outline-none focus:border-primary";
@@ -119,6 +154,134 @@ export function PostForm({
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
+  const [restored, setRestored] = useState(false);
+
+  // ── THE DRAFT ──────────────────────────────────────────────────────────────
+  // Restored once, on mount, and never during render: localStorage does not
+  // exist on the server, so reading it while rendering is a hydration mismatch
+  // rather than a feature.
+  //
+  // Every choice is re-checked against the options this form is *currently*
+  // offering. An admin can retire a category from /admin/filtre, and a draft
+  // holding a retired one would restore a select to a value it cannot show —
+  // a form that looks filled in and submits as empty.
+  /* eslint-disable react-hooks/set-state-in-effect --
+     Restoring persisted state on mount is what this effect is for, and there
+     is no way to seed it earlier: localStorage does not exist on the server, so
+     a lazy useState initialiser would render one thing into the HTML and
+     another on hydration. An effect that runs once after mount is the only
+     point at which the device's copy can be read at all. */
+  useEffect(() => {
+    const draft = readDraft<Values>(kListingDraftKey);
+    if (!draft) return;
+    const v = draft.values;
+
+    if (deals.some((d) => d.value === v.transactionType)) {
+      setTransactionType(v.transactionType);
+    }
+    if (propertyChoices.some((p) => p.value === v.propertyType)) {
+      setPropertyType(v.propertyType);
+    }
+    setTitle(v.title);
+    setDescription(v.description);
+    setPriceAmount(v.priceAmount);
+    setPriceUnitInput(v.priceUnitInput);
+    setPriceOnRequest(v.priceOnRequest);
+    setIsNegotiable(v.isNegotiable);
+    setAreaBuilt(v.areaBuilt);
+    setAreaLand(v.areaLand);
+    setRoomsCode(v.roomsCode);
+    setBathrooms(v.bathrooms);
+    setFloor(v.floor);
+    setCondition(v.condition);
+    setPaperwork(v.paperwork);
+    setAmenities(v.amenities);
+    setWilayaSlug(v.wilayaSlug);
+    setCommuneSlug(v.communeSlug);
+    // Their own number, on their own device, on its way onto a public ad. The
+    // draft is not where it becomes sensitive.
+    if (v.contactPhone) setContactPhone(v.contactPhone);
+    setAllowWhatsapp(v.allowWhatsapp);
+    // The uploads already live in Storage under this uid; the draft only keeps
+    // the URLs, so restoring costs nothing and re-picking them would cost the
+    // whole gallery.
+    setImages(v.images);
+    setRestored(true);
+    // The screen they were on is deliberately not restored. Reopening on the
+    // first one is what makes the notice below reachable — dropped straight
+    // back onto screen eight, nobody is ever told their answers came from
+    // storage — and after a trip through sign-up, seeing what survived beats
+    // being put back in the middle of it.
+    // Deliberately once. Re-running when `deals` changes identity would undo
+    // whatever has been typed since.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const values: Values = useMemo(
+    () => ({
+      transactionType,
+      propertyType,
+      title,
+      description,
+      priceAmount,
+      priceUnitInput,
+      priceOnRequest,
+      isNegotiable,
+      areaBuilt,
+      areaLand,
+      roomsCode,
+      bathrooms,
+      floor,
+      condition,
+      paperwork,
+      amenities,
+      wilayaSlug,
+      communeSlug,
+      contactPhone,
+      allowWhatsapp,
+      images,
+    }),
+    [
+      transactionType,
+      propertyType,
+      title,
+      description,
+      priceAmount,
+      priceUnitInput,
+      priceOnRequest,
+      isNegotiable,
+      areaBuilt,
+      areaLand,
+      roomsCode,
+      bathrooms,
+      floor,
+      condition,
+      paperwork,
+      amenities,
+      wilayaSlug,
+      communeSlug,
+      contactPhone,
+      allowWhatsapp,
+      images,
+    ],
+  );
+
+  // Nothing is stored until something has actually been said about a property.
+  // The first two screens are pre-filled — a deal from the funnel, a phone from
+  // the profile — so saving on any change at all would write a draft for every
+  // visitor who opened the form and left, and greet the next one with "we kept
+  // what you wrote" over a form they never wrote in.
+  useEffect(() => {
+    const started =
+      propertyType !== "" ||
+      title.trim() !== "" ||
+      description.trim() !== "" ||
+      priceAmount.trim() !== "" ||
+      images.length > 0;
+    if (started) writeDraft(kListingDraftKey, values);
+  }, [values, propertyType, title, description, priceAmount, images]);
 
   const isLand = kLandPropertyTypes.includes(propertyType);
   const rental =
@@ -212,30 +375,68 @@ export function PostForm({
     });
 
     if (result.ok) {
+      // The ad is real now; the copy on the device is only a way to publish it
+      // twice. Cleared before the navigation so a back button cannot resurrect
+      // it onto a fresh form.
+      clearDraft(kListingDraftKey);
       router.push(`/merci?type=annonce&state=${result.state}`);
       router.refresh();
     } else {
       setError(result.error);
+      setNeedsAuth(result.needsAuth === true);
       setBusy(false);
     }
   }
 
+  // Wipes the copy and reloads rather than resetting twenty-one setters one by
+  // one: the restore only ever runs on mount, so a fresh mount with nothing in
+  // storage *is* the empty form, and there is one fewer list to keep in step.
+  function startOver() {
+    clearDraft(kListingDraftKey);
+    window.location.reload();
+  }
+
   const back = () => {
     setError(null);
+    setNeedsAuth(false);
     setStep((s) => s - 1);
   };
   const next = () => {
     setError(null);
+    setNeedsAuth(false);
     setStep((s) => s + 1);
   };
 
+  const returnPath = `/publier${
+    readDeal(transactionType) ? `?${kDealParam}=${transactionType}` : ""
+  }`;
+
   const alert = error && (
-    <p
+    <div
       role="alert"
       className="rounded-input bg-danger/10 text-danger mt-4 px-4 py-3 text-sm font-semibold"
     >
       {error}
-    </p>
+      {/* The two doors, not a message about needing one. Somebody who has just
+          filled in nine screens has earned a button, and the deal they picked
+          rides back in `next` so the form reopens on their own answer. */}
+      {needsAuth && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href={`/inscription?next=${encodeURIComponent(returnPath)}`}
+            className="bg-accent rounded-input px-4 py-2 text-sm font-bold text-white"
+          >
+            حساب جديد
+          </Link>
+          <Link
+            href={`/connexion?next=${encodeURIComponent(returnPath)}`}
+            className="rounded-input border-border border bg-white px-4 py-2 text-sm font-bold"
+          >
+            عندي حساب
+          </Link>
+        </div>
+      )}
+    </div>
   );
 
   // ── 1. WHAT ────────────────────────────────────────────────────────────────
@@ -248,6 +449,25 @@ export function PostForm({
         canGoNext={propertyType !== ""}
         onNext={next}
       >
+        {/* Only on the first screen, which is where a restored form reopens.
+            Said out loud rather than left for the seller to notice: a form
+            that fills itself in is unsettling if nobody explains it, and the
+            one person it could be wrong for needs a way out of it. */}
+        {restored && (
+          <div className="rounded-input bg-primary-soft mb-5 px-4 py-3">
+            <p className="text-primary text-sm font-bold">
+              رجّعنالك الإعلان اللي كنت تكتب فيه.
+            </p>
+            <button
+              type="button"
+              onClick={startOver}
+              className="text-primary mt-1 text-xs font-bold underline"
+            >
+              ماشي هو — ابدا من جديد
+            </button>
+          </div>
+        )}
+
         <p className={label}>نوع العملية</p>
         <ChoiceGrid
           options={deals.map((d) => ({ value: d.value, label: d.label }))}
@@ -344,7 +564,10 @@ export function PostForm({
             onChange={(e) => setPriceAmount(e.target.value)}
             placeholder={rental ? "45000" : "800"}
             aria-label="السعر"
-            className={`${field} ltr-nums text-start text-xl font-black disabled:opacity-50`}
+            className={cn(
+              field,
+              "ltr-nums w-auto min-w-0 flex-1 text-start text-xl font-black disabled:opacity-50",
+            )}
           />
           {/* Algerians quote sales in ملايين and rents in dinars; the toggle
               defaults accordingly and the server stores dinars either way. */}
@@ -355,12 +578,22 @@ export function PostForm({
             }
             disabled={priceOnRequest}
             aria-label="وحدة السعر"
-            className={`${field} w-28 shrink-0 font-bold disabled:opacity-50`}
+            // cn(), not a template string: `field` carries w-full, and Tailwind
+            // emits .w-full after .w-28 at equal specificity, so the plain
+            // concatenation lost — the select took the whole line, shrink-0
+            // refused to give any of it back, and the row ran off the screen.
+            className={cn(field, "w-28 shrink-0 font-bold disabled:opacity-50")}
           >
             <option value="million">مليون</option>
             <option value="dzd">دج</option>
           </select>
         </div>
+
+        <PriceReadout
+          amount={priceAmount}
+          unit={priceUnitInput}
+          hidden={priceOnRequest}
+        />
 
         {/* These two used to read almost identically ("بالاتفاق" vs "قابل
             للتفاوض"), and ticking the first silently threw away a price the

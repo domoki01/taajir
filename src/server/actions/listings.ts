@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
-import { requireUser } from "@/server/auth";
+import { getUser } from "@/server/auth";
 import { qualifyReferral, rewardPublish } from "@/server/affiliate";
 import { isPrelaunch } from "@/server/launch";
 import { getAccessSettings, kNeedsApproval } from "@/server/access";
@@ -28,7 +28,7 @@ import type { PostState } from "@/server/actions/requests";
 
 export type CreateListingResult =
   | { ok: true; id: string; slug: string; state: PostState }
-  | { ok: false; error: string };
+  | { ok: false; error: string; needsAuth?: boolean };
 
 function tokenize(text: string): string[] {
   return [
@@ -74,7 +74,15 @@ export type ListingInput = {
 export async function createListing(
   input: ListingInput,
 ): Promise<CreateListingResult> {
-  const user = await requireUser("/publier");
+  // Signalled rather than redirected. Redirecting from here threw away
+  // everything typed into a nine-screen form the moment somebody pressed
+  // نشر without an account — and the funnel sends brand-new visitors straight
+  // at this form, so that was the common case, not the edge one. Same contract
+  // createRequest() has always had.
+  const user = await getUser();
+  if (!user) {
+    return { ok: false, error: "لازم تسجّل الدخول باش تنشر", needsAuth: true };
+  }
 
   // ── validate ───────────────────────────────────────────────────────────────
   // Checked against the resolved taxonomy, not the enums: an admin can add

@@ -30,5 +30,6 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "_comment": "The Laravel port is a second application with its own toolchain. It is excluded because `include` is a repo-wide glob, and Composer's vendor tree ships files named *.ts that are not TypeScript — symfony/translation has a fixture whose extension means TypoScript, and tsc reports two dozen syntax errors on it.",
+  "exclude": ["node_modules", "laravel"]
 }

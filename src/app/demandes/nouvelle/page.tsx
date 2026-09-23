@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/layout/Container";
 import { RequestWizard } from "@/components/requests/RequestWizard";
-import { requireUser } from "@/server/auth";
 import { kIntentParam } from "@/lib/funnel";
 
 export const metadata: Metadata = {
@@ -19,6 +18,14 @@ export const dynamic = "force-dynamic";
  * but writing a demand is the entire point of the funnel, and the previous
  * version routed "حاب نشري" at the guarded feed, which bounced the visitor
  * straight back to the page they had just pressed a button on.
+ *
+ * Nor behind `requireUser()`, for the same reason one step further along. The
+ * funnel sends people here who have never had an account, and a sign-up screen
+ * in place of the form is a stranger being asked to register before being told
+ * what for. `createRequest()` was always written to answer a signed-out caller
+ * with `needsAuth` rather than a redirect, precisely so the account could be
+ * asked for at the end with the answers already typed; this page blocking the
+ * door up front is what made that branch unreachable.
  */
 export default async function NewRequestPage({
   searchParams,
@@ -28,12 +35,6 @@ export default async function NewRequestPage({
   const sp = await searchParams;
   const raw = sp[kIntentParam];
   const intent = (Array.isArray(raw) ? raw[0] : raw) ?? "";
-
-  // The destination is carried through sign-in, so someone arriving cold keeps
-  // the answer they gave on the funnel instead of being asked for it twice.
-  await requireUser(
-    `/demandes/nouvelle${intent ? `?${kIntentParam}=${intent}` : ""}`,
-  );
 
   return (
     <main className="flex-1 px-4 py-4">
